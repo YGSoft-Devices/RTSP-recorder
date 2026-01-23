@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.32.94 -->
+<!-- RTSP Recorder Web Interface - Version 2.32.95 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -867,6 +867,83 @@
                                         <input type="number" id="H264_QP" name="H264_QP" 
                                                value="{{ config.H264_QP }}" min="1" max="51" placeholder="Auto">
                                         <small>QP fixe 1-51 (vide = auto)</small>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="VIDEO_OVERLAY_ENABLE">
+                                            <i class="fas fa-text-height"></i> Overlay RTSP
+                                        </label>
+                                        <select id="VIDEO_OVERLAY_ENABLE" name="VIDEO_OVERLAY_ENABLE">
+                                            <option value="no" {% if config.VIDEO_OVERLAY_ENABLE != 'yes' %}selected{% endif %}>Désactivé</option>
+                                            <option value="yes" {% if config.VIDEO_OVERLAY_ENABLE == 'yes' %}selected{% endif %}>Activé</option>
+                                        </select>
+                                        <small>Overlay texte/date (USB uniquement)</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="VIDEO_OVERLAY_TEXT">
+                                            <i class="fas fa-align-left"></i> Texte overlay
+                                        </label>
+                                        <input type="text" id="VIDEO_OVERLAY_TEXT" name="VIDEO_OVERLAY_TEXT"
+                                               value="{{ config.VIDEO_OVERLAY_TEXT }}" placeholder="{CAMERA_TYPE} {VIDEO_RESOLUTION}">
+                                        <small>Tokens: {CAMERA_TYPE} {VIDEO_RESOLUTION} {VIDEO_FPS} {VIDEO_FORMAT} {VIDEO_DEVICE}</small>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="VIDEO_OVERLAY_POSITION">
+                                            <i class="fas fa-map-pin"></i> Position texte
+                                        </label>
+                                        <select id="VIDEO_OVERLAY_POSITION" name="VIDEO_OVERLAY_POSITION">
+                                            <option value="top-left" {% if config.VIDEO_OVERLAY_POSITION == 'top-left' %}selected{% endif %}>Haut gauche</option>
+                                            <option value="top-right" {% if config.VIDEO_OVERLAY_POSITION == 'top-right' %}selected{% endif %}>Haut droite</option>
+                                            <option value="bottom-left" {% if config.VIDEO_OVERLAY_POSITION == 'bottom-left' %}selected{% endif %}>Bas gauche</option>
+                                            <option value="bottom-right" {% if config.VIDEO_OVERLAY_POSITION == 'bottom-right' %}selected{% endif %}>Bas droite</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="VIDEO_OVERLAY_SHOW_DATETIME">
+                                            <i class="fas fa-clock"></i> Date/heure
+                                        </label>
+                                        <select id="VIDEO_OVERLAY_SHOW_DATETIME" name="VIDEO_OVERLAY_SHOW_DATETIME">
+                                            <option value="no" {% if config.VIDEO_OVERLAY_SHOW_DATETIME != 'yes' %}selected{% endif %}>Désactivé</option>
+                                            <option value="yes" {% if config.VIDEO_OVERLAY_SHOW_DATETIME == 'yes' %}selected{% endif %}>Activé</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="VIDEO_OVERLAY_DATETIME_FORMAT">
+                                            <i class="fas fa-calendar-alt"></i> Format date/heure
+                                        </label>
+                                        <input type="text" id="VIDEO_OVERLAY_DATETIME_FORMAT" name="VIDEO_OVERLAY_DATETIME_FORMAT"
+                                               value="{{ config.VIDEO_OVERLAY_DATETIME_FORMAT }}" placeholder="%Y-%m-%d %H:%M:%S">
+                                        <small>Format strftime</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="VIDEO_OVERLAY_CLOCK_POSITION">
+                                            <i class="fas fa-map-pin"></i> Position date/heure
+                                        </label>
+                                        <select id="VIDEO_OVERLAY_CLOCK_POSITION" name="VIDEO_OVERLAY_CLOCK_POSITION">
+                                            <option value="top-left" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'top-left' %}selected{% endif %}>Haut gauche</option>
+                                            <option value="top-right" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'top-right' %}selected{% endif %}>Haut droite</option>
+                                            <option value="bottom-left" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'bottom-left' %}selected{% endif %}>Bas gauche</option>
+                                            <option value="bottom-right" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'bottom-right' %}selected{% endif %}>Bas droite</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="VIDEO_OVERLAY_FONT_SIZE">
+                                            <i class="fas fa-font"></i> Taille police
+                                        </label>
+                                        <input type="number" id="VIDEO_OVERLAY_FONT_SIZE" name="VIDEO_OVERLAY_FONT_SIZE"
+                                               value="{{ config.VIDEO_OVERLAY_FONT_SIZE }}" min="12" max="64">
+                                        <small>Taille de police (Sans)</small>
                                     </div>
                                 </div>
                             </div>
@@ -3496,6 +3573,7 @@
     <script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}"></script>
 </body>
 </html>
+
 
 
 

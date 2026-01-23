@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Preview and camera controls
- * Version: 2.32.94
+ * Version: 2.32.95
  */
 
 (function () {
@@ -1577,6 +1577,7 @@ async function deleteProfile(profileId) {
     window.applyProfile = applyProfile;
     window.deleteProfile = deleteProfile;
 })();
+
 
 
 

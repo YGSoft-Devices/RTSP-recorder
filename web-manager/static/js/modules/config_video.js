@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.32.94
+ * Version: 2.32.95
  */
 
 (function () {
@@ -473,6 +473,13 @@ async function applyVideoSettings() {
             VIDEO_HEIGHT: document.getElementById('VIDEO_HEIGHT').value,
             VIDEO_FPS: document.getElementById('VIDEO_FPS').value,
             VIDEO_FORMAT: document.getElementById('VIDEO_FORMAT')?.value || 'auto',
+            VIDEO_OVERLAY_ENABLE: document.getElementById('VIDEO_OVERLAY_ENABLE')?.value || 'no',
+            VIDEO_OVERLAY_TEXT: document.getElementById('VIDEO_OVERLAY_TEXT')?.value || '',
+            VIDEO_OVERLAY_POSITION: document.getElementById('VIDEO_OVERLAY_POSITION')?.value || 'top-left',
+            VIDEO_OVERLAY_SHOW_DATETIME: document.getElementById('VIDEO_OVERLAY_SHOW_DATETIME')?.value || 'no',
+            VIDEO_OVERLAY_DATETIME_FORMAT: document.getElementById('VIDEO_OVERLAY_DATETIME_FORMAT')?.value || '%Y-%m-%d %H:%M:%S',
+            VIDEO_OVERLAY_CLOCK_POSITION: document.getElementById('VIDEO_OVERLAY_CLOCK_POSITION')?.value || 'bottom-right',
+            VIDEO_OVERLAY_FONT_SIZE: document.getElementById('VIDEO_OVERLAY_FONT_SIZE')?.value || '24',
             H264_BITRATE_KBPS: document.getElementById('H264_BITRATE_KBPS').value,
             H264_KEYINT: document.getElementById('H264_KEYINT').value,
             H264_PROFILE: document.getElementById('H264_PROFILE').value,
@@ -532,6 +539,7 @@ async function applyVideoSettings() {
     window.toggleManualResolution = toggleManualResolution;
     window.applyVideoSettings = applyVideoSettings;
 })();
+
 
 
 

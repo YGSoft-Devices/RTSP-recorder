@@ -7,6 +7,22 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.32.95] - RTSP Overlay
+
+### Ajouts
+- **rpi_av_rtsp_recorder.sh**
+  - Overlay configurable (texte + date/heure) sur le flux RTSP (USB/legacy CSI).
+- **web-manager/templates/index.html**, **web-manager/static/js/modules/config_video.js**
+  - UI de configuration overlay.
+
+### Modifications
+- **web-manager/config.py**
+  - Nouveaux champs `VIDEO_OVERLAY_*`.
+- **setup/install_web_manager.sh**, **web-manager/config.env.example**
+  - Defaults overlay ajoutés.
+
+---
+
 ## [2.32.94] - Resolution Format Lock
 
 ### Corrections

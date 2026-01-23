@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.32.94
+Version: 2.32.95
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -975,6 +975,7 @@ L'onglet **Vidéo** permet de configurer la source caméra, la résolution et le
 3. **Paramètres RTSP** (v2.30.34+)
    - Images/seconde (FPS) : framerate du flux RTSP (indépendant de la caméra)
    - Débit H264 (kbps) : bitrate vidéo de l'encodeur (défaut: 1200 kbps pour Pi 3B+)
+   - **Overlay RTSP** : texte + date/heure (USB uniquement; non supporté par Picamera2 RTSP)
    - **Note:** Ces réglages contrôlent le flux RTSP et l'enregistrement, pas la caméra elle-même
    
 4. **Bouton Appliquer** : Sauvegarde la config et redémarre le service RTSP
@@ -989,6 +990,12 @@ L'onglet **Vidéo** permet de configurer la source caméra, la résolution et le
   - Valeur typique : 1200-5000 kbps pour Raspberry Pi 3B+
   - Plus élevé = meilleure qualité mais plus de bande passante
   - L'encodeur hardware utilise la majorité du GPU (VideoCore)
+
+- **Overlay RTSP:** Affichage d'un texte et/ou de la date/heure sur le flux
+  - `VIDEO_OVERLAY_ENABLE=yes` pour activer
+  - `VIDEO_OVERLAY_TEXT` supporte des tokens: `{CAMERA_TYPE}`, `{VIDEO_DEVICE}`, `{VIDEO_RESOLUTION}`, `{VIDEO_FPS}`, `{VIDEO_FORMAT}`
+  - `VIDEO_OVERLAY_SHOW_DATETIME=yes` + `VIDEO_OVERLAY_DATETIME_FORMAT` (strftime)
+  - **Limites:** non supporté pour le serveur CSI Picamera2 (rpi_csi_rtsp_server.py) ni pour les sources USB en H264 direct
 
 #### Profils caméra (Contrôles avancés)
 
@@ -1519,12 +1526,20 @@ RTSP / vidéo:
 - `RTSP_PORT`, `RTSP_PATH`
 - `RTSP_USER`, `RTSP_PASSWORD` (authentification, optionnel - les deux requis pour activer)
 - `VIDEO_WIDTH`, `VIDEO_HEIGHT`, `VIDEO_FPS`, `VIDEO_DEVICE`
+- `VIDEO_FORMAT` (`auto|MJPG|YUYV|H264`) - format USB préféré
 - `CAMERA_TYPE` (`auto|usb|csi`)
 - `CAMERA_DEVICE` (legacy, fallback du périphérique caméra)
 - `CSI_ENABLE` (`auto|yes|no`), `USB_ENABLE` (`auto|yes|no`)
 - `H264_BITRATE_KBPS`, `H264_KEYINT`
 - `H264_PROFILE` (`baseline|constrained baseline|main|high`) - profil H.264 (CSI RTSP Server)
 - `H264_QP` (1-51, optionnel) - quantizer fixe (CSI RTSP Server)
+- `VIDEO_OVERLAY_ENABLE` (`yes|no`) - active l'overlay texte/date (USB uniquement)
+- `VIDEO_OVERLAY_TEXT` - texte overlay (tokens: `{CAMERA_TYPE}`, `{VIDEO_DEVICE}`, `{VIDEO_RESOLUTION}`, `{VIDEO_FPS}`, `{VIDEO_FORMAT}`)
+- `VIDEO_OVERLAY_POSITION` (`top-left|top-right|bottom-left|bottom-right`)
+- `VIDEO_OVERLAY_SHOW_DATETIME` (`yes|no`)
+- `VIDEO_OVERLAY_DATETIME_FORMAT` (strftime)
+- `VIDEO_OVERLAY_CLOCK_POSITION` (`top-left|top-right|bottom-left|bottom-right`)
+- `VIDEO_OVERLAY_FONT_SIZE` (12-64)
 
 Audio:
 - `AUDIO_ENABLE` (`auto|yes|no`)

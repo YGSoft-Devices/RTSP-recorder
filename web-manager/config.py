@@ -3,7 +3,7 @@
 RTSP Recorder Web Manager - Configuration
 Central configuration file for constants, defaults, and metadata.
 
-Version: 1.1.4
+Version: 1.1.5
 """
 
 import os
@@ -145,6 +145,13 @@ DEFAULT_CONFIG = {
     "VIDEO_FPS": "15",
     "VIDEO_DEVICE": "/dev/video0",
     "VIDEO_FORMAT": "auto",
+    "VIDEO_OVERLAY_ENABLE": "no",
+    "VIDEO_OVERLAY_TEXT": "",
+    "VIDEO_OVERLAY_POSITION": "top-left",
+    "VIDEO_OVERLAY_SHOW_DATETIME": "no",
+    "VIDEO_OVERLAY_DATETIME_FORMAT": "%Y-%m-%d %H:%M:%S",
+    "VIDEO_OVERLAY_CLOCK_POSITION": "bottom-right",
+    "VIDEO_OVERLAY_FONT_SIZE": "24",
     "CAMERA_TYPE": "auto",
     "CAMERA_DEVICE": "/dev/video0",
     "CSI_ENABLE": "auto",
@@ -288,6 +295,54 @@ CONFIG_METADATA = {
         "type": "select",
         "options": ["auto", "MJPG", "YUYV", "H264"],
         "help": "Format préféré pour les caméras USB (auto = sélection automatique)",
+        "category": "video"
+    },
+    "VIDEO_OVERLAY_ENABLE": {
+        "label": "Overlay RTSP",
+        "type": "select",
+        "options": ["yes", "no"],
+        "help": "Afficher un overlay texte/date sur le flux RTSP (USB uniquement)",
+        "category": "video"
+    },
+    "VIDEO_OVERLAY_TEXT": {
+        "label": "Texte overlay",
+        "type": "text",
+        "help": "Texte libre. Tokens: {CAMERA_TYPE}, {VIDEO_DEVICE}, {VIDEO_RESOLUTION}, {VIDEO_FPS}, {VIDEO_FORMAT}",
+        "category": "video"
+    },
+    "VIDEO_OVERLAY_POSITION": {
+        "label": "Position overlay texte",
+        "type": "select",
+        "options": ["top-left", "top-right", "bottom-left", "bottom-right"],
+        "help": "Position du texte sur le flux",
+        "category": "video"
+    },
+    "VIDEO_OVERLAY_SHOW_DATETIME": {
+        "label": "Overlay date/heure",
+        "type": "select",
+        "options": ["yes", "no"],
+        "help": "Afficher la date/heure sur le flux RTSP",
+        "category": "video"
+    },
+    "VIDEO_OVERLAY_DATETIME_FORMAT": {
+        "label": "Format date/heure",
+        "type": "text",
+        "help": "Format strftime (ex: %Y-%m-%d %H:%M:%S)",
+        "category": "video"
+    },
+    "VIDEO_OVERLAY_CLOCK_POSITION": {
+        "label": "Position date/heure",
+        "type": "select",
+        "options": ["top-left", "top-right", "bottom-left", "bottom-right"],
+        "help": "Position de la date/heure sur le flux",
+        "category": "video"
+    },
+    "VIDEO_OVERLAY_FONT_SIZE": {
+        "label": "Taille police overlay",
+        "type": "number",
+        "min": 12,
+        "max": 64,
+        "help": "Taille de police (Sans)",
         "category": "video"
     },
     "CSI_ENABLE": {

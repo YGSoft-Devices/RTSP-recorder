@@ -11,8 +11,9 @@
 #   - Serve RTSP stream (H264 video + optional AAC audio)
 #   - Record locally in segments (robust against power loss)
 #
-# Version: 2.12.4
+# Version: 2.12.5
 # Changelog:
+#   - 2.12.5: Added configurable RTSP overlay (text + datetime) for USB/legacy CSI
 #   - 2.12.4: Added VIDEO_FORMAT to force MJPG/YUYV/H264 when desired
 #   - 2.12.3: v4l2h264enc now honors H264_BITRATE_KBPS (no hardcoded 4 Mbps)
 #   - 2.12.2: Export H264_PROFILE/H264_QP for CSI encoder tuning
@@ -91,6 +92,15 @@ set -euo pipefail
 : "${VIDEO_DEVICE:=/dev/video0}"
 # Preferred USB format: auto, MJPG, YUYV, H264 (optional)
 : "${VIDEO_FORMAT:=auto}"
+
+# Overlay settings (USB/legacy CSI only)
+: "${VIDEO_OVERLAY_ENABLE:=no}"
+: "${VIDEO_OVERLAY_TEXT:=}"
+: "${VIDEO_OVERLAY_POSITION:=top-left}"
+: "${VIDEO_OVERLAY_SHOW_DATETIME:=no}"
+: "${VIDEO_OVERLAY_DATETIME_FORMAT:=%Y-%m-%d %H:%M:%S}"
+: "${VIDEO_OVERLAY_CLOCK_POSITION:=bottom-right}"
+: "${VIDEO_OVERLAY_FONT_SIZE:=24}"
 # Camera type: auto, usb, csi
 : "${CAMERA_TYPE:=auto}"
 # Legacy support (deprecated, use CAMERA_TYPE instead)
@@ -151,6 +161,56 @@ need_root() {
   if [[ "${EUID:-$(id -u)}" -ne 0 ]]; then
     die "Run as root: sudo $0"
   fi
+}
+
+overlay_alignment_from_position() {
+  local pos="$1"
+  case "$pos" in
+    top-left) echo "top left" ;;
+    top-right) echo "top right" ;;
+    bottom-left) echo "bottom left" ;;
+    bottom-right) echo "bottom right" ;;
+    *) echo "top left" ;;
+  esac
+}
+
+build_video_overlay() {
+  if [[ "${VIDEO_OVERLAY_ENABLE}" != "yes" ]]; then
+    echo ""
+    return 0
+  fi
+
+  if [[ "${OVERLAY_SUPPORTED}" -ne 1 ]]; then
+    log "Overlay enabled but source is H264 direct; overlay disabled (would require re-encode)" >&2
+    echo ""
+    return 0
+  fi
+
+  local overlay_chain=""
+  local font_desc="Sans ${VIDEO_OVERLAY_FONT_SIZE}"
+
+  if [[ "${VIDEO_OVERLAY_SHOW_DATETIME}" == "yes" ]]; then
+    read -r clock_valign clock_halign <<<"$(overlay_alignment_from_position "${VIDEO_OVERLAY_CLOCK_POSITION}")"
+    overlay_chain="clockoverlay time-format=\"${VIDEO_OVERLAY_DATETIME_FORMAT}\" valignment=${clock_valign} halignment=${clock_halign} shaded-background=true font-desc=\"${font_desc}\""
+  fi
+
+  local overlay_text="${VIDEO_OVERLAY_TEXT}"
+  if [[ -n "${overlay_text}" ]]; then
+    overlay_text="${overlay_text//\{CAMERA_TYPE\}/${CAM_MODE}}"
+    overlay_text="${overlay_text//\{VIDEO_DEVICE\}/${VIDEO_DEVICE}}"
+    overlay_text="${overlay_text//\{VIDEO_RESOLUTION\}/${VIDEO_WIDTH}x${VIDEO_HEIGHT}}"
+    overlay_text="${overlay_text//\{VIDEO_FPS\}/${VIDEO_FPS}}"
+    overlay_text="${overlay_text//\{VIDEO_FORMAT\}/${VIDEO_FORMAT}}"
+    overlay_text="${overlay_text//\"/ }"
+    overlay_text="${overlay_text//\'/ }"
+    read -r text_valign text_halign <<<"$(overlay_alignment_from_position "${VIDEO_OVERLAY_POSITION}")"
+    if [[ -n "${overlay_chain}" ]]; then
+      overlay_chain="${overlay_chain} ! "
+    fi
+    overlay_chain="${overlay_chain}textoverlay text=\"${overlay_text}\" valignment=${text_valign} halignment=${text_halign} shaded-background=true font-desc=\"${font_desc}\""
+  fi
+
+  echo "${overlay_chain}"
 }
 
 setup_fs() {
@@ -434,6 +494,7 @@ build_csi_libcamerasrc_options() {
 #---------------------------
 build_video_source() {
   local mode="$1"
+  OVERLAY_SUPPORTED=1
   
   if [[ "$mode" == "usb" ]]; then
     # USB camera - check supported formats
@@ -455,6 +516,7 @@ build_video_source() {
         H264|H.264)
           if camera_supports_format "H264\|H.264"; then
             log "USB camera: forcing H264 format" >&2
+            OVERLAY_SUPPORTED=0
             echo "v4l2src device=${VIDEO_DEVICE} ! video/x-h264,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1"
             return 0
           fi
@@ -480,6 +542,7 @@ build_video_source() {
       echo "v4l2src device=${VIDEO_DEVICE} io-mode=2 do-timestamp=true ! image/jpeg,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! jpegdec ! videoconvert"
     elif camera_supports_format "H264\|H.264"; then
       log "USB camera supports H264 output (best performance)" >&2
+      OVERLAY_SUPPORTED=0
       echo "v4l2src device=${VIDEO_DEVICE} ! video/x-h264,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1"
     elif camera_supports_format "YUYV"; then
       log "USB camera supports YUYV raw - using it (CPU intensive)" >&2
@@ -710,7 +773,7 @@ setup_fs
 setup_logging
 
 log "=========================================="
-log "Starting rpi_av_rtsp_recorder v2.12.4"
+log "Starting rpi_av_rtsp_recorder v2.12.5"
 log "=========================================="
 log "Config: RTSP=:${RTSP_PORT}/${RTSP_PATH} Video=${VIDEO_WIDTH}x${VIDEO_HEIGHT}@${VIDEO_FPS}fps"
 log "Recording: ${RECORD_ENABLE} -> ${RECORD_DIR} (${SEGMENT_SECONDS}s segments)"
@@ -742,6 +805,9 @@ log "Camera mode: $CAM_MODE"
 # ---------------------------------------------------------
 if [[ "$CAM_MODE" == "csi" ]]; then
   log "CSI Camera Mode selected. Delegating to rpi_csi_rtsp_server.py (Picamera2 Native)..."
+  if [[ "${VIDEO_OVERLAY_ENABLE}" == "yes" ]]; then
+    log "Overlay enabled but not supported with Picamera2 RTSP server (CSI). Ignoring overlay." >&2
+  fi
   
   # Define path to Python server
   # Check local div (dev mode) then install path
@@ -807,6 +873,11 @@ log "Building video source for mode: $CAM_MODE"
 VIDEO_SRC="$(build_video_source "$CAM_MODE")"
 if [[ -z "$VIDEO_SRC" ]]; then
   die "Failed to build video source"
+fi
+VIDEO_OVERLAY="$(build_video_overlay)"
+if [[ -n "$VIDEO_OVERLAY" ]]; then
+  log "Overlay enabled: ${VIDEO_OVERLAY}" >&2
+  VIDEO_SRC="${VIDEO_SRC} ! ${VIDEO_OVERLAY}"
 fi
 log "Building video encoder for mode: $CAM_MODE"
 VIDEO_ENC="$(build_video_encoder "$CAM_MODE")"
