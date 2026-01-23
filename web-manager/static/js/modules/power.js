@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Power and reboot functions
- * Version: 2.33.03
+ * Version: 2.33.06
  */
 
 // LED Functions

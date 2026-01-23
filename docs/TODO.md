@@ -24,7 +24,7 @@
 - Verifier que l'overlay ne bloque pas le demarrage quand VIDEO_OVERLAY_ENABLE=yes
 - Verifier la presence des plugins clockoverlay/textoverlay sur les devices (sinon installer gstreamer1.0-plugins-good)
 - Verifier sur device que `H264_BITRATE_KBPS` est bien applique avec `v4l2h264enc` (Synology/ONVIF)
-- Verifier que l'application des parametres RTSP (API /api/config) fonctionne apres fix validation 2.33.03
+- Verifier que l'application des parametres RTSP (API /api/config) fonctionne apres fix validation 2.33.06
 - Verifier l'application des profils CSI apres correction `csi_tuning.json` invalide
 - Vérifier sur device que les nouveaux champs UI (Meeting local, ONVIF RTSP/identifiants, WiFi check_interval, CAMERA_DEVICE/CSI/USB, MAX_DISK_MB) se sauvegardent correctement
 - Tester le flux Backup/Restore (avec et sans logs) + reboot automatique apres restauration

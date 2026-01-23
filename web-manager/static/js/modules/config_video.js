@@ -1,9 +1,11 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.33.03
+ * Version: 2.33.06
  */
 
 (function () {
+const ALLOWED_VIDEO_FORMATS = ['AUTO', 'MJPG', 'YUYV', 'H264'];
+let currentCameraType = 'usb';
 function initForm() {
     const form = document.getElementById('config-form');
     
@@ -73,7 +75,9 @@ async function saveConfig() {
                 }
             }
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            const errors = Array.isArray(data.errors) ? data.errors.join(', ') : '';
+            const message = data.message || data.error || errors || 'Échec de la sauvegarde';
+            showToast(`Erreur: ${message}`, 'error');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');
@@ -108,7 +112,9 @@ async function applyAudioConfig() {
         const data = await response.json();
 
         if (!data.success) {
-            showToast(`Erreur: ${data.message || data.error}`, 'error');
+            const errors = Array.isArray(data.errors) ? data.errors.join(', ') : '';
+            const message = data.message || data.error || errors || 'Échec de la sauvegarde';
+            showToast(`Erreur: ${message}`, 'error');
             return;
         }
 
@@ -332,6 +338,7 @@ async function loadResolutions() {
             detectedResolutions = [];
             let options = '<option value="">-- Sélectionnez une résolution --</option>';
             const cameraType = data.camera_type?.type || 'usb';
+            currentCameraType = cameraType;
             const encoderCaps = data.encoder || {};
             
             // Get current values to pre-select
@@ -429,7 +436,14 @@ function onResolutionSelectChange(userTriggered = false) {
     // Update hidden/manual fields with selected values
     document.getElementById('VIDEO_WIDTH').value = res.width;
     document.getElementById('VIDEO_HEIGHT').value = res.height;
-    document.getElementById('VIDEO_FORMAT').value = res.format || 'auto';
+    let formatValue = res.format || 'auto';
+    if (currentCameraType === 'libcamera' || currentCameraType === 'csi') {
+        formatValue = 'auto';
+    }
+    if (!ALLOWED_VIDEO_FORMATS.includes(String(formatValue).toUpperCase())) {
+        formatValue = 'auto';
+    }
+    document.getElementById('VIDEO_FORMAT').value = formatValue;
     
     // Only set FPS if user manually changed resolution (not on page load)
     // This preserves user's custom FPS value when page loads
@@ -489,11 +503,15 @@ async function applyVideoSettings() {
     try {
         showToast('Application des paramètres vidéo...', 'info');
         
+        let formatValue = document.getElementById('VIDEO_FORMAT')?.value || 'auto';
+        if (!ALLOWED_VIDEO_FORMATS.includes(String(formatValue).toUpperCase())) {
+            formatValue = 'auto';
+        }
         const config = {
             VIDEO_WIDTH: document.getElementById('VIDEO_WIDTH').value,
             VIDEO_HEIGHT: document.getElementById('VIDEO_HEIGHT').value,
             VIDEO_FPS: document.getElementById('VIDEO_FPS').value,
-            VIDEO_FORMAT: document.getElementById('VIDEO_FORMAT')?.value || 'auto',
+            VIDEO_FORMAT: formatValue,
             VIDEO_OVERLAY_ENABLE: document.getElementById('VIDEO_OVERLAY_ENABLE')?.value || 'no',
             VIDEO_OVERLAY_TEXT: document.getElementById('VIDEO_OVERLAY_TEXT')?.value || '',
             VIDEO_OVERLAY_POSITION: document.getElementById('VIDEO_OVERLAY_POSITION')?.value || 'top-left',
@@ -535,7 +553,9 @@ async function applyVideoSettings() {
                 showToast('Config sauvée, redémarrage manuel requis', 'warning');
             }
         } else {
-            showToast('Erreur: ' + (data.error || 'Échec de la sauvegarde'), 'error');
+            const errors = Array.isArray(data.errors) ? data.errors.join(', ') : '';
+            const message = data.error || data.message || errors || 'Échec de la sauvegarde';
+            showToast('Erreur: ' + message, 'error');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');

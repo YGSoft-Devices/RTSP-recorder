@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - UI utilities
- * Version: 2.33.03
+ * Version: 2.33.06
  */
 (function () {
     function showToast(message, type = 'info') {

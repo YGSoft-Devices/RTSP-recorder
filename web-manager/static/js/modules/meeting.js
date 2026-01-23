@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Meeting/NTP/RTC functions
- * Version: 2.33.03
+ * Version: 2.33.06
  */
 
 (function () {

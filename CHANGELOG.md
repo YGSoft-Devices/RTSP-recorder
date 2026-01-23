@@ -7,7 +7,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
-## [2.33.03] - Hotfix UI + Validation
+## [2.33.06] - CSI Profiles + Overlay
 
 ### Corrections
 - **web-manager/templates/index.html**, **web-manager/static/js/modules/config_video.js**
@@ -16,6 +16,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   - `request.get_json(silent=True)` pour eviter les erreurs 415/400 si le header manque.
 - **web-manager/config.py**
   - Alignement de `H264_BITRATE_KBPS` (max 8000) avec l'UI pour eviter les erreurs de validation.
+- **web-manager/blueprints/config_bp.py**, **web-manager/static/js/modules/config_video.js**
+  - Sanitize `VIDEO_FORMAT` en mode CSI pour eviter les erreurs de validation.
+- **web-manager/static/js/modules/config_video.js**, **web-manager/static/js/modules/camera.js**
+  - Messages d'erreur plus explicites en cas d'echec de validation.
+- **web-manager/services/camera_service.py**
+  - Scheduler profils CSI via IPC/config, meme en mode overlay libcamera.
+  - Redemarre le service RTSP lors d'un changement de profil CSI en mode libcamera.
 - **web-manager/services/csi_camera_service.py**
   - Tolerance aux fichiers `csi_tuning.json` vides/incomplets pour retablir l'application des profils CSI.
 

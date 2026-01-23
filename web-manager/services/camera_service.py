@@ -957,6 +957,89 @@ def apply_camera_profile(name, device=None):
         'controls_applied': controls_applied
     }
 
+def apply_csi_camera_profile(name):
+    """
+    Apply a camera profile to a CSI/libcamera device via IPC + config persistence.
+    """
+    global camera_profiles_state
+
+    with camera_profiles_state['lock']:
+        if name not in camera_profiles_state['profiles']:
+            return {'success': False, 'message': f'Profile "{name}" not found', 'controls_applied': []}
+        profile = camera_profiles_state['profiles'][name]
+
+    controls = profile.get('controls', {})
+    if not controls:
+        return {'success': False, 'message': 'Profile has no controls', 'controls_applied': []}
+
+    # If AE/AWB are enabled, avoid forcing manual values
+    ae_enabled = controls.get('AeEnable') is True
+    awb_enabled = controls.get('AwbEnable') is True
+    filtered_controls = {}
+    for ctrl_name, ctrl_value in controls.items():
+        if ae_enabled and ctrl_name in ['ExposureTime', 'AnalogueGain', 'ExposureTimeMode', 'AnalogueGainMode', 'FrameDurationLimits']:
+            continue
+        if awb_enabled and ctrl_name in ['ColourGains', 'ColourTemperature']:
+            continue
+        filtered_controls[ctrl_name] = ctrl_value
+
+    applied = 0
+    failed = 0
+    skipped = 0
+    errors = []
+
+    from .csi_camera_service import set_csi_camera_control
+
+    for ctrl_name, ctrl_value in filtered_controls.items():
+        if ctrl_value is None:
+            skipped += 1
+            continue
+        result = set_csi_camera_control(ctrl_name, ctrl_value)
+        if result.get('success'):
+            applied += 1
+        else:
+            failed += 1
+            errors.append(f"{ctrl_name}: {result.get('message', 'Unknown error')}")
+
+    # Update current profile
+    with camera_profiles_state['lock']:
+        camera_profiles_state['current_profile'] = name
+    save_camera_profiles()
+
+    if failed > 0:
+        return {
+            'success': False,
+            'message': f'Applied {applied} controls, {failed} failed, {skipped} skipped',
+            'controls_applied': list(filtered_controls.keys()),
+            'errors': errors
+        }
+
+    return {
+        'success': True,
+        'message': f'Profile "{name}" applied ({applied} controls, {skipped} skipped)',
+        'controls_applied': list(filtered_controls.keys())
+    }
+
+def apply_camera_profile_auto(name, device=None):
+    """
+    Apply a camera profile, selecting CSI or USB backend automatically.
+    """
+    cam_info = detect_camera_type()
+    use_csi = cam_info.get('type') == 'libcamera'
+
+    if not use_csi:
+        try:
+            from .config_service import load_config
+            cfg = load_config()
+            if str(cfg.get('CAMERA_TYPE', '')).lower() == 'csi' or str(cfg.get('CSI_ENABLE', '')).lower() == 'yes':
+                use_csi = True
+        except Exception:
+            pass
+
+    if use_csi:
+        return apply_csi_camera_profile(name)
+    return apply_camera_profile(name, device)
+
 def set_current_profile(name):
     """Update the current profile marker without applying controls."""
     global camera_profiles_state
@@ -1093,6 +1176,18 @@ def _apply_csi_profile(profile_name, profile):
             failed += 1
     return {'success': failed == 0, 'applied': applied, 'failed': failed}
 
+def _restart_rtsp_for_csi_overlay_if_needed():
+    try:
+        from .config_service import load_config
+        config = load_config()
+        camera_type = str(config.get('CAMERA_TYPE', '')).lower()
+        overlay_mode = str(config.get('CSI_OVERLAY_MODE', '')).lower()
+        if camera_type == 'csi' and overlay_mode == 'libcamera':
+            # Libcamera overlay mode cannot apply controls live; restart to re-read config.
+            run_command("systemctl restart rpi-av-rtsp-recorder", timeout=10)
+    except Exception:
+        pass
+
 def profiles_scheduler_loop(stop_event=None, interval_sec=30):
     from .config_service import load_config
 
@@ -1121,9 +1216,10 @@ def profiles_scheduler_loop(stop_event=None, interval_sec=30):
                         profile = profiles.get(active_profile, {})
                         result = _apply_csi_profile(active_profile, profile)
                     else:
-                        result = apply_camera_profile(active_profile)
+                        result = apply_camera_profile_auto(active_profile)
 
                     if result.get('success'):
+                        _restart_rtsp_for_csi_overlay_if_needed()
                         scheduler_state['current_schedule'] = active_profile
                         set_current_profile(active_profile)
                         save_scheduler_state()
@@ -1167,9 +1263,10 @@ def apply_active_scheduled_profile(force: bool = False) -> dict:
         profile = profiles.get(active_profile, {}) or {}
         result = _apply_csi_profile(active_profile, profile)
     else:
-        result = apply_camera_profile(active_profile)
+        result = apply_camera_profile_auto(active_profile)
 
     if result.get('success'):
+        _restart_rtsp_for_csi_overlay_if_needed()
         with _scheduler_lock:
             scheduler_state['current_schedule'] = active_profile
             scheduler_state['last_check'] = datetime.now().isoformat()

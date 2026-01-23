@@ -11,7 +11,7 @@ from services.config_service import (
     get_service_status, control_service, get_all_services_status,
     get_system_info, get_hostname, set_hostname, sync_recorder_service
 )
-from config import APP_VERSION, DEFAULT_CONFIG
+from config import APP_VERSION, DEFAULT_CONFIG, CONFIG_METADATA
 
 config_bp = Blueprint('config', __name__, url_prefix='/api')
 
@@ -46,7 +46,16 @@ def update_config():
         
         for key, value in data.items():
             if key in DEFAULT_CONFIG or key in current:
+                meta = CONFIG_METADATA.get(key, {})
+                if meta.get('type') == 'number' and (value is None or value == ''):
+                    continue
                 current[key] = value
+
+        # CSI/libcamera: ignore USB-only VIDEO_FORMAT values
+        camera_type = (current.get('CAMERA_TYPE') or 'auto').lower()
+        video_format = current.get('VIDEO_FORMAT', 'auto')
+        if camera_type in ['csi', 'libcamera'] and video_format not in ['auto', 'MJPG', 'YUYV', 'H264']:
+            current['VIDEO_FORMAT'] = 'auto'
         
         # Validate
         validation = validate_config(current)
