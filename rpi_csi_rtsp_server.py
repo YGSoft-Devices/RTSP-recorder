@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 rpi_csi_rtsp_server.py
-Version: 1.4.13
+Version: 1.4.14
 
 Python-based RTSP Server for CSI Cameras (Picamera2) on Raspberry Pi.
 - Uses Picamera2 H264Encoder for HARDWARE video encoding (not x264enc!)
@@ -604,6 +604,7 @@ class Picam2RtspServer:
             "-n",
             "--codec", "h264",
             "--inline",
+            "-t", "0",
             "--width", str(self.conf['WIDTH']),
             "--height", str(self.conf['HEIGHT']),
             "--framerate", str(self.conf['FPS']),
@@ -874,6 +875,8 @@ class Picam2RtspServer:
         Note: Some controls (like resolution changes) may fail in streaming mode.
         These will be saved to config for next start.
         """
+        if self.using_rpicam_overlay:
+            raise RuntimeError("Controls unavailable in libcamera overlay mode")
         if not self.picam2:
             raise RuntimeError("Camera not initialized")
         

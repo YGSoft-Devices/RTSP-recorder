@@ -490,8 +490,11 @@ def save_csi_tuning_to_config(controls_dict):
         # Read existing config
         existing = {}
         if os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                existing = json.load(f)
+            try:
+                with open(config_path, 'r') as f:
+                    existing = json.load(f)
+            except json.JSONDecodeError:
+                existing = {}
         
         # Merge with new values
         existing.update(controls_dict)

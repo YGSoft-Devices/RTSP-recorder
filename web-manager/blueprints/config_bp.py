@@ -33,7 +33,7 @@ def get_config():
 def update_config():
     """Update configuration."""
     try:
-        data = request.get_json()
+        data = request.get_json(silent=True) or {}
         
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
@@ -197,7 +197,7 @@ def get_system_hostname():
 @config_bp.route('/system/hostname', methods=['POST', 'PUT'])
 def set_system_hostname():
     """Set system hostname."""
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     
     if not data or 'hostname' not in data:
         return jsonify({

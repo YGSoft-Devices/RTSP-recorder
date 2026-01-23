@@ -66,7 +66,7 @@ RTSP-Full/
 ├── AGENTS.md                         # Ce fichier (instructions IA)
 ├── VERSION                           # Fichier de version centralisé (source unique)
 ├── rpi_av_rtsp_recorder.sh           # Script RTSP principal (v2.12.9) - Dispatcheur USB/CSI
-├── rpi_csi_rtsp_server.py            # Serveur RTSP CSI natif (v1.4.13) - Picamera2 + GStreamer
+├── rpi_csi_rtsp_server.py            # Serveur RTSP CSI natif (v1.4.14) - Picamera2 + GStreamer
 ├── rtsp_recorder.sh                  # Service d'enregistrement ffmpeg (v1.6.0)
 ├── rtsp_watchdog.sh                  # Watchdog haute disponibilité (v1.0.0)
 ├── onvif-server/                     # Serveur ONVIF
@@ -597,7 +597,7 @@ RTSP-Full/
 | rtsp_recorder.sh | 1.6.0 |
 | rtsp_watchdog.sh | 1.2.0 |
 | onvif-server/onvif_server.py | 1.5.7 |
-| rpi_csi_rtsp_server.py | 1.4.13 |
+| rpi_csi_rtsp_server.py | 1.4.14 |
 | web-manager/app.py | 2.30.16 |
 | web-manager/config.py | 1.1.2 |
 | esp32/firmware (PlatformIO) | 0.1.2 |

@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Preview and camera controls
- * Version: 2.33.02
+ * Version: 2.33.03
  */
 
 (function () {

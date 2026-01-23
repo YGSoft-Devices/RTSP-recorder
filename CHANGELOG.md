@@ -7,6 +7,20 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.33.03] - Hotfix UI + Validation
+
+### Corrections
+- **web-manager/templates/index.html**, **web-manager/static/js/modules/config_video.js**
+  - Restauration des accents UTF-8 sur l'interface.
+- **web-manager/blueprints/config_bp.py**
+  - `request.get_json(silent=True)` pour eviter les erreurs 415/400 si le header manque.
+- **web-manager/config.py**
+  - Alignement de `H264_BITRATE_KBPS` (max 8000) avec l'UI pour eviter les erreurs de validation.
+- **web-manager/services/csi_camera_service.py**
+  - Tolerance aux fichiers `csi_tuning.json` vides/incomplets pour retablir l'application des profils CSI.
+
+---
+
 ## [2.33.02] - CSI Overlay Libcamera Mode
 
 ### Ajouts
@@ -22,6 +36,10 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
   - Rafraîchit le cache apt si des paquets requis sont introuvables.
 - **rpi_av_rtsp_recorder.sh**
   - Export `CSI_OVERLAY_MODE` vers le serveur CSI.
+- **rpi_csi_rtsp_server.py**
+  - Overlay libcamera: session sans timeout + garde-fou sur les contrôles.
+- **web-manager/DEPENDENCIES.json**
+  - Retrait de `libraspberrypi-bin` (paquet non disponible sur certains systèmes).
 
 ---
 

@@ -468,7 +468,7 @@ CONFIG_METADATA = {
         "label": "Débit H264 (kbps)",
         "type": "number",
         "min": 500,
-        "max": 5000,
+        "max": 8000,
         "help": "Débit vidéo H264 (défaut: 1200 kbps pour Pi 3B+)",
         "category": "video"
     },

@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Network and WiFi functions
- * Version: 2.33.02
+ * Version: 2.33.03
  */
 
 // WiFi Functions

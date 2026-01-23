@@ -626,14 +626,22 @@ def _refresh_apt_cache_once() -> None:
     if result.get('success'):
         APT_CACHE_REFRESHED = True
 
+def _package_has_candidate(pkg: str) -> bool:
+    result = run_command(f"apt-cache policy {pkg}", timeout=8)
+    if not result['success']:
+        return False
+    for line in result.get('stdout', '').splitlines():
+        if line.strip().startswith('Candidate:'):
+            return '(none)' not in line
+    return False
+
 def _filter_available_packages(packages: list) -> tuple[list, list]:
     available = []
     unavailable = []
     for pkg in packages:
         if not pkg:
             continue
-        result = run_command(f"apt-cache show {pkg} >/dev/null 2>&1", timeout=8)
-        if result['success']:
+        if _package_has_candidate(pkg):
             available.append(pkg)
         else:
             unavailable.append(pkg)
@@ -642,8 +650,7 @@ def _filter_available_packages(packages: list) -> tuple[list, list]:
         if APT_CACHE_REFRESHED:
             retry_unavailable = []
             for pkg in unavailable:
-                result = run_command(f"apt-cache show {pkg} >/dev/null 2>&1", timeout=8)
-                if result['success']:
+                if _package_has_candidate(pkg):
                     available.append(pkg)
                 else:
                     retry_unavailable.append(pkg)

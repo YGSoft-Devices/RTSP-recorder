@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Recordings and files UI
- * Version: 2.33.02
+ * Version: 2.33.03
  */
 (function () {
     /**

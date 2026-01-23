@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.33.02
+ * Version: 2.33.03
  */
 
 (function () {
@@ -11,6 +11,27 @@ function initForm() {
         e.preventDefault();
         await saveConfig();
     });
+
+    const overlayMode = document.getElementById('CSI_OVERLAY_MODE');
+    const overlayDatetime = document.getElementById('VIDEO_OVERLAY_SHOW_DATETIME');
+    if (overlayMode) {
+        overlayMode.addEventListener('change', updateCsiOverlayWarning);
+    }
+    if (overlayDatetime) {
+        overlayDatetime.addEventListener('change', updateCsiOverlayWarning);
+    }
+    updateCsiOverlayWarning();
+}
+
+function updateCsiOverlayWarning() {
+    const warning = document.getElementById('csi-overlay-warning');
+    const overlayMode = document.getElementById('CSI_OVERLAY_MODE');
+    const overlayDatetime = document.getElementById('VIDEO_OVERLAY_SHOW_DATETIME');
+    if (!warning || !overlayMode || !overlayDatetime) {
+        return;
+    }
+    const showWarning = overlayMode.value === 'libcamera' && overlayDatetime.value === 'yes';
+    warning.style.display = showWarning ? 'block' : 'none';
 }
 
 
@@ -38,7 +59,7 @@ async function saveConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Configuration sauvegard?e !', 'success');
+            showToast('Configuration sauvegardée !', 'success');
             
             // Update RTSP URL display
             const rtspUrl = document.getElementById('rtsp-url');
@@ -113,7 +134,7 @@ async function resetForm() {
                     input.value = value;
                 }
             });
-            showToast('Formulaire r?initialis?', 'info');
+            showToast('Formulaire réinitialisé', 'info');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');
@@ -125,7 +146,7 @@ async function resetForm() {
  */
 async function detectCameras() {
     try {
-        showToast('D?tection des cam?ras...', 'info');
+        showToast('Détection des caméras...', 'info');
         
         const response = await fetch('/api/detect/cameras');
         const data = await response.json();
@@ -139,10 +160,10 @@ async function detectCameras() {
                     <span class="device-path">${cam.device}</span>
                 </div>
             `).join('');
-            showToast(`${data.cameras.length} cam?ra(s) d?tect?e(s)`, 'success');
+            showToast(`${data.cameras.length} caméra(s) détectée(s)`, 'success');
         } else {
-            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucune cam?ra d?tect?e</span></div>';
-            showToast('Aucune cam?ra d?tect?e', 'warning');
+            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucune caméra détectée</span></div>';
+            showToast('Aucune caméra détectée', 'warning');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');
@@ -165,7 +186,7 @@ function selectCamera(device, type) {
         }
     }
     document.getElementById('camera-list').innerHTML = '';
-    showToast(`Cam?ra s?lectionn?e: ${device}`, 'success');
+    showToast(`Caméra sélectionnée: ${device}`, 'success');
 }
 
 /**
@@ -183,7 +204,7 @@ function onCameraTypeChange() {
     }
     
     // Show toast for required restart
-    showToast(`Mode ${cameraType.toUpperCase()} activ?. Red?marrage requis.`, 'info');
+    showToast(`Mode ${cameraType.toUpperCase()} activé. Redémarrage requis.`, 'info');
     
     // Auto-save the config change
     updateConfigField('CAMERA_TYPE', cameraType);
@@ -215,7 +236,7 @@ function updateConfigField(key, value) {
  */
 async function detectAudio() {
     try {
-        showToast('D?tection des p?riph?riques audio...', 'info');
+        showToast('Détection des périphériques audio...', 'info');
         
         const response = await fetch('/api/detect/audio');
         const data = await response.json();
@@ -229,10 +250,10 @@ async function detectAudio() {
                     <span class="device-path">${dev.device}</span>
                 </div>
             `).join('');
-            showToast(`${data.devices.length} p?riph?rique(s) audio d?tect?(s)`, 'success');
+            showToast(`${data.devices.length} périphérique(s) audio détecté(s)`, 'success');
         } else {
-            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucun p?riph?rique audio d?tect?</span></div>';
-            showToast('Aucun p?riph?rique audio d?tect?', 'warning');
+            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucun périphérique audio détecté</span></div>';
+            showToast('Aucun périphérique audio détecté', 'warning');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');
@@ -245,7 +266,7 @@ async function detectAudio() {
 function selectAudio(device) {
     document.getElementById('AUDIO_DEVICE').value = device;
     document.getElementById('audio-list').innerHTML = '';
-    showToast(`P?riph?rique audio s?lectionn?: ${device}`, 'success');
+    showToast(`Périphérique audio sélectionné: ${device}`, 'success');
 }
 
 /**
@@ -300,7 +321,7 @@ async function loadResolutions() {
     try {
         // Show loading state
         if (loadingIndicator) loadingIndicator.style.display = 'inline';
-        select.innerHTML = '<option value="">? D?tection en cours...</option>';
+        select.innerHTML = '<option value="">⏳ Détection en cours...</option>';
         select.disabled = true;
         
         const device = document.getElementById('VIDEO_DEVICE')?.value || '/dev/video0';
@@ -309,7 +330,7 @@ async function loadResolutions() {
         
         if (data.success && data.formats.length > 0) {
             detectedResolutions = [];
-            let options = '<option value="">-- S?lectionnez une r?solution --</option>';
+            let options = '<option value="">-- Sélectionnez une résolution --</option>';
             const cameraType = data.camera_type?.type || 'usb';
             const encoderCaps = data.encoder || {};
             
@@ -353,7 +374,7 @@ async function loadResolutions() {
                     }
                     
                     options += `<option value="${resIndex}">`;
-                    options += `${res.width}?${res.height} @ ${fps}fps (${megapixels}MP) - ${encoderLabel}`;
+                    options += `${res.width}×${res.height} @ ${fps}fps (${megapixels}MP) - ${encoderLabel}`;
                     options += `</option>`;
                 }
                 
@@ -375,12 +396,12 @@ async function loadResolutions() {
             
             console.log(`Loaded ${detectedResolutions.length} resolutions`);
         } else {
-            select.innerHTML = '<option value="">? Aucune r?solution d?tect?e</option>';
+            select.innerHTML = '<option value="">❌ Aucune résolution détectée</option>';
             select.disabled = true;
         }
     } catch (error) {
         console.error('Error loading resolutions:', error);
-        select.innerHTML = '<option value="">? Erreur de d?tection</option>';
+        select.innerHTML = '<option value="">❌ Erreur de détection</option>';
         select.disabled = true;
     } finally {
         if (loadingIndicator) loadingIndicator.style.display = 'none';
@@ -427,7 +448,7 @@ function onResolutionSelectChange(userTriggered = false) {
     // Show details panel
     if (detailsDiv) {
         document.getElementById('detail-format').textContent = res.format;
-        document.getElementById('detail-resolution').textContent = `${res.width} ? ${res.height}`;
+        document.getElementById('detail-resolution').textContent = `${res.width} × ${res.height}`;
         document.getElementById('detail-megapixels').textContent = `${res.megapixels} MP`;
         document.getElementById('detail-fps').textContent = res.framerates.join(', ') + ' fps';
         detailsDiv.style.display = 'block';
@@ -466,7 +487,7 @@ function toggleManualResolution() {
  */
 async function applyVideoSettings() {
     try {
-        showToast('Application des param?tres vid?o...', 'info');
+        showToast('Application des paramètres vidéo...', 'info');
         
         const config = {
             VIDEO_WIDTH: document.getElementById('VIDEO_WIDTH').value,
@@ -497,7 +518,7 @@ async function applyVideoSettings() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Param?tres vid?o sauvegard?s! Red?marrage du service...', 'success');
+            showToast('Paramètres vidéo sauvegardés! Redémarrage du service...', 'success');
             
             // Restart RTSP service to apply changes
             try {
@@ -506,15 +527,15 @@ async function applyVideoSettings() {
                 });
                 const restartData = await restartResponse.json();
                 if (restartData.success) {
-                    showToast('Service RTSP red?marr? avec succ?s', 'success');
+                    showToast('Service RTSP redémarré avec succès', 'success');
                 } else {
-                    showToast('Config sauv?e mais red?marrage ?chou?: ' + restartData.error, 'warning');
+                    showToast('Config sauvée mais redémarrage échoué: ' + restartData.error, 'warning');
                 }
             } catch (e) {
-                showToast('Config sauv?e, red?marrage manuel requis', 'warning');
+                showToast('Config sauvée, redémarrage manuel requis', 'warning');
             }
         } else {
-            showToast('Erreur: ' + (data.error || '?chec de la sauvegarde'), 'error');
+            showToast('Erreur: ' + (data.error || 'Échec de la sauvegarde'), 'error');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');

@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.33.02
+Version: 2.33.03
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -323,13 +323,13 @@ RTSP_AUTH_METHOD="both"
 sudo ./setup/install_gstreamer_rtsp.sh
 ```
 
-### 5.7 Serveur RTSP CSI natif (Python) - v1.4.13
+### 5.7 Serveur RTSP CSI natif (Python) - v1.4.14
 
 Pour les caméras CSI (PiCam), un serveur RTSP dédié en Python utilise **Picamera2** au lieu de `test-launch`.
 
 **Fichiers:**
 - Source: `rpi_csi_rtsp_server.py` → `/usr/local/bin/rpi_csi_rtsp_server.py`
-- Version: 1.4.13
+- Version: 1.4.14
 
 **Architecture:**
 ```

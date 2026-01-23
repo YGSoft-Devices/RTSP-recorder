@@ -27,7 +27,6 @@
     "libgstreamer1.0-dev",
     "libgstrtspserver-1.0-0",
     "libgstrtspserver-1.0-dev",
-    "libraspberrypi-bin",
     "libv4l-0",
     "libv4l-dev",
     "logrotate",
