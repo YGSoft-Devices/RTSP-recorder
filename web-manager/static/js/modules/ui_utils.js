@@ -3,6 +3,8 @@
  * Version: 2.33.06
  */
 (function () {
+    const t = window.t || function (key) { return key; };
+
     function showToast(message, type = 'info') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -28,9 +30,9 @@
     function copyRtspUrl() {
         const url = document.getElementById('rtsp-url').textContent;
         navigator.clipboard.writeText(url).then(() => {
-            showToast('URL RTSP copi?e !', 'success');
+            showToast(t('ui.toast.rtsp_url_copied'), 'success');
         }).catch(() => {
-            showToast('Erreur lors de la copie', 'error');
+            showToast(t('ui.toast.copy_error'), 'error');
         });
     }
 
@@ -38,7 +40,7 @@
         // Modern API (HTTPS only)
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(text).then(() => {
-                showToast('Copi? !', 'success');
+                showToast(t('ui.toast.copied'), 'success');
             }).catch(() => {
                 fallbackCopyToClipboard(text);
             });
@@ -61,12 +63,12 @@
         try {
             const successful = document.execCommand('copy');
             if (successful) {
-                showToast('Copi? !', 'success');
+                showToast(t('ui.toast.copied'), 'success');
             } else {
-                showToast('Erreur lors de la copie', 'error');
+                showToast(t('ui.toast.copy_error'), 'error');
             }
         } catch (err) {
-            showToast('Erreur lors de la copie', 'error');
+            showToast(t('ui.toast.copy_error'), 'error');
         }
         
         document.body.removeChild(textArea);

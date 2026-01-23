@@ -26,8 +26,13 @@ from services.power_service import (
     reboot_system, shutdown_system
 )
 from services.platform_service import detect_platform
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 system_bp = Blueprint('system', __name__, url_prefix='/api/system')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # SYSTEM INFO ROUTES
@@ -338,7 +343,7 @@ def check_backup():
     if not file or not file.filename:
         return jsonify({
             'success': False,
-            'message': 'Backup file is required'
+            'message': _t('ui.system.backup_file_required')
         }), 400
 
     temp_path = None
@@ -361,7 +366,7 @@ def restore_backup():
     if not file or not file.filename:
         return jsonify({
             'success': False,
-            'message': 'Backup file is required'
+            'message': _t('ui.system.backup_file_required')
         }), 400
 
     temp_path = None
@@ -630,7 +635,7 @@ def force_ntp_sync():
         
         return jsonify({
             'success': result.returncode == 0,
-            'message': 'NTP sync requested',
+            'message': _t('ui.system.ntp.sync_requested'),
             'output': result.stdout if result.returncode == 0 else result.stderr
         })
     except Exception as e:
@@ -677,7 +682,7 @@ def check_update_file():
     if not file or not file.filename:
         return jsonify({
             'success': False,
-            'message': 'Update file is required'
+            'message': _t('ui.system.update_file_required')
         }), 400
 
     force_reapply = str(request.form.get('force', '')).lower() in ['1', 'true', 'yes', 'on']
@@ -702,7 +707,7 @@ def apply_update_file():
     if not file or not file.filename:
         return jsonify({
             'success': False,
-            'message': 'Update file is required'
+            'message': _t('ui.system.update_file_required')
         }), 400
 
     force_reapply = str(request.form.get('force', '')).lower() in ['1', 'true', 'yes', 'on']

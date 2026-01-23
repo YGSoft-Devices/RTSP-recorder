@@ -4,6 +4,7 @@
  */
 
 (function () {
+const t = window.t || function (key) { return key; };
 const ALLOWED_VIDEO_FORMATS = ['AUTO', 'MJPG', 'YUYV', 'H264'];
 let currentCameraType = 'usb';
 function initForm() {
@@ -61,7 +62,7 @@ async function saveConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Configuration sauvegardée !', 'success');
+            showToast(t('ui.config.saved'), 'success');
             
             // Update RTSP URL display
             const rtspUrl = document.getElementById('rtsp-url');
@@ -76,11 +77,11 @@ async function saveConfig() {
             }
         } else {
             const errors = Array.isArray(data.errors) ? data.errors.join(', ') : '';
-            const message = data.message || data.error || errors || 'Échec de la sauvegarde';
-            showToast(`Erreur: ${message}`, 'error');
+            const message = data.message || data.error || errors || t('ui.config.save_failed');
+            showToast(t('ui.errors.with_message', { message: message }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -99,7 +100,7 @@ async function applyAudioConfig() {
             AUDIO_GAIN: document.getElementById('AUDIO_GAIN')?.value || '1.0'
         };
 
-        showToast('Application des parametres audio...', 'info');
+        showToast(t('ui.audio.applying'), 'info');
 
         const response = await fetch('/api/config', {
             method: 'POST',
@@ -113,15 +114,15 @@ async function applyAudioConfig() {
 
         if (!data.success) {
             const errors = Array.isArray(data.errors) ? data.errors.join(', ') : '';
-            const message = data.message || data.error || errors || 'Échec de la sauvegarde';
-            showToast(`Erreur: ${message}`, 'error');
+            const message = data.message || data.error || errors || t('ui.config.save_failed');
+            showToast(t('ui.errors.with_message', { message: message }), 'error');
             return;
         }
 
-        showToast('Parametres audio sauvegardes, redemarrage RTSP...', 'success');
+        showToast(t('ui.audio.saved_restart'), 'success');
         await controlServiceAction('restart', 'rpi-av-rtsp-recorder');
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -140,19 +141,19 @@ async function resetForm() {
                     input.value = value;
                 }
             });
-            showToast('Formulaire réinitialisé', 'info');
+            showToast(t('ui.form.reset'), 'info');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
 /**
  * Detect available cameras
  */
-async function detectCameras() {
+    async function detectCameras() {
     try {
-        showToast('Détection des caméras...', 'info');
+        showToast(t('ui.camera.detecting'), 'info');
         
         const response = await fetch('/api/detect/cameras');
         const data = await response.json();
@@ -166,13 +167,13 @@ async function detectCameras() {
                     <span class="device-path">${cam.device}</span>
                 </div>
             `).join('');
-            showToast(`${data.cameras.length} caméra(s) détectée(s)`, 'success');
+            showToast(t('ui.camera.detected_count', { count: data.cameras.length }), 'success');
         } else {
-            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucune caméra détectée</span></div>';
-            showToast('Aucune caméra détectée', 'warning');
+            listContainer.innerHTML = `<div class="detection-item"><span class="text-muted">${t('ui.camera.none_detected')}</span></div>`;
+            showToast(t('ui.camera.none_detected'), 'warning');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -192,7 +193,7 @@ function selectCamera(device, type) {
         }
     }
     document.getElementById('camera-list').innerHTML = '';
-    showToast(`Caméra sélectionnée: ${device}`, 'success');
+    showToast(t('ui.camera.selected', { device: device }), 'success');
 }
 
 /**
@@ -210,7 +211,7 @@ function onCameraTypeChange() {
     }
     
     // Show toast for required restart
-    showToast(`Mode ${cameraType.toUpperCase()} activé. Redémarrage requis.`, 'info');
+    showToast(t('ui.camera.mode_changed', { mode: cameraType.toUpperCase() }), 'info');
     
     // Auto-save the config change
     updateConfigField('CAMERA_TYPE', cameraType);
@@ -242,7 +243,7 @@ function updateConfigField(key, value) {
  */
 async function detectAudio() {
     try {
-        showToast('Détection des périphériques audio...', 'info');
+        showToast(t('ui.audio.detecting'), 'info');
         
         const response = await fetch('/api/detect/audio');
         const data = await response.json();
@@ -256,13 +257,13 @@ async function detectAudio() {
                     <span class="device-path">${dev.device}</span>
                 </div>
             `).join('');
-            showToast(`${data.devices.length} périphérique(s) audio détecté(s)`, 'success');
+            showToast(t('ui.audio.detected_count', { count: data.devices.length }), 'success');
         } else {
-            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucun périphérique audio détecté</span></div>';
-            showToast('Aucun périphérique audio détecté', 'warning');
+            listContainer.innerHTML = `<div class="detection-item"><span class="text-muted">${t('ui.audio.none_detected')}</span></div>`;
+            showToast(t('ui.audio.none_detected'), 'warning');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -272,7 +273,7 @@ async function detectAudio() {
 function selectAudio(device) {
     document.getElementById('AUDIO_DEVICE').value = device;
     document.getElementById('audio-list').innerHTML = '';
-    showToast(`Périphérique audio sélectionné: ${device}`, 'success');
+    showToast(t('ui.audio.selected', { device: device }), 'success');
 }
 
 /**
@@ -299,20 +300,20 @@ let detectedResolutions = [];
 function getEncoderLabel(format, width, height, cameraType, encoderCaps) {
     const formatUpper = (format || '').toUpperCase();
     if (cameraType === 'libcamera') {
-        return 'hardware (Picamera2)';
+        return t('ui.video.encoder_picamera2');
     }
     if (formatUpper === 'H264') {
-        return 'direct (H264)';
+        return t('ui.video.encoder_direct');
     }
     if (encoderCaps && encoderCaps.available) {
         const maxWidth = parseInt(encoderCaps.max_width) || 0;
         const maxHeight = parseInt(encoderCaps.max_height) || 0;
         if (maxWidth > 0 && maxHeight > 0) {
-            return (width <= maxWidth && height <= maxHeight) ? 'hardware' : 'software';
+            return (width <= maxWidth && height <= maxHeight) ? t('ui.video.encoder_hardware') : t('ui.video.encoder_software');
         }
-        return 'hardware';
+        return t('ui.video.encoder_hardware');
     }
-    return 'software';
+    return t('ui.video.encoder_software');
 }
 
 /**
@@ -327,7 +328,7 @@ async function loadResolutions() {
     try {
         // Show loading state
         if (loadingIndicator) loadingIndicator.style.display = 'inline';
-        select.innerHTML = '<option value="">⏳ Détection en cours...</option>';
+        select.innerHTML = `<option value="">${t('ui.video.resolution_detecting')}</option>`;
         select.disabled = true;
         
         const device = document.getElementById('VIDEO_DEVICE')?.value || '/dev/video0';
@@ -336,7 +337,7 @@ async function loadResolutions() {
         
         if (data.success && data.formats.length > 0) {
             detectedResolutions = [];
-            let options = '<option value="">-- Sélectionnez une résolution --</option>';
+            let options = `<option value="">${t('ui.video.resolution_select')}</option>`;
             const cameraType = data.camera_type?.type || 'usb';
             currentCameraType = cameraType;
             const encoderCaps = data.encoder || {};
@@ -381,7 +382,7 @@ async function loadResolutions() {
                     }
                     
                     options += `<option value="${resIndex}">`;
-                    options += `${res.width}×${res.height} @ ${fps}fps (${megapixels}MP) - ${encoderLabel}`;
+                    options += `${res.width}×${res.height} @ ${fps}${t('ui.units.fps_suffix')} (${megapixels}${t('ui.units.mp_suffix')}) - ${encoderLabel}`;
                     options += `</option>`;
                 }
                 
@@ -403,12 +404,12 @@ async function loadResolutions() {
             
             console.log(`Loaded ${detectedResolutions.length} resolutions`);
         } else {
-            select.innerHTML = '<option value="">❌ Aucune résolution détectée</option>';
+            select.innerHTML = `<option value="">${t('ui.video.resolution_none')}</option>`;
             select.disabled = true;
         }
     } catch (error) {
         console.error('Error loading resolutions:', error);
-        select.innerHTML = '<option value="">❌ Erreur de détection</option>';
+        select.innerHTML = `<option value="">${t('ui.video.resolution_error')}</option>`;
         select.disabled = true;
     } finally {
         if (loadingIndicator) loadingIndicator.style.display = 'none';
@@ -463,8 +464,8 @@ function onResolutionSelectChange(userTriggered = false) {
     if (detailsDiv) {
         document.getElementById('detail-format').textContent = res.format;
         document.getElementById('detail-resolution').textContent = `${res.width} × ${res.height}`;
-        document.getElementById('detail-megapixels').textContent = `${res.megapixels} MP`;
-        document.getElementById('detail-fps').textContent = res.framerates.join(', ') + ' fps';
+        document.getElementById('detail-megapixels').textContent = `${res.megapixels} ${t('ui.units.mp_suffix')}`;
+        document.getElementById('detail-fps').textContent = `${res.framerates.join(', ')} ${t('ui.units.fps_suffix')}`;
         detailsDiv.style.display = 'block';
     }
 }
@@ -501,7 +502,7 @@ function toggleManualResolution() {
  */
 async function applyVideoSettings() {
     try {
-        showToast('Application des paramètres vidéo...', 'info');
+        showToast(t('ui.video.applying'), 'info');
         
         let formatValue = document.getElementById('VIDEO_FORMAT')?.value || 'auto';
         if (!ALLOWED_VIDEO_FORMATS.includes(String(formatValue).toUpperCase())) {
@@ -536,7 +537,7 @@ async function applyVideoSettings() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Paramètres vidéo sauvegardés! Redémarrage du service...', 'success');
+            showToast(t('ui.video.saved_restart'), 'success');
             
             // Restart RTSP service to apply changes
             try {
@@ -545,20 +546,20 @@ async function applyVideoSettings() {
                 });
                 const restartData = await restartResponse.json();
                 if (restartData.success) {
-                    showToast('Service RTSP redémarré avec succès', 'success');
+                    showToast(t('ui.video.service_restart_success'), 'success');
                 } else {
-                    showToast('Config sauvée mais redémarrage échoué: ' + restartData.error, 'warning');
+                    showToast(t('ui.video.service_restart_failed', { message: restartData.error }), 'warning');
                 }
             } catch (e) {
-                showToast('Config sauvée, redémarrage manuel requis', 'warning');
+                showToast(t('ui.video.service_restart_manual'), 'warning');
             }
         } else {
             const errors = Array.isArray(data.errors) ? data.errors.join(', ') : '';
-            const message = data.error || data.message || errors || 'Échec de la sauvegarde';
-            showToast('Erreur: ' + message, 'error');
+            const message = data.error || data.message || errors || t('ui.config.save_failed');
+            showToast(t('ui.errors.with_message', { message: message }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 

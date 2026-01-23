@@ -5,6 +5,7 @@
 
 const CURRENT_VERSION = (window.APP_VERSION || '').replace(/^v/, '') || '0.0.0';
 let repoUpdateAvailable = false;
+const t = window.t || function (key) { return key; };
 
 let updateFileSelected = null;
 let updateFilePolling = null;
@@ -64,10 +65,10 @@ function setMainVersionFields(currentVersion, latestVersion, updateAvailable) {
                 latestEl.classList.add('new-available');
             } else {
                 latestEl.classList.add('up-to-date');
-                latestEl.textContent += ' ?';
+                latestEl.textContent += ` ${t('ui.updates.version_suffix_uptodate')}`;
             }
         } else {
-            latestEl.textContent = 'Non disponible';
+            latestEl.textContent = t('ui.updates.not_available');
         }
     }
 }
@@ -75,13 +76,13 @@ function setMainVersionFields(currentVersion, latestVersion, updateAvailable) {
 async function checkUpdateRepo() {
     const latestVersionEl = document.getElementById('latest-version');
     if (latestVersionEl) {
-        latestVersionEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verification...';
+        latestVersionEl.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.updates.checking')}`;
         latestVersionEl.className = 'version';
     }
 
     repoUpdateAvailable = false;
     updateRepoApplyState();
-    updateRepoStatus('Verification en cours...', 'checking');
+    updateRepoStatus(t('ui.updates.checking_in_progress'), 'checking');
     updateRepoLog('');
 
     try {
@@ -94,25 +95,22 @@ async function checkUpdateRepo() {
             repoUpdateAvailable = data.update_available === true;
             setMainVersionFields(currentVersion, latestVersion, repoUpdateAvailable);
             setRepoVersionFields(currentVersion, latestVersion);
-            updateRepoStatus(
-                repoUpdateAvailable ? 'Mise a jour disponible' : 'A jour',
-                repoUpdateAvailable ? 'success' : 'success'
-            );
+            updateRepoStatus(t(repoUpdateAvailable ? 'ui.updates.available' : 'ui.updates.up_to_date'), 'success');
             updateRepoApplyState();
             if (repoUpdateAvailable) {
-                showToast(`Mise a jour disponible: v${latestVersion}`, 'info');
+                showToast(t('ui.updates.available_toast', { version: `v${latestVersion}` }), 'info');
             }
         } else {
             setMainVersionFields(CURRENT_VERSION, null, false);
             setRepoVersionFields(CURRENT_VERSION, null);
-            updateRepoStatus(data.message || 'Erreur', 'error');
+            updateRepoStatus(data.message || t('ui.errors.generic'), 'error');
             updateRepoApplyState();
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
         setMainVersionFields(CURRENT_VERSION, null, false);
         setRepoVersionFields(CURRENT_VERSION, null);
-        updateRepoStatus(`Erreur: ${error.message}`, 'error');
+        updateRepoStatus(t('ui.errors.with_message', { message: error.message }), 'error');
         updateRepoApplyState();
         console.error('Error checking updates:', error);
     }
@@ -127,7 +125,7 @@ function openUpdateRepoModal() {
     const resetCheckbox = document.getElementById('update-repo-reset');
     if (resetCheckbox) resetCheckbox.checked = false;
 
-    updateRepoStatus('Verification en cours...', 'checking');
+    updateRepoStatus(t('ui.updates.checking_in_progress'), 'checking');
     updateRepoLog('');
     setRepoVersionFields(CURRENT_VERSION, null);
     updateRepoApplyState();
@@ -148,18 +146,18 @@ async function applyUpdateRepo() {
     const resetSettings = resetCheckbox ? resetCheckbox.checked : false;
 
     if (!repoUpdateAvailable && !forceEnabled) {
-        updateRepoStatus('Version identique (forcer pour reinstaller)', 'error');
-        updateRepoLog('Cochez "forcer la reinstallation" pour continuer.');
+        updateRepoStatus(t('ui.updates.same_version_force_required'), 'error');
+        updateRepoLog(t('ui.updates.force_reinstall_prompt'));
         return;
     }
 
-    if (!confirm('Appliquer la mise a jour depuis le repo ?')) {
+    if (!confirm(t('ui.updates.confirm_repo_update'))) {
         return;
     }
 
     const applyBtn = document.getElementById('update-repo-apply-btn');
     if (applyBtn) applyBtn.disabled = true;
-    updateRepoStatus('Mise a jour en cours...', 'running');
+    updateRepoStatus(t('ui.updates.applying'), 'running');
     updateRepoLog('');
 
     try {
@@ -174,22 +172,22 @@ async function applyUpdateRepo() {
 
         const data = await response.json();
         if (!data.success) {
-            const message = data.message || 'Mise a jour echouee';
+            const message = data.message || t('ui.updates.failed');
             updateRepoStatus(message, 'error');
             updateRepoLog(message);
             updateRepoApplyState();
             return;
         }
 
-        updateRepoStatus('Mise a jour appliquee, relance en cours...', 'success');
-        updateRepoLog(data.message || 'Update terminee');
-        showToast('Mise a jour reussie! Redemarrage du service...', 'success');
+        updateRepoStatus(t('ui.updates.applied_restart'), 'success');
+        updateRepoLog(data.message || t('ui.updates.finished'));
+        showToast(t('ui.updates.success_restart'), 'success');
 
         setTimeout(() => {
             window.location.reload();
         }, 5000);
     } catch (error) {
-        updateRepoStatus(`Erreur: ${error.message}`, 'error');
+        updateRepoStatus(t('ui.errors.with_message', { message: error.message }), 'error');
         updateRepoLog(error.message);
         updateRepoApplyState();
     }
@@ -202,7 +200,7 @@ async function applyUpdateRepo() {
 function openUpdateFilePicker() {
     const input = document.getElementById('update-file-input');
     if (!input) {
-        showToast('Champ fichier introuvable', 'error');
+        showToast(t('ui.updates.file_field_missing'), 'error');
         return;
     }
     input.value = '';
@@ -232,7 +230,7 @@ function showUpdateFileModal() {
     if (depsGroup) depsGroup.style.display = 'none';
     const depsInfo = document.getElementById('update-file-deps-info');
     if (depsInfo) depsInfo.textContent = '';
-    updateUpdateFileStatus('Verification en cours...', 'checking');
+    updateUpdateFileStatus(t('ui.updates.checking_in_progress'), 'checking');
     updateUpdateFileLog('');
 
     const applyBtn = document.getElementById('update-file-apply-btn');
@@ -287,7 +285,7 @@ function onUpdateFileForceChanged() {
 }
 
 async function checkUpdateFile(file) {
-    updateUpdateFileStatus('Verification en cours...', 'checking');
+    updateUpdateFileStatus(t('ui.updates.checking_in_progress'), 'checking');
     updateUpdateFileLog('');
 
     try {
@@ -303,7 +301,7 @@ async function checkUpdateFile(file) {
 
         const data = await response.json();
         if (!data.success) {
-            const message = data.message || 'Update invalide';
+            const message = data.message || t('ui.updates.invalid');
             updateUpdateFileStatus(message, 'error');
             updateUpdateFileLog(message);
             return;
@@ -311,12 +309,12 @@ async function checkUpdateFile(file) {
 
         document.getElementById('update-new-version').textContent = data.version || '-';
         if (data.requires_reboot) {
-            updateUpdateFileLog(`Redemarrage requis apres update (version ${data.version || '-'})`);
+            updateUpdateFileLog(t('ui.updates.reboot_required', { version: data.version || '-' }));
         }
         const sameVersion = data.same_version === true;
         if (sameVersion && !data.reapply_allowed) {
-            updateUpdateFileStatus('Version identique (forcer pour reinstaller)', 'error');
-            updateUpdateFileLog('Version identique, cochez "forcer" pour continuer.');
+            updateUpdateFileStatus(t('ui.updates.same_version_force_required'), 'error');
+            updateUpdateFileLog(t('ui.updates.force_reapply_prompt'));
             return;
         }
 
@@ -330,36 +328,36 @@ async function checkUpdateFile(file) {
             const pipText = missingPip.length ? `PIP: ${missingPip.join(', ')}` : '';
             const details = [aptText, pipText].filter(Boolean).join(' | ');
             if (depsInfo) depsInfo.textContent = details;
-            updateUpdateFileLog('Dependances manquantes detectees: installation automatique + reboot requis.');
+            updateUpdateFileLog(t('ui.updates.missing_dependencies'));
         } else {
             if (depsGroup) depsGroup.style.display = 'none';
             if (depsInfo) depsInfo.textContent = '';
         }
 
-        updateUpdateFileStatus('Update valide, pret a appliquer', 'success');
-        updateUpdateFileLog(`Fichiers: ${data.files_count || 0}`);
+        updateUpdateFileStatus(t('ui.updates.valid_ready'), 'success');
+        updateUpdateFileLog(t('ui.updates.files_count', { count: data.files_count || 0 }));
 
         const applyBtn = document.getElementById('update-file-apply-btn');
         if (applyBtn) applyBtn.disabled = false;
     } catch (error) {
-        updateUpdateFileStatus(`Erreur: ${error.message}`, 'error');
+        updateUpdateFileStatus(t('ui.errors.with_message', { message: error.message }), 'error');
         updateUpdateFileLog(error.message);
     }
 }
 
 async function applyUpdateFile() {
     if (!updateFileSelected) {
-        updateUpdateFileStatus('Aucun fichier selectionne', 'error');
+        updateUpdateFileStatus(t('ui.updates.no_file_selected'), 'error');
         return;
     }
 
-    if (!confirm('Appliquer la mise a jour depuis ce fichier ?')) {
+    if (!confirm(t('ui.updates.confirm_file_update'))) {
         return;
     }
 
     const applyBtn = document.getElementById('update-file-apply-btn');
     if (applyBtn) applyBtn.disabled = true;
-    updateUpdateFileStatus('Mise a jour en cours...', 'running');
+    updateUpdateFileStatus(t('ui.updates.applying'), 'running');
 
     try {
         const formData = new FormData();
@@ -377,17 +375,17 @@ async function applyUpdateFile() {
 
         const data = await response.json();
         if (!data.success) {
-            const message = data.message || 'Demarrage update echoue';
+            const message = data.message || t('ui.updates.start_failed');
             updateUpdateFileStatus(message, 'error');
             updateUpdateFileLog(message);
             return;
         }
 
-        updateUpdateFileStatus('Update demarree, suivi en cours...', 'running');
-        updateUpdateFileLog('Suivi en cours...');
+        updateUpdateFileStatus(t('ui.updates.started_following'), 'running');
+        updateUpdateFileLog(t('ui.updates.following'));
         pollUpdateFileStatus();
     } catch (error) {
-        updateUpdateFileStatus(`Erreur: ${error.message}`, 'error');
+        updateUpdateFileStatus(t('ui.errors.with_message', { message: error.message }), 'error');
         updateUpdateFileLog(error.message);
     }
 }
@@ -402,7 +400,7 @@ function pollUpdateFileStatus() {
             updateFilePollFailures = 0;
 
             const state = data.state || 'idle';
-            const message = data.message || 'Etat inconnu';
+            const message = data.message || t('ui.status.unknown');
             updateUpdateFileStatus(message, state === 'error' ? 'error' : (state === 'success' ? 'success' : 'running'));
 
             if (data.log && data.log.length) {
@@ -412,11 +410,11 @@ function pollUpdateFileStatus() {
             if (state === 'success') {
                 const requiresReboot = data.details?.requires_reboot === true || data.requires_reboot === true;
                 if (requiresReboot) {
-                    updateUpdateFileStatus('Update appliquee, redemarrage en cours...', 'success');
+                    updateUpdateFileStatus(t('ui.updates.applied_rebooting'), 'success');
                     showRebootOverlay();
                     startRebootMonitoring();
                 } else {
-                    updateUpdateFileStatus('Update appliquee, relance en cours...', 'success');
+                    updateUpdateFileStatus(t('ui.updates.applied_restart'), 'success');
                     setTimeout(() => {
                         window.location.reload();
                     }, 4000);
@@ -427,15 +425,15 @@ function pollUpdateFileStatus() {
                 clearInterval(updateFilePolling);
                 updateFilePolling = null;
             } else if (state === 'rebooting') {
-                updateUpdateFileStatus('Redemarrage en cours...', 'running');
+                updateUpdateFileStatus(t('ui.updates.rebooting'), 'running');
                 showRebootOverlay();
                 startRebootMonitoring();
             }
         } catch (error) {
             updateFilePollFailures += 1;
-            updateUpdateFileStatus('Reconnexion en cours...', 'running');
+            updateUpdateFileStatus(t('ui.updates.reconnecting'), 'running');
             if (updateFilePollFailures >= 5) {
-                updateUpdateFileStatus('Erreur de suivi update', 'error');
+                updateUpdateFileStatus(t('ui.updates.follow_error'), 'error');
                 clearInterval(updateFilePolling);
                 updateFilePolling = null;
             }

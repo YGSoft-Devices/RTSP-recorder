@@ -14,7 +14,7 @@ import threading
 import logging
 from datetime import datetime
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, g
 
 # Import configuration
 from config import APP_VERSION, PLATFORM
@@ -35,7 +35,8 @@ from blueprints import (
     watchdog_bp,
     wifi_bp,
     debug_bp,
-    legacy_bp
+    legacy_bp,
+    i18n_bp
 )
 
 # Import services for background tasks
@@ -47,6 +48,16 @@ from services.watchdog_service import (
 from services.camera_service import load_camera_profiles, profiles_scheduler_loop
 from services.network_service import manage_wifi_based_on_ethernet
 from services import media_cache_service
+from services.config_service import load_config
+from services.i18n_service import (
+    DEFAULT_LANG,
+    LANG_COOKIE_NAME,
+    list_languages,
+    load_translations,
+    normalize_lang,
+    resolve_request_lang,
+    t as translate
+)
 
 # ============================================================================
 # LOGGING CONFIGURATION
@@ -116,6 +127,50 @@ def create_app():
             _background_tasks_started = True
             logger.info("Initializing background tasks (first request)")
             start_background_tasks()
+
+    @app.before_request
+    def resolve_language():
+        try:
+            config = load_config()
+        except Exception:
+            config = {}
+        g.current_lang = resolve_request_lang(request, config)
+
+    @app.after_request
+    def persist_language_cookie(response):
+        requested = request.args.get("lang")
+        if requested:
+            normalized = normalize_lang(requested)
+            if normalized in list_languages():
+                response.set_cookie(
+                    LANG_COOKIE_NAME,
+                    normalized,
+                    max_age=31536000,
+                    samesite="Lax"
+                )
+        return response
+
+    @app.context_processor
+    def inject_i18n():
+        current_lang = getattr(g, "current_lang", DEFAULT_LANG)
+        translations = load_translations(current_lang)
+        fallback_translations = load_translations(DEFAULT_LANG)
+
+        def _t(key, **params):
+            return translate(key, current_lang, params)
+
+        def _t_lang(lang, key, **params):
+            return translate(key, lang, params)
+
+        return {
+            "t": _t,
+            "t_lang": _t_lang,
+            "current_lang": current_lang,
+            "available_langs": list_languages(),
+            "default_lang": DEFAULT_LANG,
+            "translations": translations,
+            "default_translations": fallback_translations
+        }
     
     # Also start a delayed startup thread (ensures tasks start even without HTTP requests)
     # This is critical for network failover when the device boots without connectivity
@@ -145,6 +200,7 @@ def register_blueprints(app):
         (wifi_bp, None),        # /api/wifi (legacy compatibility)
         (debug_bp, None),       # /api/debug, /api/system/ntp
         (legacy_bp, None),      # /api/leds/*, /api/gpu/* (backward compatibility)
+        (i18n_bp, None),        # /i18n/*.json
     ]
     
     for blueprint, url_prefix in blueprints:

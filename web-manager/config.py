@@ -188,6 +188,8 @@ DEFAULT_CONFIG = {
     "GST_DEBUG_LEVEL": "2",
     "LOG_DIR": "/var/log/rpi-cam",
     "LOW_LATENCY": "1",
+    # UI Settings
+    "UI_LANG": "fr",
     
     # Meeting API Integration
     "MEETING_ENABLED": "no",

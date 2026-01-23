@@ -3,6 +3,7 @@
  * Version: 2.33.06
  */
 (function () {
+    const t = window.t || function (key) { return key; };
     // Valid tab IDs for URL navigation (debug is optional, checked dynamically)
     const VALID_TABS = ['home', 'video', 'network', 'wifi', 'power', 'onvif', 'meeting', 'logs', 'recordings', 'system', 'advanced', 'debug'];
     
@@ -188,13 +189,13 @@
         
         if (user && pass) {
             statusDiv.className = 'alert alert-success';
-            messageSpan.innerHTML = `<strong>Authentification activ?e</strong> - L'utilisateur "${user}" sera requis pour acc?der au flux RTSP.<br><small>URL: rtsp://${user}:****@IP:PORT/PATH</small>`;
+            messageSpan.innerHTML = t('ui.rtsp.auth.enabled', { user: user });
         } else if (user || pass) {
             statusDiv.className = 'alert alert-warning';
-            messageSpan.innerHTML = '<strong>Authentification incompl?te</strong> - Vous devez renseigner ? la fois l\'utilisateur ET le mot de passe pour activer l\'authentification.';
+            messageSpan.innerHTML = t('ui.rtsp.auth.partial');
         } else {
             statusDiv.className = 'alert alert-info';
-            messageSpan.innerHTML = '<strong>Authentification d?sactiv?e</strong> - Le flux RTSP sera accessible sans mot de passe. D?finissez un utilisateur et un mot de passe pour s?curiser l\'acc?s.';
+            messageSpan.innerHTML = t('ui.rtsp.auth.disabled');
         }
     }
     

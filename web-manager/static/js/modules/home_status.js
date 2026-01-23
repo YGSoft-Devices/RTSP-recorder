@@ -3,6 +3,7 @@
  * Version: 2.33.06
  */
 (function () {
+    const t = window.t || function (key) { return key; };
     async function loadHomeStatus() {
         try {
             // Load RTSP service status
@@ -15,7 +16,7 @@
             const configData = await configResponse.json();
             // Check both RECORD_ENABLE and RECORD_ENABLED for compatibility
             const recordingEnabled = configData.config?.RECORD_ENABLE === 'yes' || configData.config?.RECORD_ENABLED === 'yes';
-            updateHomeServiceStatus('home-recording-status', recordingEnabled, recordingEnabled ? 'Activ?' : 'D?sactiv?');
+            updateHomeServiceStatus('home-recording-status', recordingEnabled, recordingEnabled ? t('ui.value.enabled') : t('ui.value.disabled'));
             
             // Load ONVIF status
             const onvifResponse = await fetch('/api/onvif/status');
@@ -26,7 +27,7 @@
                 // Update device name
                 const deviceNameEl = document.getElementById('home-device-name');
                 if (deviceNameEl) {
-                    deviceNameEl.textContent = onvifData.config?.name || 'UNPROVISIONNED';
+                    deviceNameEl.textContent = onvifData.config?.name || t('ui.status.unprovisioned');
                 }
                 
                 // Update ONVIF URL
@@ -51,7 +52,11 @@
                 // connected is directly in meetingData, not in meetingData.status
                 const connected = meetingData.connected === true || meetingData.status?.connected === true;
                 const configured = meetingData.configured === true || meetingData.status?.configured === true;
-                updateHomeServiceStatus('home-meeting-status', connected, connected ? 'Connect?' : (configured ? 'D?connect?' : 'Non configur?'));
+                updateHomeServiceStatus(
+                    'home-meeting-status',
+                    connected,
+                    connected ? t('ui.status.connected') : (configured ? t('ui.status.disconnected') : t('ui.meeting.not_configured'))
+                );
             }
             
         } catch (error) {
@@ -66,7 +71,7 @@
         badge.className = 'status-badge ' + (isActive ? 'active' : 'inactive');
         const text = badge.querySelector('span:last-child');
         if (text) {
-            text.textContent = customText || (isActive ? 'Actif' : 'Inactif');
+            text.textContent = customText || (isActive ? t('ui.status.active') : t('ui.status.inactive'));
         }
     }
     
@@ -101,19 +106,25 @@
             }
             
             const serviceLabel = {
-                'rpi-av-rtsp-recorder': 'RTSP Streaming',
-                'rtsp-watchdog': 'Watchdog',
-                'rpi-cam-onvif': 'ONVIF',
-                'rpi-cam-webmanager': 'Web Manager'
+                'rpi-av-rtsp-recorder': t('ui.services.rtsp_streaming'),
+                'rtsp-watchdog': t('ui.services.watchdog'),
+                'rpi-cam-onvif': t('ui.services.onvif'),
+                'rpi-cam-webmanager': t('ui.services.web_manager')
             }[serviceName] || serviceName;
+
+            const actionLabel = {
+                'start': t('ui.actions.start'),
+                'stop': t('ui.actions.stop'),
+                'restart': t('ui.actions.restart')
+            }[action] || action;
             
             // Special case: self-restart warning
             const isSelfRestart = serviceName === 'rpi-cam-webmanager' && (action === 'restart' || action === 'stop');
             
             if (isSelfRestart) {
-                window.showToast(`${serviceLabel}: ${action} en cours... La page va se recharger.`, 'warning');
+                window.showToast(t('ui.services.action_in_progress_reload', { service: serviceLabel, action: actionLabel }), 'warning');
             } else {
-                window.showToast(`${serviceLabel}: ${action} en cours...`, 'info');
+                window.showToast(t('ui.services.action_in_progress', { service: serviceLabel, action: actionLabel }), 'info');
             }
             
             const response = await fetch(`/api/service/${serviceName}/${action}`, {
@@ -124,26 +135,26 @@
             if (data.success) {
                 if (data.self_restart || isSelfRestart) {
                     // Wait for service to restart then reload page
-                    window.showToast(`${serviceLabel}: red?marrage en cours...`, 'warning');
+                    window.showToast(t('ui.services.restarting', { service: serviceLabel }), 'warning');
                     setTimeout(() => {
-                        window.showToast('Rechargement de la page...', 'info');
+                        window.showToast(t('ui.services.page_reload'), 'info');
                         setTimeout(() => location.reload(), 1000);
                     }, 3000);
                 } else {
-                    window.showToast(`${serviceLabel}: ${action} effectu?`, 'success');
+                    window.showToast(t('ui.services.action_done', { service: serviceLabel, action: actionLabel }), 'success');
                     updateStatus();
                     loadHomeStatus();
                 }
             } else {
-                window.showToast(`Erreur: ${data.message || data.error}`, 'error');
+                window.showToast(t('ui.errors.with_message', { message: data.message || data.error }), 'error');
             }
         } catch (error) {
             // If it's a self-restart, the error is expected (connection lost)
             if (serviceName === 'rpi-cam-webmanager') {
-                window.showToast('Service red?marr?, rechargement...', 'warning');
+                window.showToast(t('ui.services.restarted_reload'), 'warning');
                 setTimeout(() => location.reload(), 3000);
             } else {
-                window.showToast(`Erreur: ${error.message}`, 'error');
+                window.showToast(t('ui.errors.with_message', { message: error.message }), 'error');
             }
         }
     }

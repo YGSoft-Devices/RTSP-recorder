@@ -19,6 +19,7 @@ from .watchdog_bp import watchdog_bp
 from .wifi_bp import wifi_bp
 from .debug_bp import debug_bp
 from .legacy_bp import legacy_bp
+from .i18n_bp import i18n_bp
 
 __all__ = [
     'config_bp',
@@ -35,5 +36,6 @@ __all__ = [
     'watchdog_bp',
     'wifi_bp',
     'debug_bp',
-    'legacy_bp'
+    'legacy_bp',
+    'i18n_bp'
 ]

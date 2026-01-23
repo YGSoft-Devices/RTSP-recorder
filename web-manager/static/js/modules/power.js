@@ -2,6 +2,7 @@
  * RTSP Recorder Web Manager - Power and reboot functions
  * Version: 2.33.06
  */
+const t = window.t || function (key) { return key; };
 
 // LED Functions
 // ============================================================================
@@ -34,11 +35,11 @@ async function setLedState(led, enabled) {
             }
             return true;
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
             return false;
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
         return false;
     }
 }
@@ -54,11 +55,11 @@ async function setGpuMem() {
     try {
         const gpuMem = document.getElementById('gpu_mem').value;
         
-        if (!confirm(`Modifier la m?moire GPU ? ${gpuMem} Mo ?\nUn red?marrage sera n?cessaire.`)) {
+        if (!confirm(t('ui.power.confirm_gpu_mem', { value: gpuMem }))) {
             return;
         }
         
-        showToast('Application en cours...', 'info');
+        showToast(t('ui.power.applying'), 'info');
         
         const response = await fetch('/api/gpu', {
             method: 'POST',
@@ -76,10 +77,10 @@ async function setGpuMem() {
                 }, 800);
             }
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -190,7 +191,7 @@ async function loadPowerStatus() {
             // Update estimated savings
             const savingsElement = document.getElementById('estimated-savings-ma');
             if (savingsElement) {
-                savingsElement.textContent = `${current.estimated_savings_ma} mA`;
+                savingsElement.textContent = t('ui.units.ma', { value: current.estimated_savings_ma });
             }
         }
         
@@ -244,12 +245,12 @@ function updateServiceStatusText(service, enabled) {
     
     // Keep the original description but add status icon
     const descriptions = {
-        'modemmanager': 'Gestion modems 3G/4G (inutile sans modem)',
-        'avahi': 'D?couverte r?seau Bonjour/Zeroconf',
-        'cloudinit': 'Provisioning cloud (inutile hors cloud)',
-        'serial': 'Getty sur port s?rie (debug uniquement)',
-        'tty1': 'Login sur ?cran HDMI (inutile si headless)',
-        'udisks2': 'Automontage disques USB'
+        'modemmanager': t('ui.power.service.modemmanager_desc'),
+        'avahi': t('ui.power.service.avahi_desc'),
+        'cloudinit': t('ui.power.service.cloudinit_desc'),
+        'serial': t('ui.power.service.serial_desc'),
+        'tty1': t('ui.power.service.tty1_desc'),
+        'udisks2': t('ui.power.service.udisks2_desc')
     };
     
     const description = descriptions[service] || '';
@@ -268,9 +269,9 @@ function updatePowerStatusText(component, enabled) {
     if (!statusElement) return;
     
     if (enabled) {
-        statusElement.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success-color);"></i> Activ?';
+        statusElement.innerHTML = `<i class="fas fa-check-circle" style="color: var(--success-color);"></i> ${t('ui.value.enabled')}`;
     } else {
-        statusElement.innerHTML = '<i class="fas fa-times-circle" style="color: var(--danger-color);"></i> D?sactiv?';
+        statusElement.innerHTML = `<i class="fas fa-times-circle" style="color: var(--danger-color);"></i> ${t('ui.value.disabled')}`;
     }
 }
 
@@ -290,9 +291,9 @@ async function applyPowerSettings() {
                 <div class="spinner-ring"></div>
                 <i class="bi bi-gear-fill power-icon"></i>
             </div>
-            <h2>Application des param?tres</h2>
-            <p class="power-status">Configuration des services syst?me...</p>
-            <p class="power-hint">Cette op?ration peut prendre quelques secondes</p>
+            <h2>${t('ui.power.apply_title')}</h2>
+            <p class="power-status">${t('ui.power.apply_status')}</p>
+            <p class="power-hint">${t('ui.power.apply_hint')}</p>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -302,7 +303,7 @@ async function applyPowerSettings() {
         // Disable button
         if (applyBtn) {
             applyBtn.disabled = true;
-            applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Application...';
+            applyBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>${t('ui.power.applying_short')}`;
         }
         
         // Gather all settings (hardware + services)
@@ -339,7 +340,8 @@ async function applyPowerSettings() {
         setTimeout(() => overlay.remove(), 300);
         
         if (data.success) {
-            showToast(`Param?tres enregistr?s! ?conomies estim?es: ${data.estimated_savings_ma} mA`, 'success');
+            const savingsText = t('ui.units.ma', { value: data.estimated_savings_ma });
+            showToast(t('ui.power.settings_saved', { value: savingsText }), 'success');
             resetPowerSettingsChanged();
             
             if (data.reboot_required) {
@@ -348,18 +350,18 @@ async function applyPowerSettings() {
                 }, 800);
             }
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
         // Remove overlay on error
         overlay.classList.remove('visible');
         setTimeout(() => overlay.remove(), 300);
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     } finally {
         // Restore button
         if (applyBtn) {
             applyBtn.disabled = false;
-            applyBtn.innerHTML = originalText || '<i class="bi bi-check-lg me-2"></i>Appliquer les changements';
+            applyBtn.innerHTML = originalText || `<i class="bi bi-check-lg me-2"></i>${t('ui.power.apply_changes')}`;
         }
     }
 }
@@ -381,16 +383,16 @@ function showRebootOverlay() {
                 <div class="spinner-ring"></div>
                 <i class="bi bi-arrow-repeat reboot-icon"></i>
             </div>
-            <h2>Red?marrage en cours</h2>
-            <p class="reboot-status" id="reboot-status">Arr?t du syst?me...</p>
+            <h2>${t('ui.power.reboot_title')}</h2>
+            <p class="reboot-status" id="reboot-status">${t('ui.power.reboot_status_shutdown')}</p>
             <div class="reboot-progress-container">
                 <div class="reboot-progress-bar" id="reboot-progress-bar"></div>
             </div>
             <div class="reboot-countdown" id="reboot-countdown">
                 <span class="countdown-value" id="countdown-value">60</span>
-                <span class="countdown-label">secondes</span>
+                <span class="countdown-label">${t('ui.power.seconds')}</span>
             </div>
-            <p class="reboot-hint" id="reboot-hint">Le syst?me va red?marrer automatiquement...</p>
+            <p class="reboot-hint" id="reboot-hint">${t('ui.power.reboot_hint_shutdown')}</p>
         </div>
     `;
     
@@ -494,14 +496,14 @@ function startRebootMonitoring() {
         // Update status based on phase
         let status, hint;
         if (elapsed < SHUTDOWN_PHASE) {
-            status = "Arr?t du syst?me...";
-            hint = "Les services s'arr?tent proprement";
+            status = t('ui.power.reboot_status_shutdown');
+            hint = t('ui.power.reboot_hint_shutdown');
         } else if (elapsed < BOOT_PHASE) {
-            status = "Red?marrage du noyau...";
-            hint = "Le Raspberry Pi red?marre";
+            status = t('ui.power.reboot_status_kernel');
+            hint = t('ui.power.reboot_hint_kernel');
         } else {
-            status = "D?marrage des services...";
-            hint = "Connexion en attente...";
+            status = t('ui.power.reboot_status_services');
+            hint = t('ui.power.reboot_hint_services');
         }
         
         updateRebootProgress(elapsed, TOTAL_SECONDS, status, hint);
@@ -514,7 +516,7 @@ function startRebootMonitoring() {
                 clearInterval(interval);
                 
                 // Show success state
-                updateRebootProgress(TOTAL_SECONDS, TOTAL_SECONDS, "Syst?me en ligne !", "Rechargement de la page...");
+                updateRebootProgress(TOTAL_SECONDS, TOTAL_SECONDS, t('ui.power.reboot_status_online'), t('ui.power.reboot_hint_reload'));
                 
                 const overlay = document.getElementById('reboot-overlay');
                 if (overlay) overlay.classList.add('success');
@@ -529,7 +531,7 @@ function startRebootMonitoring() {
         // Timeout - force reload
         if (elapsed >= TOTAL_SECONDS + 30) {
             clearInterval(interval);
-            updateRebootProgress(100, 100, "D?lai d?pass?", "Tentative de reconnexion...");
+            updateRebootProgress(100, 100, t('ui.power.reboot_status_timeout'), t('ui.power.reboot_hint_reconnect'));
             setTimeout(() => {
                 window.location.reload();
             }, 2000);
@@ -551,7 +553,7 @@ async function setPowerState(component, enabled) {
  */
 async function setCpuFrequency(freqMhz) {
     try {
-        showToast('Modification de la fr?quence CPU...', 'info');
+        showToast(t('ui.power.cpu_freq_change'), 'info');
         
         const response = await fetch('/api/power/cpu-freq', {
             method: 'POST',
@@ -566,10 +568,10 @@ async function setCpuFrequency(freqMhz) {
             // Reload power status
             setTimeout(() => loadPowerStatus(), 500);
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -581,7 +583,7 @@ async function setCpuFrequency(freqMhz) {
  * Confirm and execute system reboot - uses the overlay with countdown
  */
 async function confirmReboot() {
-    if (!confirm('?tes-vous s?r de vouloir red?marrer le Raspberry Pi ?\nLa connexion sera perdue pendant quelques minutes.')) {
+    if (!confirm(t('ui.power.confirm_reboot'))) {
         return;
     }
     

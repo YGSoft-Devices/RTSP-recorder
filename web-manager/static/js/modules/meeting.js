@@ -4,6 +4,7 @@
  */
 
 (function () {
+const t = window.t || function (key) { return key; };
 // Meeting API Integration
 // ============================================================================
 
@@ -35,7 +36,7 @@ async function testMeetingConnection() {
     const resultDiv = document.getElementById('meeting-test-result');
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Test de connexion en cours...';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.meeting.test_in_progress')}`;
     
     try {
         const response = await fetch('/api/meeting/test', { method: 'POST' });
@@ -47,7 +48,7 @@ async function testMeetingConnection() {
             if (data.data) {
                 resultDiv.innerHTML += `<pre>${JSON.stringify(data.data, null, 2)}</pre>`;
             }
-            showToast('Connexion Meeting r?ussie', 'success');
+            showToast(t('ui.meeting.connection_success'), 'success');
             updateMeetingStatus(true);
         } else {
             resultDiv.className = 'meeting-result error';
@@ -55,13 +56,13 @@ async function testMeetingConnection() {
             if (data.details) {
                 resultDiv.innerHTML += `<pre>${JSON.stringify(data.details, null, 2)}</pre>`;
             }
-            showToast('?chec de connexion Meeting', 'error');
+            showToast(t('ui.meeting.connection_failed'), 'error');
             updateMeetingStatus(false);
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
-        showToast('Erreur de test Meeting', 'error');
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${t('ui.errors.with_message', { message: error.message })}`;
+        showToast(t('ui.meeting.test_error'), 'error');
         updateMeetingStatus(false);
     }
 }
@@ -73,7 +74,7 @@ async function sendMeetingHeartbeat() {
     const resultDiv = document.getElementById('meeting-test-result');
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi du heartbeat...';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.meeting.heartbeat_sending')}`;
     
     try {
         const response = await fetch('/api/meeting/heartbeat', { method: 'POST' });
@@ -81,21 +82,21 @@ async function sendMeetingHeartbeat() {
         
         if (data.success) {
             resultDiv.className = 'meeting-result success';
-            resultDiv.innerHTML = `<i class="fas fa-heartbeat"></i> ${data.message || 'Heartbeat envoy?'}`;
+            resultDiv.innerHTML = `<i class="fas fa-heartbeat"></i> ${data.message || t('ui.meeting.heartbeat_sent')}`;
             if (data.payload) {
-                resultDiv.innerHTML += `<pre>Donn?es envoy?es:\n${JSON.stringify(data.payload, null, 2)}</pre>`;
+                resultDiv.innerHTML += `<pre>${t('ui.meeting.heartbeat_payload')}:\n${JSON.stringify(data.payload, null, 2)}</pre>`;
             }
-            showToast('Heartbeat envoy?', 'success');
+            showToast(t('ui.meeting.heartbeat_sent'), 'success');
             updateMeetingStatus(true);
         } else {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || data.message || '?chec'}`;
-            showToast('?chec du heartbeat', 'error');
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || data.message || t('ui.errors.generic')}`;
+            showToast(t('ui.meeting.heartbeat_failed'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
-        showToast('Erreur heartbeat', 'error');
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${t('ui.errors.with_message', { message: error.message })}`;
+        showToast(t('ui.meeting.heartbeat_error'), 'error');
     }
 }
 
@@ -106,7 +107,7 @@ async function getMeetingAvailability() {
     const resultDiv = document.getElementById('meeting-test-result');
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> V?rification de la disponibilit?...';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.meeting.availability_checking')}`;
     
     try {
         const response = await fetch('/api/meeting/availability');
@@ -116,28 +117,30 @@ async function getMeetingAvailability() {
             const avail = data.data || data;
             // API Meeting returns status: "Available" or "Unavailable"
             const isOnline = avail.online === true || avail.status === 'Available' || avail.status === 'available';
+            const onlineText = isOnline ? t('ui.value.yes') : t('ui.value.no');
+            const statusText = avail.status || t('ui.value.na');
             resultDiv.className = 'meeting-result success';
             resultDiv.innerHTML = `
-                <i class="fas fa-info-circle"></i> ?tat de disponibilit?
+                <i class="fas fa-info-circle"></i> ${t('ui.meeting.availability_status')}
                 <div class="availability-info">
-                    <p><strong>En ligne:</strong> ${isOnline ? 'Oui ?' : 'Non ?'}</p>
-                    <p><strong>Status:</strong> ${avail.status || 'N/A'}</p>
-                    ${avail.last_heartbeat ? `<p><strong>Dernier heartbeat:</strong> ${avail.last_heartbeat}</p>` : ''}
-                    ${avail.last_seen ? `<p><strong>Derni?re connexion:</strong> ${new Date(avail.last_seen).toLocaleString()}</p>` : ''}
-                    ${avail.uptime ? `<p><strong>Uptime:</strong> ${avail.uptime} minutes</p>` : ''}
-                    ${avail.ip ? `<p><strong>IP:</strong> ${avail.ip}</p>` : ''}
+                    <p><strong>${t('ui.meeting.availability.online_label')}</strong> ${onlineText}</p>
+                    <p><strong>${t('ui.meeting.availability.status_label')}</strong> ${statusText}</p>
+                    ${avail.last_heartbeat ? `<p><strong>${t('ui.meeting.availability.last_heartbeat_label')}</strong> ${avail.last_heartbeat}</p>` : ''}
+                    ${avail.last_seen ? `<p><strong>${t('ui.meeting.availability.last_seen_label')}</strong> ${new Date(avail.last_seen).toLocaleString()}</p>` : ''}
+                    ${avail.uptime ? `<p><strong>${t('ui.meeting.availability.uptime_label')}</strong> ${t('ui.meeting.availability.uptime_minutes', { minutes: avail.uptime })}</p>` : ''}
+                    ${avail.ip ? `<p><strong>${t('ui.meeting.availability.ip_label')}</strong> ${avail.ip}</p>` : ''}
                 </div>
             `;
-            showToast('Disponibilit? r?cup?r?e', 'success');
+            showToast(t('ui.meeting.availability_retrieved'), 'success');
         } else {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || data.message || '?chec'}`;
-            showToast('?chec r?cup?ration disponibilit?', 'error');
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || data.message || t('ui.errors.generic')}`;
+            showToast(t('ui.meeting.availability_failed'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
-        showToast('Erreur disponibilit?', 'error');
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${t('ui.errors.with_message', { message: error.message })}`;
+        showToast(t('ui.meeting.availability_error'), 'error');
     }
 }
 
@@ -146,7 +149,7 @@ async function getMeetingAvailability() {
  */
 async function fetchMeetingDeviceInfo() {
     const infoDiv = document.getElementById('meeting-device-info');
-    infoDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement des informations...';
+    infoDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.meeting.device_info_loading')}`;
     
     try {
         // Fetch both device info and availability in parallel
@@ -164,16 +167,16 @@ async function fetchMeetingDeviceInfo() {
             
             // Map API fields to expected fields
             // Name = product_serial (not device_name which is just the key)
-            const deviceName = device.product_serial || device.name || device.device_name || 'Non d?fini';
+            const deviceName = device.product_serial || device.name || device.device_name || t('ui.status.unknown');
             // IP from device info
-            const deviceIp = device.ip_address || device.ip || 'N/A';
+            const deviceIp = device.ip_address || device.ip || t('ui.value.na');
             // Online status from availability API
             const isOnline = avail.status === 'Available' || avail.status === 'available' || avail.online === true;
             // Last seen from availability
             const lastSeen = avail.last_heartbeat || avail.last_seen || device.last_seen;
             
             // Format last_seen date
-            let lastSeenStr = 'N/A';
+            let lastSeenStr = t('ui.value.na');
             if (lastSeen) {
                 try {
                     // Handle various date formats
@@ -193,21 +196,21 @@ async function fetchMeetingDeviceInfo() {
             if (device.services && Array.isArray(device.services) && device.services.length > 0) {
                 const serviceBadges = device.services.map(s => {
                     // Services are simple strings like "ssh", "http", etc.
-                    const serviceName = (typeof s === 'string') ? s : (s.name || 'unknown');
+                    const serviceName = (typeof s === 'string') ? s : (s.name || t('ui.status.unknown'));
                     return `<span class="service-badge"><i class="fas fa-plug"></i> ${serviceName}</span>`;
                 }).join('');
                 
                 servicesHtml = `
                     <div class="services-section">
-                        <label><i class="fas fa-cogs"></i> Services d?clar?s</label>
+                        <label><i class="fas fa-cogs"></i> ${t('ui.meeting.services_label')}</label>
                         <div class="services-badges">${serviceBadges}</div>
                     </div>
                 `;
             } else {
                 servicesHtml = `
                     <div class="services-section">
-                        <label><i class="fas fa-cogs"></i> Services d?clar?s</label>
-                        <div class="services-badges"><span class="service-badge service-none">Aucun service</span></div>
+                        <label><i class="fas fa-cogs"></i> ${t('ui.meeting.services_label')}</label>
+                        <div class="services-badges"><span class="service-badge service-none">${t('ui.meeting.services_none')}</span></div>
                     </div>
                 `;
             }
@@ -217,15 +220,15 @@ async function fetchMeetingDeviceInfo() {
             if (device.ap_ssid || device.ap_password) {
                 wifiApHtml = `
                     <div class="wifi-ap-section">
-                        <label><i class="fas fa-wifi"></i> Point d'acc?s WiFi</label>
+                        <label><i class="fas fa-wifi"></i> ${t('ui.meeting.wifi_ap_label')}</label>
                         <div class="wifi-ap-info">
                             <div class="wifi-ap-item">
                                 <span class="wifi-label">SSID</span>
-                                <span class="wifi-value mono">${device.ap_ssid || 'N/A'}</span>
+                                <span class="wifi-value mono">${device.ap_ssid || t('ui.value.na')}</span>
                             </div>
                             <div class="wifi-ap-item">
-                                <span class="wifi-label">Mot de passe</span>
-                                <span class="wifi-value mono">${device.ap_password || 'N/A'}</span>
+                                <span class="wifi-label">${t('ui.meeting.wifi_password_label')}</span>
+                                <span class="wifi-value mono">${device.ap_password || t('ui.value.na')}</span>
                             </div>
                         </div>
                     </div>
@@ -237,7 +240,7 @@ async function fetchMeetingDeviceInfo() {
             if (device.note) {
                 noteHtml = `
                     <div class="note-section">
-                        <label><i class="fas fa-sticky-note"></i> Note</label>
+                        <label><i class="fas fa-sticky-note"></i> ${t('ui.meeting.note_label')}</label>
                         <p class="note-content">${device.note}</p>
                     </div>
                 `;
@@ -246,46 +249,46 @@ async function fetchMeetingDeviceInfo() {
             infoDiv.innerHTML = `
                 <div class="device-info-grid">
                     <div class="info-item">
-                        <label><i class="fas fa-key"></i> Device Key</label>
-                        <span class="mono">${device.device_key || 'N/A'}</span>
+                        <label><i class="fas fa-key"></i> ${t('ui.meeting.device_key_label')}</label>
+                        <span class="mono">${device.device_key || t('ui.value.na')}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-tag"></i> Nom</label>
+                        <label><i class="fas fa-tag"></i> ${t('ui.meeting.device_name_label')}</label>
                         <span>${deviceName}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-circle ${isOnline ? 'text-success' : 'text-danger'}"></i> Statut</label>
-                        <span>${isOnline ? 'En ligne' : 'Hors ligne'}</span>
+                        <label><i class="fas fa-circle ${isOnline ? 'text-success' : 'text-danger'}"></i> ${t('ui.meeting.device_status_label')}</label>
+                        <span>${isOnline ? t('ui.status.online') : t('ui.status.offline')}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-network-wired"></i> IP</label>
+                        <label><i class="fas fa-network-wired"></i> ${t('ui.meeting.device_ip_label')}</label>
                         <span class="mono">${deviceIp}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-clock"></i> Derni?re activit?</label>
+                        <label><i class="fas fa-clock"></i> ${t('ui.meeting.device_last_activity_label')}</label>
                         <span>${lastSeenStr}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-coins"></i> Tokens</label>
-                        <span>${device.token_count !== undefined ? device.token_count : 'N/A'}</span>
+                        <label><i class="fas fa-coins"></i> ${t('ui.meeting.device_tokens_label')}</label>
+                        <span>${device.token_count !== undefined ? device.token_count : t('ui.value.na')}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-check-circle ${device.authorized ? 'text-success' : 'text-danger'}"></i> Autoris?</label>
-                        <span>${device.authorized ? 'Oui' : 'Non'}</span>
+                        <label><i class="fas fa-check-circle ${device.authorized ? 'text-success' : 'text-danger'}"></i> ${t('ui.meeting.device_authorized_label')}</label>
+                        <span>${device.authorized ? t('ui.value.yes') : t('ui.value.no')}</span>
                     </div>
                 </div>
                 ${noteHtml}
                 ${wifiApHtml}
                 ${servicesHtml}
             `;
-            showToast('Informations du device charg?es', 'success');
+            showToast(t('ui.meeting.device_info_loaded'), 'success');
         } else {
-            infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-circle"></i> ${data.error || data.message || 'Impossible de charger les informations'}</p>`;
-            showToast('?chec chargement device info', 'error');
+            infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-circle"></i> ${deviceData.error || deviceData.message || t('ui.meeting.device_info_load_failed')}</p>`;
+            showToast(t('ui.meeting.device_info_load_failed'), 'error');
         }
     } catch (error) {
-        infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}</p>`;
-        showToast('Erreur chargement device info', 'error');
+        infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> ${t('ui.errors.with_message', { message: error.message })}</p>`;
+        showToast(t('ui.meeting.device_info_load_error'), 'error');
     }
 }
 
@@ -298,7 +301,7 @@ async function requestMeetingTunnel() {
     
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Demande de tunnel ${service}...`;
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.meeting.tunnel_requesting', { service: service })}`;
     
     try {
         const response = await fetch('/api/meeting/tunnel', {
@@ -314,29 +317,29 @@ async function requestMeetingTunnel() {
             
             if (data.data) {
                 if (data.data.tunnel_url) {
-                    html += `<p><strong>URL du tunnel:</strong> <code>${data.data.tunnel_url}</code></p>`;
+                    html += `<p><strong>${t('ui.meeting.tunnel_url_label')}</strong> <code>${data.data.tunnel_url}</code></p>`;
                 }
                 if (data.data.port) {
-                    html += `<p><strong>Port distant:</strong> <code>${data.data.port}</code></p>`;
+                    html += `<p><strong>${t('ui.meeting.tunnel_remote_port_label')}</strong> <code>${data.data.port}</code></p>`;
                 }
                 if (data.data.expires_at) {
-                    html += `<p><strong>Expire:</strong> ${new Date(data.data.expires_at).toLocaleString()}</p>`;
+                    html += `<p><strong>${t('ui.meeting.tunnel_expires_label')}</strong> ${new Date(data.data.expires_at).toLocaleString()}</p>`;
                 }
             }
             resultDiv.innerHTML = html;
-            showToast(`Tunnel ${service} cr??`, 'success');
+            showToast(t('ui.meeting.tunnel_created', { service: service }), 'success');
         } else {
             resultDiv.className = 'meeting-result error';
             resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.message}`;
             if (data.details) {
                 resultDiv.innerHTML += `<pre>${JSON.stringify(data.details, null, 2)}</pre>`;
             }
-            showToast('?chec cr?ation tunnel', 'error');
+            showToast(t('ui.meeting.tunnel_failed'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
-        showToast('Erreur tunnel', 'error');
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${t('ui.errors.with_message', { message: error.message })}`;
+        showToast(t('ui.meeting.tunnel_error'), 'error');
     }
 }
 
@@ -350,15 +353,15 @@ function updateMeetingStatus(connected) {
     if (statusEl) {
         if (connected) {
             statusEl.className = 'status-indicator connected';
-            statusEl.innerHTML = '<i class="fas fa-circle"></i> Connect?';
+            statusEl.innerHTML = `<i class="fas fa-circle"></i> ${t('ui.status.connected')}`;
         } else {
             statusEl.className = 'status-indicator disconnected';
-            statusEl.innerHTML = '<i class="fas fa-circle"></i> D?connect?';
+            statusEl.innerHTML = `<i class="fas fa-circle"></i> ${t('ui.status.disconnected')}`;
         }
     }
     
     if (detailsEl && connected) {
-        detailsEl.innerHTML = `<small>Derni?re connexion: ${new Date().toLocaleTimeString()}</small>`;
+        detailsEl.innerHTML = `<small>${t('ui.meeting.last_connection_label')} ${new Date().toLocaleTimeString()}</small>`;
     }
 }
 
@@ -369,10 +372,10 @@ function updateMeetingConfigStatus() {
     const autoStatus = document.getElementById('meeting-auto-connect-status');
 
     if (enabledStatus && enabledToggle) {
-        enabledStatus.textContent = enabledToggle.checked ? 'Activ?' : 'D?sactiv?';
+        enabledStatus.textContent = enabledToggle.checked ? t('ui.value.enabled') : t('ui.value.disabled');
     }
     if (autoStatus && autoToggle) {
-        autoStatus.textContent = autoToggle.checked ? 'Activ?' : 'D?sactiv?';
+        autoStatus.textContent = autoToggle.checked ? t('ui.value.enabled') : t('ui.value.disabled');
     }
 }
 
@@ -401,14 +404,14 @@ async function loadMeetingConfig() {
         if (heartbeatInput) heartbeatInput.value = config.heartbeat_interval || 30;
         if (tokenInput) {
             tokenInput.value = '';
-            tokenInput.placeholder = config.has_token ? '???????? (enregistr?)' : 'Aucun token';
+            tokenInput.placeholder = config.has_token ? t('ui.meeting.token_placeholder_saved') : t('ui.meeting.token_placeholder_none');
         }
         if (provisionedBadge) {
             if (config.provisioned) {
-                provisionedBadge.textContent = 'Oui';
+                provisionedBadge.textContent = t('ui.value.yes');
                 provisionedBadge.className = 'badge badge-success';
             } else {
-                provisionedBadge.textContent = 'Non';
+                provisionedBadge.textContent = t('ui.value.no');
                 provisionedBadge.className = 'badge badge-warning';
             }
         }
@@ -441,7 +444,7 @@ async function saveMeetingConfig() {
             config.token_code = tokenValue;
         }
 
-        showToast('Enregistrement Meeting...', 'info');
+        showToast(t('ui.meeting.saving'), 'info');
 
         const response = await fetch('/api/meeting/config', {
             method: 'POST',
@@ -452,14 +455,14 @@ async function saveMeetingConfig() {
         const data = await response.json();
 
         if (data.success) {
-            showToast('Configuration Meeting enregistr?e', 'success');
+            showToast(t('ui.meeting.saved'), 'success');
             loadMeetingStatus();
             loadMeetingConfig();
         } else {
-            showToast(`Erreur: ${data.message || data.error}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message || data.error || t('ui.errors.generic') }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -505,24 +508,24 @@ async function loadMeetingStatus() {
                 // Not configured
                 if (statusEl) {
                     statusEl.className = 'status-indicator disconnected';
-                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Non provisionn?';
+                    statusEl.innerHTML = `<i class="fas fa-circle"></i> ${t('ui.meeting.status.not_provisioned')}`;
                 }
                 if (detailsEl) {
-                    detailsEl.innerHTML = '<small>Entrez vos credentials pour provisionner ce device</small>';
+                    detailsEl.innerHTML = `<small>${t('ui.meeting.status.enter_credentials')}</small>`;
                 }
             } else if (status.connected) {
                 // Connected and heartbeat working
                 if (statusEl) {
                     statusEl.className = 'status-indicator connected';
-                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Connect?';
+                    statusEl.innerHTML = `<i class="fas fa-circle"></i> ${t('ui.status.connected')}`;
                 }
                 if (detailsEl) {
-                    let details = `<small>Device: ${status.device_key}`;
+                    let details = `<small>${t('ui.meeting.device_label')}: ${status.device_key}`;
                     if (status.last_heartbeat_ago !== null) {
-                        details += ` ? Dernier heartbeat: il y a ${status.last_heartbeat_ago}s`;
+                        details += ` ? ${t('ui.meeting.last_heartbeat_ago', { seconds: status.last_heartbeat_ago })}`;
                     }
                     if (status.heartbeat_thread_running) {
-                        details += ` ? Intervalle: ${status.heartbeat_interval}s`;
+                        details += ` ? ${t('ui.meeting.heartbeat_interval_status', { seconds: status.heartbeat_interval })}`;
                     }
                     details += '</small>';
                     detailsEl.innerHTML = details;
@@ -532,27 +535,27 @@ async function loadMeetingStatus() {
                 if (statusEl) {
                     if (status.last_error) {
                         statusEl.className = 'status-indicator disconnected';
-                        statusEl.innerHTML = '<i class="fas fa-circle"></i> Erreur de connexion';
+                        statusEl.innerHTML = `<i class="fas fa-circle"></i> ${t('ui.meeting.connection_error_status')}`;
                     } else {
                         statusEl.className = 'status-indicator pending';
-                        statusEl.innerHTML = '<i class="fas fa-circle"></i> En attente de connexion';
+                        statusEl.innerHTML = `<i class="fas fa-circle"></i> ${t('ui.meeting.connection_pending_status')}`;
                     }
                 }
                 if (detailsEl) {
                     if (status.last_error) {
-                        detailsEl.innerHTML = `<small>Device: ${status.device_key} ? ${status.last_error}</small>`;
+                        detailsEl.innerHTML = `<small>${t('ui.meeting.device_label')}: ${status.device_key} ? ${status.last_error}</small>`;
                     } else {
-                        detailsEl.innerHTML = `<small>Device: ${status.device_key} ? En attente du premier heartbeat</small>`;
+                        detailsEl.innerHTML = `<small>${t('ui.meeting.device_label')}: ${status.device_key} ? ${t('ui.meeting.awaiting_first_heartbeat')}</small>`;
                     }
                 }
             } else {
                 // Configured but disabled
                 if (statusEl) {
                     statusEl.className = 'status-indicator disconnected';
-                    statusEl.innerHTML = '<i class="fas fa-circle"></i> D?sactiv?';
+                    statusEl.innerHTML = `<i class="fas fa-circle"></i> ${t('ui.value.disabled')}`;
                 }
                 if (detailsEl) {
-                    detailsEl.innerHTML = `<small>Device: ${status.device_key} ? Meeting d?sactiv?</small>`;
+                    detailsEl.innerHTML = `<small>${t('ui.meeting.device_label')}: ${status.device_key} ? ${t('ui.meeting.disabled_status')}</small>`;
                 }
             }
 
@@ -578,14 +581,14 @@ async function validateMeetingCredentials() {
     if (!apiUrl || !deviceKey || !tokenCode) {
         resultDiv.style.display = 'block';
         resultDiv.className = 'meeting-result validation-error';
-        resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Veuillez remplir tous les champs';
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${t('ui.meeting.validation.fill_all_fields')}`;
         if (provisionBtn) provisionBtn.disabled = true;
         return;
     }
     
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validation des credentials en cours...';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.meeting.validation.in_progress')}`;
     if (provisionBtn) provisionBtn.disabled = true;
     
     try {
@@ -609,57 +612,57 @@ async function validateMeetingCredentials() {
             let tokenWarning = '';
             if (device.token_count === 0) {
                 tokenClass = 'danger';
-                tokenWarning = '<br><strong style="color: var(--danger-color);">?? Aucun token disponible ! Provisioning impossible.</strong>';
+                tokenWarning = `<br><strong style="color: var(--danger-color);">${t('ui.meeting.validation.token_none')}</strong>`;
                 if (provisionBtn) provisionBtn.disabled = true;
             } else if (device.token_count === 1) {
                 tokenClass = 'warning';
-                tokenWarning = '<br><small style="color: var(--warning-color);">?? Dernier token disponible</small>';
+                tokenWarning = `<br><small style="color: var(--warning-color);">${t('ui.meeting.validation.token_last')}</small>`;
                 if (provisionBtn) provisionBtn.disabled = false;
             } else {
                 if (provisionBtn) provisionBtn.disabled = false;
             }
             
             resultDiv.innerHTML = `
-                <i class="fas fa-check-circle"></i> <strong>Credentials valides !</strong>
+                <i class="fas fa-check-circle"></i> <strong>${t('ui.meeting.validation.valid')}</strong>
                 <div class="provision-info">
                     <div class="provision-info-item">
-                        <span class="label">Device</span>
-                        <span class="value">${device.name || 'Sans nom'}</span>
+                        <span class="label">${t('ui.meeting.validation.device_label')}</span>
+                        <span class="value">${device.name || t('ui.meeting.validation.device_name_fallback')}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">Autoris?</span>
-                        <span class="value ${device.authorized ? 'success' : 'danger'}">${device.authorized ? 'Oui ?' : 'Non ?'}</span>
+                        <span class="label">${t('ui.meeting.validation.authorized_label')}</span>
+                        <span class="value ${device.authorized ? 'success' : 'danger'}">${device.authorized ? t('ui.value.yes') : t('ui.value.no')}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">Tokens disponibles</span>
+                        <span class="label">${t('ui.meeting.validation.tokens_available_label')}</span>
                         <span class="value ${tokenClass}">${device.token_count}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">En ligne</span>
-                        <span class="value">${device.online ? 'Oui' : 'Non'}</span>
+                        <span class="label">${t('ui.meeting.validation.online_label')}</span>
+                        <span class="value">${device.online ? t('ui.value.yes') : t('ui.value.no')}</span>
                     </div>
                 </div>
                 ${tokenWarning}
-                ${device.token_count > 0 && device.authorized ? '<p style="margin-top: 10px;"><i class="fas fa-info-circle"></i> Cliquez sur "Provisionner le device" pour continuer. Cette op?ration consommera 1 token.</p>' : ''}
+                ${device.token_count > 0 && device.authorized ? `<p style="margin-top: 10px;"><i class="fas fa-info-circle"></i> ${t('ui.meeting.validation.provision_hint')}</p>` : ''}
             `;
             
             if (!device.authorized) {
-                resultDiv.innerHTML += '<p style="color: var(--danger-color); margin-top: 10px;"><i class="fas fa-ban"></i> Ce device n\'est pas autoris? dans Meeting.</p>';
+                resultDiv.innerHTML += `<p style="color: var(--danger-color); margin-top: 10px;"><i class="fas fa-ban"></i> ${t('ui.meeting.validation.not_authorized')}</p>`;
                 if (provisionBtn) provisionBtn.disabled = true;
             }
             
-            showToast('Credentials valid?s', 'success');
+            showToast(t('ui.meeting.validation.valid_toast'), 'success');
         } else {
             resultDiv.className = 'meeting-result validation-error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>Validation ?chou?e</strong><br>${data.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>${t('ui.meeting.validation.invalid')}</strong><br>${data.message}`;
             if (provisionBtn) provisionBtn.disabled = true;
-            showToast('Credentials invalides', 'error');
+            showToast(t('ui.meeting.validation.invalid_toast'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result validation-error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${t('ui.errors.with_message', { message: error.message })}`;
         if (provisionBtn) provisionBtn.disabled = true;
-        showToast('Erreur de validation', 'error');
+        showToast(t('ui.meeting.validation.error'), 'error');
     }
 }
 
@@ -674,13 +677,13 @@ async function provisionDevice() {
     const resultDiv = document.getElementById('provision-validation-result');
     const provisionBtn = document.getElementById('btn-provision');
     
-    if (!confirm('?tes-vous s?r de vouloir provisionner ce device ?\n\nCette action va :\n- Consommer 1 token de provisioning\n- Changer le hostname du device\n- Verrouiller la configuration Meeting')) {
+    if (!confirm(t('ui.meeting.provision.confirm'))) {
         return;
     }
     
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Provisioning en cours... Veuillez patienter.';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.meeting.provision.in_progress')}`;
     if (provisionBtn) provisionBtn.disabled = true;
     
     try {
@@ -699,24 +702,24 @@ async function provisionDevice() {
         if (data.success) {
             resultDiv.className = 'meeting-result validation-success';
             resultDiv.innerHTML = `
-                <i class="fas fa-check-circle"></i> <strong>Provisioning r?ussi !</strong>
+                <i class="fas fa-check-circle"></i> <strong>${t('ui.meeting.provision.success_title')}</strong>
                 <div class="provision-info">
                     <div class="provision-info-item">
-                        <span class="label">Nouveau hostname</span>
+                        <span class="label">${t('ui.meeting.provision.hostname_label')}</span>
                         <span class="value">${data.hostname}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">Token consomm?</span>
-                        <span class="value success">Oui</span>
+                        <span class="label">${t('ui.meeting.provision.token_consumed_label')}</span>
+                        <span class="value success">${t('ui.value.yes')}</span>
                     </div>
                 </div>
                 <p style="margin-top: 15px; color: var(--warning-color);">
-                    <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> Le hostname a chang?. 
-                    Apr?s quelques secondes, vous pourrez acc?der ? l'interface via:
+                    <i class="fas fa-exclamation-triangle"></i> <strong>${t('ui.meeting.provision.important_label')}</strong> ${t('ui.meeting.provision.hostname_changed')}
+                    ${t('ui.meeting.provision.access_hint')}
                     <br><code>http://${data.hostname}.local</code>
                 </p>
             `;
-            showToast('Device provisionn? avec succ?s!', 'success');
+            showToast(t('ui.meeting.provision.success_toast'), 'success');
             
             // Reload status after a short delay
             setTimeout(() => {
@@ -724,15 +727,15 @@ async function provisionDevice() {
             }, 2000);
         } else {
             resultDiv.className = 'meeting-result validation-error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>?chec du provisioning</strong><br>${data.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>${t('ui.meeting.provision.failed_title')}</strong><br>${data.message}`;
             if (provisionBtn) provisionBtn.disabled = false;
-            showToast('?chec du provisioning', 'error');
+            showToast(t('ui.meeting.provision.failed_toast'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result validation-error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${t('ui.errors.with_message', { message: error.message })}`;
         if (provisionBtn) provisionBtn.disabled = false;
-        showToast('Erreur de provisioning', 'error');
+        showToast(t('ui.meeting.provision.error'), 'error');
     }
 }
 
@@ -765,12 +768,12 @@ async function executeMasterReset() {
     const code = document.getElementById('master_reset_code')?.value?.trim();
     
     if (!code) {
-        showToast('Veuillez entrer le code master', 'warning');
+        showToast(t('ui.meeting.master_reset.code_required'), 'warning');
         return;
     }
     
     try {
-        showToast('R?initialisation en cours...', 'info');
+        showToast(t('ui.meeting.master_reset.in_progress'), 'info');
         
         const response = await fetch('/api/meeting/master-reset', {
             method: 'POST',
@@ -782,17 +785,17 @@ async function executeMasterReset() {
         
         if (data.success) {
             closeMasterResetModal();
-            showToast('Configuration Meeting r?initialis?e', 'success');
+            showToast(t('ui.meeting.master_reset.success'), 'success');
             loadMeetingStatus();
             // Reload page to refresh all config
             setTimeout(() => {
                 window.location.reload();
             }, 1500);
         } else {
-            showToast(data.message || '?chec de la r?initialisation', 'error');
+            showToast(data.message || t('ui.meeting.master_reset.failed'), 'error');
         }
     } catch (error) {
-        showToast('Erreur: ' + error.message, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -896,7 +899,7 @@ async function loadNtpConfig() {
                 server: null,
                 current_time: null,
                 timezone: null,
-                error: data.message || 'Erreur NTP'
+                error: data.message || t('ui.system.ntp.error')
             });
         }
     } catch (error) {
@@ -906,7 +909,7 @@ async function loadNtpConfig() {
             server: null,
             current_time: null,
             timezone: null,
-            error: error.message || 'Erreur NTP'
+            error: error.message || t('ui.system.ntp.error')
         });
     }
 }
@@ -920,16 +923,16 @@ function updateNtpStatus(data) {
     
     let html = `<div class="status-indicator ${data.synchronized ? 'synced' : 'not-synced'}">`;
     html += `<i class="fas fa-${data.synchronized ? 'check-circle' : 'exclamation-triangle'}"></i>`;
-    html += `<span>${data.synchronized ? 'Synchronis?' : 'Non synchronis?'}</span>`;
+    html += `<span>${data.synchronized ? t('ui.system.ntp.synced') : t('ui.system.ntp.not_synced')}</span>`;
     html += `</div>`;
     
     if (data.error) {
-        html += `<div class="ntp-details"><span><strong>Erreur:</strong> ${data.error}</span></div>`;
+        html += `<div class="ntp-details"><span><strong>${t('ui.system.ntp.error_label')}</strong> ${data.error}</span></div>`;
     } else if (data.server || data.current_time) {
         html += `<div class="ntp-details">`;
-        if (data.server) html += `<span><strong>Serveur:</strong> ${data.server}</span>`;
-        if (data.current_time) html += `<span><strong>Heure syst?me:</strong> ${data.current_time}</span>`;
-        if (data.timezone) html += `<span><strong>Fuseau:</strong> ${data.timezone}</span>`;
+        if (data.server) html += `<span><strong>${t('ui.system.ntp.server_label')}</strong> ${data.server}</span>`;
+        if (data.current_time) html += `<span><strong>${t('ui.system.ntp.system_time_label')}</strong> ${data.current_time}</span>`;
+        if (data.timezone) html += `<span><strong>${t('ui.system.ntp.timezone_label')}</strong> ${data.timezone}</span>`;
         html += `</div>`;
     }
     
@@ -943,12 +946,12 @@ async function saveNtpConfig() {
     const server = document.getElementById('ntp_server')?.value?.trim();
     
     if (!server) {
-        showToast('Veuillez entrer un serveur NTP', 'warning');
+        showToast(t('ui.system.ntp.server_required'), 'warning');
         return;
     }
     
     try {
-        showToast('Configuration NTP...', 'info');
+        showToast(t('ui.system.ntp.configuring'), 'info');
         
         const response = await fetch('/api/system/ntp', {
             method: 'POST',
@@ -959,13 +962,13 @@ async function saveNtpConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Serveur NTP configur?', 'success');
+            showToast(t('ui.system.ntp.configured'), 'success');
             loadNtpConfig();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -974,7 +977,7 @@ async function saveNtpConfig() {
  */
 async function syncNtpNow() {
     try {
-        showToast('Synchronisation en cours...', 'info');
+        showToast(t('ui.system.ntp.syncing'), 'info');
         
         const response = await fetch('/api/system/ntp/sync', {
             method: 'POST'
@@ -983,13 +986,13 @@ async function syncNtpNow() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Heure synchronis?e', 'success');
+            showToast(t('ui.system.ntp.synced_toast'), 'success');
             loadNtpConfig();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -1015,14 +1018,14 @@ async function loadRtcConfig() {
         } else {
             updateRtcStatus({
                 success: false,
-                error: data.message || 'Erreur RTC'
+                error: data.message || t('ui.system.rtc.error')
             });
         }
     } catch (error) {
         console.error('Error loading RTC config:', error);
         updateRtcStatus({
             success: false,
-            error: error.message || 'Erreur RTC'
+            error: error.message || t('ui.system.rtc.error')
         });
     }
 }
@@ -1038,9 +1041,9 @@ function updateRtcStatus(data) {
         statusDiv.innerHTML = `
             <div class="status-indicator not-synced">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>Erreur RTC</span>
+                <span>${t('ui.system.rtc.error')}</span>
             </div>
-            <div class="rtc-details"><span><strong>Erreur:</strong> ${data.error}</span></div>
+            <div class="rtc-details"><span><strong>${t('ui.system.rtc.error_label')}</strong> ${data.error}</span></div>
         `;
         return;
     }
@@ -1048,7 +1051,7 @@ function updateRtcStatus(data) {
     const enabled = !!data.effective_enabled;
     const detected = !!data.detected;
     const indicatorClass = enabled ? 'synced' : 'not-synced';
-    const indicatorLabel = enabled ? 'Actif' : 'Inactif';
+    const indicatorLabel = enabled ? t('ui.system.rtc.active') : t('ui.system.rtc.inactive');
     const modeLabel = data.mode || 'auto';
     const viaLabel = data.detected_via ? ` (${data.detected_via})` : '';
 
@@ -1057,15 +1060,15 @@ function updateRtcStatus(data) {
     html += `<span>RTC ${indicatorLabel}</span>`;
     html += `</div>`;
     html += `<div class="rtc-details">`;
-    html += `<span><strong>Mode:</strong> ${modeLabel}</span>`;
-    html += `<span><strong>D?tect?:</strong> ${detected ? 'Oui' : 'Non'}${detected ? viaLabel : ''}</span>`;
-    html += `<span><strong>Overlay:</strong> ${data.overlay_configured ? 'Configur?' : 'Non configur?'}</span>`;
-    html += `<span><strong>I2C:</strong> ${data.i2c_enabled ? 'Activ?' : 'D?sactiv?'}</span>`;
+    html += `<span><strong>${t('ui.system.rtc.mode_label')}</strong> ${modeLabel}</span>`;
+    html += `<span><strong>${t('ui.system.rtc.detected_label')}</strong> ${detected ? t('ui.value.yes') : t('ui.value.no')}${detected ? viaLabel : ''}</span>`;
+    html += `<span><strong>${t('ui.system.rtc.overlay_label')}</strong> ${data.overlay_configured ? t('ui.system.rtc.overlay_configured') : t('ui.system.rtc.overlay_not_configured')}</span>`;
+    html += `<span><strong>${t('ui.system.rtc.i2c_label')}</strong> ${data.i2c_enabled ? t('ui.value.enabled') : t('ui.value.disabled')}</span>`;
     if (data.auto_pending) {
         if (!data.i2c_enabled) {
-            html += `<span><strong>Auto:</strong> I2C d?sactiv?, appliquez pour activer</span>`;
+            html += `<span><strong>${t('ui.value.auto')}:</strong> ${t('ui.system.rtc.auto_i2c_disabled')}</span>`;
         } else {
-            html += `<span><strong>Auto:</strong> Module d?tect?, appliquez pour activer</span>`;
+            html += `<span><strong>${t('ui.value.auto')}:</strong> ${t('ui.system.rtc.auto_module_detected')}</span>`;
         }
     }
     html += `</div>`;
@@ -1080,7 +1083,7 @@ async function saveRtcConfig() {
     const rtcMode = document.getElementById('rtc_mode')?.value || 'auto';
 
     try {
-        showToast('Application RTC...', 'info');
+        showToast(t('ui.system.rtc.applying'), 'info');
 
         const response = await fetch('/api/system/rtc', {
             method: 'POST',
@@ -1091,7 +1094,7 @@ async function saveRtcConfig() {
         const data = await response.json();
 
         if (data.success) {
-            showToast(data.message || 'RTC configur?', 'success');
+            showToast(data.message || t('ui.system.rtc.configured'), 'success');
             loadRtcConfig();
             if (data.reboot_required) {
                 setTimeout(() => {
@@ -1099,10 +1102,10 @@ async function saveRtcConfig() {
                 }, 800);
             }
         } else {
-            showToast(`Erreur RTC: ${data.message || "Impossible d'appliquer"}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message || t('ui.system.rtc.apply_failed') }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur RTC: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -1198,7 +1201,7 @@ async function saveRebootSchedule() {
     }
 
     try {
-        showToast('Enregistrement du schedule...', 'info');
+        showToast(t('ui.system.reboot_schedule.saving'), 'info');
         const response = await fetch('/api/system/reboot/schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1206,13 +1209,13 @@ async function saveRebootSchedule() {
         });
         const data = await response.json();
         if (data.success) {
-            showToast('Schedule reboot enregistr?', 'success');
+            showToast(t('ui.system.reboot_schedule.saved'), 'success');
             loadRebootSchedule();
         } else {
-            showToast(`Erreur: ${data.message || 'Impossible de sauvegarder'}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message || t('ui.system.reboot_schedule.save_failed') }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -1242,7 +1245,7 @@ async function saveSnmpConfig() {
     const port = parseInt(document.getElementById('snmp_port')?.value || '162', 10);
 
     try {
-        showToast('Configuration SNMP...', 'info');
+        showToast(t('ui.system.snmp.configuring'), 'info');
         const response = await fetch('/api/system/snmp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1250,13 +1253,13 @@ async function saveSnmpConfig() {
         });
         const data = await response.json();
         if (data.success) {
-            showToast('Configuration SNMP appliqu?e', 'success');
+            showToast(t('ui.system.snmp.configured'), 'success');
             loadSnmpConfig();
         } else {
-            showToast(`Erreur: ${data.message || 'Impossible de sauvegarder'}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message || t('ui.system.snmp.save_failed') }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -1266,7 +1269,7 @@ async function testSnmpConfig() {
     const port = parseInt(document.getElementById('snmp_port')?.value || '162', 10);
 
     try {
-        showToast('Test SNMP...', 'info');
+        showToast(t('ui.system.snmp.testing'), 'info');
         const response = await fetch('/api/system/snmp/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1274,12 +1277,12 @@ async function testSnmpConfig() {
         });
         const data = await response.json();
         if (data.success) {
-            showToast(data.message || 'SNMP OK', 'success');
+            showToast(data.message || t('ui.system.snmp.ok'), 'success');
         } else {
-            showToast(`Erreur: ${data.message || 'Test SNMP ?chou?'}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message || t('ui.system.snmp.test_failed') }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -1302,7 +1305,7 @@ function openBackupFilePicker(action) {
     backupFileAction = action;
     const input = document.getElementById('backup-file-input');
     if (!input) {
-        updateBackupStatus('Champ fichier introuvable', 'error');
+        updateBackupStatus(t('ui.backup.file_field_missing'), 'error');
         return;
     }
     input.value = '';
@@ -1319,13 +1322,13 @@ function handleBackupFileSelected(event) {
     } else if (backupFileAction === 'restore') {
         restoreBackupFile(file);
     } else {
-        updateBackupStatus('Action de backup invalide', 'error');
+        updateBackupStatus(t('ui.backup.invalid_action'), 'error');
     }
 }
 
 async function backupConfiguration() {
-    const includeLogs = confirm('Inclure les logs dans le backup ?');
-    updateBackupStatus('Preparation du backup...', 'checking');
+    const includeLogs = confirm(t('ui.backup.include_logs_confirm'));
+    updateBackupStatus(t('ui.backup.preparing'), 'checking');
 
     try {
         const response = await fetch('/api/system/backup', {
@@ -1337,7 +1340,7 @@ async function backupConfiguration() {
         const contentType = response.headers.get('content-type') || '';
         if (!response.ok || contentType.includes('application/json')) {
             const data = await response.json();
-            const message = data.message || 'Erreur backup';
+            const message = data.message || t('ui.backup.error');
             updateBackupStatus(message, 'error');
             showToast(message, 'error');
             return;
@@ -1357,16 +1360,16 @@ async function backupConfiguration() {
         link.remove();
         window.URL.revokeObjectURL(url);
 
-        updateBackupStatus('Backup telecharge', 'success');
-        showToast('Backup genere', 'success');
+        updateBackupStatus(t('ui.backup.downloaded'), 'success');
+        showToast(t('ui.backup.generated'), 'success');
     } catch (error) {
-        updateBackupStatus(`Erreur: ${error.message}`, 'error');
-        showToast(`Erreur backup: ${error.message}`, 'error');
+        updateBackupStatus(t('ui.errors.with_message', { message: error.message }), 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
 async function checkBackupFile(file) {
-    updateBackupStatus('Verification du backup...', 'checking');
+    updateBackupStatus(t('ui.backup.checking'), 'checking');
 
     try {
         const formData = new FormData();
@@ -1379,32 +1382,35 @@ async function checkBackupFile(file) {
 
         const data = await response.json();
         if (!data.success) {
-            const message = data.message || 'Backup invalide';
+            const message = data.message || t('ui.backup.invalid');
             updateBackupStatus(message, 'error');
             showToast(message, 'error');
             return;
         }
 
-        const info = `Backup valide (v${data.version || 'N/A'}, ${data.files_count || 0} fichiers)`;
+        const info = t('ui.backup.valid_info', {
+            version: data.version || t('ui.value.na'),
+            count: data.files_count || 0
+        });
         updateBackupStatus(info, 'success');
         showToast(info, 'success');
 
-        if (confirm(`${info}\n\nVoulez-vous restaurer ce backup ?`)) {
+        if (confirm(t('ui.backup.confirm_restore_after_check', { info: info }))) {
             restoreBackupFile(file, true);
         }
     } catch (error) {
-        updateBackupStatus(`Erreur: ${error.message}`, 'error');
-        showToast(`Erreur check: ${error.message}`, 'error');
+        updateBackupStatus(t('ui.errors.with_message', { message: error.message }), 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
 async function restoreBackupFile(file, skipConfirm = false) {
     if (!skipConfirm) {
-        const proceed = confirm('Restaurer la configuration depuis ce backup ?\n\nLe Raspberry Pi va redemarrer.');
+        const proceed = confirm(t('ui.backup.confirm_restore'));
         if (!proceed) return;
     }
 
-    updateBackupStatus('Restauration en cours...', 'updating');
+    updateBackupStatus(t('ui.backup.restoring'), 'updating');
 
     try {
         const formData = new FormData();
@@ -1417,20 +1423,20 @@ async function restoreBackupFile(file, skipConfirm = false) {
 
         const data = await response.json();
         if (!data.success) {
-            const message = data.message || 'Restauration echouee';
+            const message = data.message || t('ui.backup.restore_failed');
             updateBackupStatus(message, 'error');
             showToast(message, 'error');
             return;
         }
 
-        updateBackupStatus('Restauration reussie, reboot en cours...', 'success');
-        showToast('Restauration reussie, redemarrage...', 'success');
+        updateBackupStatus(t('ui.backup.restore_success_status'), 'success');
+        showToast(t('ui.backup.restore_success_toast'), 'success');
 
         showRebootOverlay();
         startRebootMonitoring();
     } catch (error) {
-        updateBackupStatus(`Erreur: ${error.message}`, 'error');
-        showToast(`Erreur restore: ${error.message}`, 'error');
+        updateBackupStatus(t('ui.errors.with_message', { message: error.message }), 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -1467,11 +1473,13 @@ async function loadOnvifStatus() {
                 const nameHint = document.getElementById('onvif_name_hint');
                 
                 if (portInput) portInput.value = data.config.port || 8080;
-                if (nameInput) nameInput.value = data.config.name || 'UNPROVISIONNED';
+                if (nameInput) nameInput.value = data.config.name || t('ui.onvif.name_default_unprovisioned');
                 if (usernameInput) usernameInput.value = data.config.username || '';
                 if (passwordInput) {
                     passwordInput.value = '';
-                    passwordInput.placeholder = data.config.has_password ? '???????? (enregistr?)' : 'Aucun mot de passe';
+                    passwordInput.placeholder = data.config.has_password
+                        ? t('ui.onvif.password_placeholder_saved')
+                        : t('ui.onvif.password_placeholder_none');
                 }
                 if (rtspPortInput) rtspPortInput.value = data.config.rtsp_port || 8554;
                 if (rtspPathInput) rtspPathInput.value = data.config.rtsp_path || '/stream';
@@ -1480,10 +1488,10 @@ async function loadOnvifStatus() {
                 if (nameSourceBadge) {
                     if (data.config.name_from_meeting) {
                         nameSourceBadge.style.display = 'inline';
-                        if (nameHint) nameHint.textContent = 'Nom r?cup?r? automatiquement depuis Meeting API (product_serial)';
+                        if (nameHint) nameHint.textContent = t('ui.onvif.name_hint_from_meeting');
                     } else {
                         nameSourceBadge.style.display = 'none';
-                        if (nameHint) nameHint.textContent = 'Meeting API non configur?e - nom par d?faut utilis?';
+                        if (nameHint) nameHint.textContent = t('ui.onvif.name_hint_default');
                     }
                 }
                 
@@ -1508,9 +1516,9 @@ function updateOnvifVideoInfo(settings) {
     const bitrateEl = document.getElementById('onvif-bitrate');
     
     if (resEl) resEl.textContent = `${settings.width}x${settings.height}`;
-    if (fpsEl) fpsEl.textContent = `${settings.fps} fps`;
+    if (fpsEl) fpsEl.textContent = `${settings.fps} ${t('ui.units.fps_suffix')}`;
     if (bitrateEl) {
-        const bitrate = settings.bitrate ? `${settings.bitrate} kbps` : 'Auto';
+        const bitrate = settings.bitrate ? `${settings.bitrate} ${t('ui.units.kbps_suffix')}` : t('ui.value.auto');
         bitrateEl.textContent = bitrate;
     }
 }
@@ -1531,26 +1539,26 @@ function updateOnvifStatusDisplay(data) {
         html = `
             <div class="status-indicator synced">
                 <i class="fas fa-check-circle"></i>
-                <span>Service ONVIF actif</span>
+                <span>${t('ui.onvif.status.active')}</span>
             </div>
             <div class="onvif-details">
-                <span><strong>Port:</strong> ${data.config?.port || 8080}</span>
-                <span><strong>Nom:</strong> ${data.config?.name || 'RPI-CAM'}</span>
-                <span><strong>URL:</strong> http://${onvifHost}:${data.config?.port || 8080}/onvif/device_service</span>
+                <span><strong>${t('ui.onvif.port_label')}</strong> ${data.config?.port || 8080}</span>
+                <span><strong>${t('ui.onvif.name_label')}</strong> ${data.config?.name || 'RPI-CAM'}</span>
+                <span><strong>${t('ui.onvif.url_label')}</strong> http://${onvifHost}:${data.config?.port || 8080}/onvif/device_service</span>
             </div>
         `;
     } else if (data.enabled) {
         html = `
             <div class="status-indicator not-synced">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>Service ONVIF arr?t?</span>
+                <span>${t('ui.onvif.status.stopped')}</span>
             </div>
         `;
     } else {
         html = `
             <div class="status-indicator">
                 <i class="fas fa-power-off"></i>
-                <span>Service ONVIF d?sactiv?</span>
+                <span>${t('ui.onvif.status.disabled')}</span>
             </div>
         `;
     }
@@ -1587,7 +1595,7 @@ async function saveOnvifConfig() {
             config.password = passwordValue;
         }
         
-        showToast('Enregistrement ONVIF...', 'info');
+        showToast(t('ui.onvif.saving'), 'info');
         
         const response = await fetch('/api/onvif/config', {
             method: 'POST',
@@ -1598,13 +1606,13 @@ async function saveOnvifConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Configuration ONVIF enregistr?e', 'success');
+            showToast(t('ui.onvif.saved'), 'success');
             loadOnvifStatus();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -1613,7 +1621,7 @@ async function saveOnvifConfig() {
  */
 async function restartOnvifService() {
     try {
-        showToast('Red?marrage du service ONVIF...', 'info');
+        showToast(t('ui.onvif.restarting'), 'info');
         
         const response = await fetch('/api/onvif/restart', {
             method: 'POST'
@@ -1622,13 +1630,13 @@ async function restartOnvifService() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Service ONVIF red?marr?', 'success');
+            showToast(t('ui.onvif.restarted'), 'success');
             setTimeout(loadOnvifStatus, 2000);
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     }
 }
 
@@ -1650,8 +1658,8 @@ async function checkFirmwareUpdate() {
     const updateBtn = document.getElementById('btn-update-firmware');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> V?rification...';
-    statusText.textContent = 'V?rification en cours...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.debug.firmware.checking')}`;
+    statusText.textContent = t('ui.debug.firmware.checking_status');
     statusText.className = 'status-value checking';
     
     try {
@@ -1664,7 +1672,7 @@ async function checkFirmwareUpdate() {
         // Show method badge
         if (data.method) {
             methodDiv.style.display = 'block';
-            methodBadge.textContent = `${data.model} ? ${data.method}`;
+            methodBadge.textContent = t('ui.debug.firmware.method_display', { model: data.model, method: data.method });
             // Store method for update confirmation
             updateBtn.dataset.method = data.method;
         }
@@ -1672,38 +1680,38 @@ async function checkFirmwareUpdate() {
         if (data.success) {
             // Check if firmware update is disabled (initramfs system)
             if (data.can_update === false || data.use_apt === true) {
-                statusText.textContent = 'Utiliser apt upgrade';
+                statusText.textContent = t('ui.debug.firmware.use_apt');
                 statusText.className = 'status-value use-apt';
-                details.innerHTML = `<small>Kernel: ${data.current_version}<br>?? initramfs d?tect? - rpi-update non support?</small>`;
+                details.innerHTML = `<small>${t('ui.debug.firmware.kernel_version', { version: data.current_version })}<br>${t('ui.debug.firmware.initramfs_detected')}</small>`;
                 updateBtn.disabled = true;
-                updateBtn.title = 'initramfs d?tect? - utilisez apt upgrade ci-dessous';
+                updateBtn.title = t('ui.debug.firmware.use_apt_title');
             } else if (data.update_available) {
-                statusText.textContent = 'Mise ? jour disponible';
+                statusText.textContent = t('ui.debug.firmware.update_available');
                 statusText.className = 'status-value update-available';
-                details.innerHTML = `<small>Version actuelle: ${data.current_version}</small>`;
+                details.innerHTML = `<small>${t('ui.debug.firmware.current_version', { version: data.current_version })}</small>`;
                 updateBtn.disabled = false;
             } else {
-                statusText.textContent = '? jour';
+                statusText.textContent = t('ui.debug.firmware.up_to_date');
                 statusText.className = 'status-value up-to-date';
-                details.innerHTML = `<small>Version: ${data.current_version}</small>`;
+                details.innerHTML = `<small>${t('ui.debug.firmware.version_label', { version: data.current_version })}</small>`;
                 updateBtn.disabled = true;
             }
             // Update last check date
-            document.getElementById('firmware-last-date').textContent = '? l\'instant';
+            document.getElementById('firmware-last-date').textContent = t('ui.status.just_now');
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = t('ui.errors.generic');
             statusText.className = 'status-value error';
             details.innerHTML = `<small>${data.message}</small>`;
             updateBtn.disabled = true;
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = t('ui.errors.generic');
         statusText.className = 'status-value error';
         details.innerHTML = `<small>${error.message}</small>`;
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-search"></i> V?rifier';
+        btn.innerHTML = `<i class="fas fa-search"></i> ${t('ui.actions.check')}`;
     }
 }
 
@@ -1715,12 +1723,9 @@ async function runFirmwareUpdate() {
     const method = updateBtn.dataset.method || 'unknown';
     
     // Different warning for rpi-update (experimental firmware)
-    let confirmMessage = 'Voulez-vous mettre ? jour le firmware?\n\nUn red?marrage sera n?cessaire apr?s la mise ? jour.';
+    let confirmMessage = t('ui.debug.firmware.confirm_update');
     if (method === 'rpi-update') {
-        confirmMessage = '?? ATTENTION: rpi-update installe un firmware EXP?RIMENTAL!\n\n' +
-            'Cela peut causer des instabilit?s syst?me.\n' +
-            'Utilisez uniquement si vous savez ce que vous faites.\n\n' +
-            'Voulez-vous continuer?';
+        confirmMessage = t('ui.debug.firmware.confirm_experimental');
     }
     
     if (!confirm(confirmMessage)) {
@@ -1732,10 +1737,10 @@ async function runFirmwareUpdate() {
     const output = document.getElementById('firmware-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise ? jour...';
-    statusText.textContent = 'Mise ? jour en cours...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.debug.firmware.updating_button')}`;
+    statusText.textContent = t('ui.debug.firmware.updating_status');
     statusText.className = 'status-value updating';
-    output.textContent = 'T?l?chargement et installation du firmware...\nCela peut prendre plusieurs minutes, veuillez patienter...';
+    output.textContent = t('ui.debug.firmware.downloading');
     
     try {
         const response = await fetch('/api/debug/firmware/update', { method: 'POST' });
@@ -1745,13 +1750,13 @@ async function runFirmwareUpdate() {
         
         // Show warning if present
         if (data.warning) {
-            output.textContent += '\n\n?? ' + data.warning;
+            output.textContent += `\n\n${t('ui.notifications.warning_prefix')} ${data.warning}`;
         }
         
         if (data.success) {
-            statusText.textContent = 'Red?marrage requis';
+            statusText.textContent = t('ui.debug.firmware.reboot_required');
             statusText.className = 'status-value reboot-required';
-            showToast('Firmware mis ? jour! Red?marrez pour finaliser.', 'success');
+            showToast(t('ui.debug.firmware.updated_restart'), 'success');
             
             if (data.reboot_required) {
                 setTimeout(() => {
@@ -1759,17 +1764,17 @@ async function runFirmwareUpdate() {
                 }, 1000);
             }
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = t('ui.errors.generic');
             statusText.className = 'status-value error';
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = t('ui.errors.generic');
         statusText.className = 'status-value error';
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-download"></i> Mettre ? jour';
+        btn.innerHTML = `<i class="fas fa-download"></i> ${t('ui.actions.update')}`;
     }
 }
 
@@ -1784,11 +1789,11 @@ async function runAptUpdate() {
     const output = document.getElementById('apt-update-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ex?cution...';
-    statusText.textContent = 'En cours...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.debug.apt_update.running_button')}`;
+    statusText.textContent = t('ui.status.running');
     statusText.className = 'status-value running';
     outputContainer.style.display = 'block';
-    output.textContent = 'Rafra?chissement des listes de paquets...\nCela peut prendre quelques minutes...';
+    output.textContent = t('ui.debug.apt_update.running_output');
     
     try {
         const response = await fetch('/api/debug/apt/update', { method: 'POST' });
@@ -1797,25 +1802,25 @@ async function runAptUpdate() {
         output.textContent = data.output || data.message;
         
         if (data.success) {
-            statusText.textContent = 'Termin?';
+            statusText.textContent = t('ui.status.completed');
             statusText.className = 'status-value success';
-            details.innerHTML = `<small>${data.hit_count} sources, ${data.get_count} mises ? jour</small>`;
-            document.getElementById('apt-update-last-date').textContent = '? l\'instant';
+            details.innerHTML = `<small>${t('ui.debug.apt_update.details_summary', { hit_count: data.hit_count, get_count: data.get_count })}</small>`;
+            document.getElementById('apt-update-last-date').textContent = t('ui.status.just_now');
             showToast(data.message, 'success');
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = t('ui.errors.generic');
             statusText.className = 'status-value error';
             details.innerHTML = `<small>${data.message}</small>`;
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = t('ui.errors.generic');
         statusText.className = 'status-value error';
         output.textContent = error.message;
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sync"></i> Ex?cuter apt update';
+        btn.innerHTML = `<i class="fas fa-sync"></i> ${t('ui.debug.run_apt_update')}`;
     }
 }
 
@@ -1830,8 +1835,8 @@ async function checkAptUpgradable() {
     const output = document.getElementById('apt-upgrade-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> V?rification...';
-    statusText.textContent = 'V?rification...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.debug.apt_upgrade.checking_button')}`;
+    statusText.textContent = t('ui.debug.apt_upgrade.checking_status');
     statusText.className = 'status-value checking';
     
     try {
@@ -1842,35 +1847,35 @@ async function checkAptUpgradable() {
         
         if (data.success) {
             if (data.count > 0) {
-                statusText.textContent = `${data.count} mises ? jour`;
+                statusText.textContent = t('ui.debug.apt_upgrade.available_count', { count: data.count });
                 statusText.className = 'status-value update-available';
-                details.innerHTML = `<small>${data.count} paquets peuvent ?tre mis ? jour</small>`;
+                details.innerHTML = `<small>${t('ui.debug.apt_upgrade.available_details', { count: data.count })}</small>`;
                 
                 // Format output nicely
-                let formattedOutput = `=== ${data.count} paquets peuvent ?tre mis ? jour ===\n\n`;
+                let formattedOutput = `${t('ui.debug.apt_upgrade.available_header', { count: data.count })}\n\n`;
                 data.packages.forEach(pkg => {
-                    formattedOutput += `? ${pkg.name} ? ${pkg.version}\n`;
+                    formattedOutput += `${t('ui.debug.apt_upgrade.package_line', { name: pkg.name, version: pkg.version })}\n`;
                 });
                 output.textContent = formattedOutput;
             } else {
-                statusText.textContent = '? jour';
+                statusText.textContent = t('ui.debug.apt_upgrade.up_to_date');
                 statusText.className = 'status-value up-to-date';
-                details.innerHTML = '<small>Tous les paquets sont ? jour</small>';
-                output.textContent = 'Aucune mise ? jour disponible.';
+                details.innerHTML = `<small>${t('ui.debug.apt_upgrade.all_up_to_date')}</small>`;
+                output.textContent = t('ui.debug.apt_upgrade.none_available');
             }
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = t('ui.errors.generic');
             statusText.className = 'status-value error';
             output.textContent = data.message;
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = t('ui.errors.generic');
         statusText.className = 'status-value error';
         output.textContent = error.message;
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-list"></i> Voir paquets';
+        btn.innerHTML = `<i class="fas fa-list"></i> ${t('ui.debug.view_packages')}`;
     }
 }
 
@@ -1878,7 +1883,7 @@ async function checkAptUpgradable() {
  * Run apt upgrade
  */
 async function runAptUpgrade() {
-    if (!confirm('Voulez-vous mettre ? jour tous les paquets?\n\nCette op?ration peut prendre plusieurs minutes.')) {
+    if (!confirm(t('ui.debug.apt_upgrade.confirm'))) {
         return;
     }
     
@@ -1889,11 +1894,11 @@ async function runAptUpgrade() {
     const output = document.getElementById('apt-upgrade-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise ? jour...';
-    statusText.textContent = 'En cours...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.debug.apt_upgrade.updating_button')}`;
+    statusText.textContent = t('ui.status.running');
     statusText.className = 'status-value running';
     outputContainer.style.display = 'block';
-    output.textContent = 'Installation des mises ? jour en cours...\nCela peut prendre plusieurs minutes, veuillez patienter...';
+    output.textContent = t('ui.debug.apt_upgrade.running_output');
     
     try {
         const response = await fetch('/api/debug/apt/upgrade', { method: 'POST' });
@@ -1902,25 +1907,25 @@ async function runAptUpgrade() {
         output.textContent = data.output || data.message;
         
         if (data.success) {
-            statusText.textContent = 'Termin?';
+            statusText.textContent = t('ui.status.completed');
             statusText.className = 'status-value success';
-            details.innerHTML = `<small>${data.upgraded} paquets mis ? jour, ${data.newly_installed} nouveaux</small>`;
-            document.getElementById('apt-upgrade-last-date').textContent = '? l\'instant';
+            details.innerHTML = `<small>${t('ui.debug.apt_upgrade.summary', { upgraded: data.upgraded, newly_installed: data.newly_installed })}</small>`;
+            document.getElementById('apt-upgrade-last-date').textContent = t('ui.status.just_now');
             showToast(data.message, 'success');
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = t('ui.errors.generic');
             statusText.className = 'status-value error';
             details.innerHTML = `<small>${data.message}</small>`;
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(t('ui.errors.with_message', { message: data.message }), 'error');
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = t('ui.errors.generic');
         statusText.className = 'status-value error';
         output.textContent = error.message;
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-arrow-up"></i> Mettre ? jour';
+        btn.innerHTML = `<i class="fas fa-arrow-up"></i> ${t('ui.actions.update')}`;
     }
 }
 
@@ -1989,20 +1994,20 @@ async function loadRtcDebug() {
 
         if (data.success && data.status) {
             const enabled = data.status.effective_enabled;
-            statusText.textContent = enabled ? 'Actif' : 'Inactif';
+            statusText.textContent = enabled ? t('ui.system.rtc.active') : t('ui.system.rtc.inactive');
             statusText.className = `status-value ${enabled ? 'synced' : 'not-synced'}`;
 
-            const detected = data.status.detected ? 'd?tect?' : 'non d?tect?';
+            const detected = data.status.detected ? t('ui.value.yes') : t('ui.value.no');
             const mode = data.status.mode || 'auto';
-            details.innerHTML = `<small>Mode: ${mode} ? RTC ${detected} ? Overlay: ${data.status.overlay_configured ? 'ok' : 'absent'}</small>`;
+            details.innerHTML = `<small>${t('ui.system.rtc.mode_label')} ${mode} - ${t('ui.system.rtc.detected_label')} ${detected} - ${t('ui.system.rtc.overlay_label')} ${data.status.overlay_configured ? t('ui.system.rtc.overlay_configured') : t('ui.system.rtc.overlay_not_configured')}</small>`;
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = t('ui.errors.generic');
             statusText.className = 'status-value warning';
-            details.innerHTML = `<small>${data.message || 'Erreur RTC'}</small>`;
+            details.innerHTML = `<small>${data.message || t('ui.system.rtc.error')}</small>`;
         }
     } catch (error) {
         if (statusText) {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = t('ui.errors.generic');
             statusText.className = 'status-value warning';
         }
         if (details) {
@@ -2046,7 +2051,7 @@ async function loadDebugLastActions() {
  * Format a date string for display
  */
 function formatLastActionDate(dateStr) {
-    if (!dateStr) return 'jamais';
+    if (!dateStr) return t('ui.status.never');
     
     try {
         const date = new Date(dateStr.replace(' ', 'T'));
@@ -2056,13 +2061,14 @@ function formatLastActionDate(dateStr) {
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
         
-        if (diffMins < 1) return '? l\'instant';
-        if (diffMins < 60) return `il y a ${diffMins} min`;
-        if (diffHours < 24) return `il y a ${diffHours}h`;
-        if (diffDays < 7) return `il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+        if (diffMins < 1) return t('ui.status.just_now');
+        if (diffMins < 60) return t('ui.time.ago_minutes', { minutes: diffMins });
+        if (diffHours < 24) return t('ui.time.ago_hours', { hours: diffHours });
+        if (diffDays < 7) return t('ui.time.ago_days', { days: diffDays });
         
         // Format as date
-        return date.toLocaleDateString('fr-FR', { 
+        const locale = document.documentElement.lang || 'fr-FR';
+        return date.toLocaleDateString(locale, {
             day: '2-digit', 
             month: '2-digit', 
             year: 'numeric',
@@ -2091,7 +2097,7 @@ async function loadAptScheduler() {
             
             // Update status text
             const statusText = document.getElementById('scheduler-status-text');
-            statusText.textContent = scheduler.enabled ? 'Activ?' : 'D?sactiv?';
+            statusText.textContent = scheduler.enabled ? t('ui.value.enabled') : t('ui.value.disabled');
             
             // Show/hide config
             document.getElementById('scheduler-config').style.display = scheduler.enabled ? 'block' : 'none';
@@ -2120,7 +2126,7 @@ function toggleAptScheduler() {
     const statusText = document.getElementById('scheduler-status-text');
     
     configDiv.style.display = enabled ? 'block' : 'none';
-    statusText.textContent = enabled ? 'Configuration...' : 'D?sactiv?';
+    statusText.textContent = enabled ? t('ui.status.configuring') : t('ui.value.disabled');
     
     // If disabling, save immediately
     if (!enabled) {
@@ -2153,7 +2159,7 @@ async function saveAptScheduler() {
     
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${t('ui.debug.scheduler.saving')}`;
     }
     
     try {
@@ -2165,17 +2171,17 @@ async function saveAptScheduler() {
         const data = await response.json();
         
         if (data.success) {
-            statusText.textContent = config.enabled ? 'Activ?' : 'D?sactiv?';
-            showToast(data.message || 'Planification enregistr?e', 'success');
+            statusText.textContent = config.enabled ? t('ui.value.enabled') : t('ui.value.disabled');
+            showToast(data.message || t('ui.debug.scheduler.saved'), 'success');
         } else {
-            showToast(data.message || 'Erreur', 'error');
+            showToast(data.message || t('ui.errors.generic'), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(t('ui.errors.with_message', { message: error.message }), 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> Enregistrer';
+            btn.innerHTML = `<i class="fas fa-save"></i> ${t('ui.actions.save')}`;
         }
     }
 }
@@ -2253,8 +2259,8 @@ async function executeTerminalCommand() {
         const data = await response.json();
         
         if (response.status === 403) {
-            appendTerminalLine(`Commande non autoris?e: ${command.split(' ')[0]}`, 'terminal-error');
-            appendTerminalLine('Tapez "help" pour voir les commandes autoris?es.', 'terminal-info');
+            appendTerminalLine(t('ui.debug.terminal.command_not_allowed', { command: command.split(' ')[0] }), 'terminal-error');
+            appendTerminalLine(t('ui.debug.terminal.help_hint'), 'terminal-info');
         } else if (data.success) {
             if (data.stdout) {
                 appendTerminalLine(data.stdout, 'terminal-stdout');
@@ -2263,13 +2269,13 @@ async function executeTerminalCommand() {
                 appendTerminalLine(data.stderr, 'terminal-stderr');
             }
             if (data.returncode !== 0 && !data.stdout && !data.stderr) {
-                appendTerminalLine(`Commande termin?e avec code ${data.returncode}`, 'terminal-info');
+                appendTerminalLine(t('ui.debug.terminal.command_exit_code', { code: data.returncode }), 'terminal-info');
             }
         } else {
-            appendTerminalLine(`Erreur: ${data.error}`, 'terminal-error');
+            appendTerminalLine(t('ui.errors.with_message', { message: data.error }), 'terminal-error');
         }
     } catch (error) {
-        appendTerminalLine(`Erreur r?seau: ${error.message}`, 'terminal-error');
+        appendTerminalLine(t('ui.debug.terminal.network_error', { message: error.message }), 'terminal-error');
     }
     
     // Scroll to bottom
@@ -2294,32 +2300,32 @@ function appendTerminalLine(text, className = '') {
 function clearTerminal() {
     const output = document.getElementById('terminal-output');
     output.innerHTML = '';
-    appendTerminalLine('Terminal effac?.', 'terminal-info');
+    appendTerminalLine(t('ui.debug.terminal.cleared'), 'terminal-info');
 }
 
 /**
  * Show allowed commands
  */
 async function showAllowedCommands() {
-    appendTerminalLine('Chargement des commandes autoris?es...', 'terminal-info');
+    appendTerminalLine(t('ui.debug.terminal.loading_allowed'), 'terminal-info');
     
     try {
         const response = await fetch('/api/debug/terminal/allowed');
         const data = await response.json();
         
         if (data.success) {
-            appendTerminalLine('=== Commandes autoris?es ===', 'terminal-success');
+            appendTerminalLine(t('ui.debug.terminal.allowed_header'), 'terminal-success');
             
             // Group commands by category
             const categories = {
-                'Syst?me': ['ls', 'cat', 'head', 'tail', 'grep', 'find', 'df', 'du', 'free', 'top', 'ps', 'uptime', 'date', 'hostname', 'uname', 'whoami', 'id', 'pwd'],
-                'Journaux': ['journalctl', 'dmesg'],
-                'Services': ['systemctl', 'service'],
-                'R?seau': ['ip', 'ifconfig', 'iwconfig', 'nmcli', 'netstat', 'ss', 'ping', 'traceroute', 'curl', 'wget'],
-                'Mat?riel': ['vcgencmd', 'pinctrl', 'lsusb', 'lspci', 'lsblk', 'lscpu', 'lshw', 'lsmod', 'v4l2-ctl'],
-                'M?dia': ['ffprobe', 'ffmpeg', 'gst-launch-1.0', 'gst-inspect-1.0', 'test-launch'],
-                'Paquets': ['apt', 'apt-get', 'apt-cache', 'dpkg'],
-                'Utilitaires': ['echo', 'which', 'whereis', 'file', 'stat', 'wc', 'sort', 'uniq', 'awk', 'sed', 'cut', 'tr', 'tee']
+                [t('ui.debug.terminal.category.system')]: ['ls', 'cat', 'head', 'tail', 'grep', 'find', 'df', 'du', 'free', 'top', 'ps', 'uptime', 'date', 'hostname', 'uname', 'whoami', 'id', 'pwd'],
+                [t('ui.debug.terminal.category.logs')]: ['journalctl', 'dmesg'],
+                [t('ui.debug.terminal.category.services')]: ['systemctl', 'service'],
+                [t('ui.debug.terminal.category.network')]: ['ip', 'ifconfig', 'iwconfig', 'nmcli', 'netstat', 'ss', 'ping', 'traceroute', 'curl', 'wget'],
+                [t('ui.debug.terminal.category.hardware')]: ['vcgencmd', 'pinctrl', 'lsusb', 'lspci', 'lsblk', 'lscpu', 'lshw', 'lsmod', 'v4l2-ctl'],
+                [t('ui.debug.terminal.category.media')]: ['ffprobe', 'ffmpeg', 'gst-launch-1.0', 'gst-inspect-1.0', 'test-launch'],
+                [t('ui.debug.terminal.category.packages')]: ['apt', 'apt-get', 'apt-cache', 'dpkg'],
+                [t('ui.debug.terminal.category.utilities')]: ['echo', 'which', 'whereis', 'file', 'stat', 'wc', 'sort', 'uniq', 'awk', 'sed', 'cut', 'tr', 'tee']
             };
             
             for (const [category, cmds] of Object.entries(categories)) {
@@ -2329,12 +2335,12 @@ async function showAllowedCommands() {
                 }
             }
             
-            appendTerminalLine('\nNote: Utilisez "sudo" devant une commande pour les droits root.', 'terminal-info');
+            appendTerminalLine(`\n${t('ui.debug.terminal.note_sudo')}`, 'terminal-info');
         } else {
-            appendTerminalLine('Erreur lors du chargement des commandes.', 'terminal-error');
+            appendTerminalLine(t('ui.debug.terminal.load_error'), 'terminal-error');
         }
     } catch (error) {
-        appendTerminalLine(`Erreur: ${error.message}`, 'terminal-error');
+        appendTerminalLine(t('ui.errors.with_message', { message: error.message }), 'terminal-error');
     }
 }
 

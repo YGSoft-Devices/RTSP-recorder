@@ -6,6 +6,7 @@ Version: 2.30.1
 
 from flask import Blueprint, request, jsonify
 
+from services.i18n_service import t as i18n_t, resolve_request_lang
 from services.config_service import (
     load_config, save_config, get_config_metadata, validate_config,
     get_service_status, control_service, get_all_services_status,
@@ -14,6 +15,10 @@ from services.config_service import (
 from config import APP_VERSION, DEFAULT_CONFIG, CONFIG_METADATA
 
 config_bp = Blueprint('config', __name__, url_prefix='/api')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # CONFIGURATION ROUTES
@@ -36,7 +41,7 @@ def update_config():
         data = request.get_json(silent=True) or {}
         
         if not data:
-            return jsonify({'success': False, 'error': 'No data provided'}), 400
+            return jsonify({'success': False, 'error': _t('ui.errors.no_data_provided')}), 400
         
         # Load current config and merge
         current = load_config()
@@ -62,7 +67,7 @@ def update_config():
         if not validation['valid']:
             return jsonify({
                 'success': False,
-                'error': 'Validation failed',
+                'error': _t('ui.config.validation_failed'),
                 'errors': validation['errors']
             }), 400
         
@@ -72,7 +77,7 @@ def update_config():
         if result['success']:
             response_data = {
                 'success': True,
-                'message': 'Configuration saved',
+                'message': _t('ui.config.saved'),
                 'config': current
             }
             
@@ -82,7 +87,7 @@ def update_config():
                 sync_result = sync_recorder_service(current)
                 response_data['recorder_sync'] = sync_result
                 if sync_result.get('action') in ['started', 'stopped']:
-                    response_data['message'] += f" - Recorder {sync_result['action']}"
+                    response_data['message'] += _t('ui.config.recorder_action', action=sync_result['action'])
             
             return jsonify(response_data)
         else:
@@ -111,7 +116,7 @@ def reset_config():
     if result['success']:
         return jsonify({
             'success': True,
-            'message': 'Configuration reset to defaults',
+            'message': _t('ui.config.reset_defaults'),
             'config': DEFAULT_CONFIG
         })
     else:
@@ -177,7 +182,7 @@ def restart_main_service():
     if result['success']:
         return jsonify({
             'success': True,
-            'message': 'Service restart initiated'
+            'message': _t('ui.services.restart_initiated')
         })
     else:
         return jsonify(result), 500
@@ -211,7 +216,7 @@ def set_system_hostname():
     if not data or 'hostname' not in data:
         return jsonify({
             'success': False,
-            'error': 'hostname required'
+            'error': _t('ui.system.hostname_required')
         }), 400
     
     result = set_hostname(data['hostname'])

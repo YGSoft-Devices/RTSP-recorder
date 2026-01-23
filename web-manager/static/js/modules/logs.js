@@ -3,6 +3,7 @@
  * Version: 2.33.06
  */
 (function () {
+    const t = window.t || function (key) { return key; };
     let logsEventSource = null;
     window.isLiveLogsActive = false;
     
@@ -11,7 +12,7 @@
             const source = document.getElementById('logs-source')?.value || 'all';
             const lines = document.getElementById('logs-lines')?.value || 100;
             
-            updateLogsStatus('Chargement...');
+            updateLogsStatus(t('ui.logs.loading'));
             
             const response = await fetch(`/api/logs?lines=${lines}&source=${source}`);
             const data = await response.json();
@@ -28,16 +29,16 @@
                     logsText = data.logs;
                 }
     
-                logsContent.textContent = logsText || 'Aucun log disponible';
+                logsContent.textContent = logsText || t('ui.logs.none_available');
                 logsContent.scrollTop = logsContent.scrollHeight;
-                updateLogsStatus(`Derni?re mise ? jour: ${new Date().toLocaleTimeString()}`);
+                updateLogsStatus(t('ui.logs.updated_at', { time: new Date().toLocaleTimeString() }));
             } else {
-                logsContent.textContent = 'Erreur lors du chargement des logs';
-                updateLogsStatus('Erreur');
+                logsContent.textContent = t('ui.logs.load_error');
+                updateLogsStatus(t('ui.errors.generic'));
             }
         } catch (error) {
             console.error('Error loading logs:', error);
-            updateLogsStatus('Erreur de connexion');
+            updateLogsStatus(t('ui.logs.connection_error'));
         }
     }
     
@@ -55,19 +56,19 @@
         }
         
         const logsContent = document.getElementById('logs-content');
-        logsContent.textContent = '=== Logs en direct ===\nConnexion au flux de logs...\n\n';
+        logsContent.textContent = `${t('ui.logs.live_header')}\n${t('ui.logs.live_connecting')}\n\n`;
         
         logsEventSource = new EventSource('/api/logs/stream');
         window.isLiveLogsActive = true;
         
         // Update UI
         const btn = document.getElementById('btn-live-logs');
-        btn.innerHTML = '<i class="fas fa-stop"></i> Arr?ter';
+        btn.innerHTML = `<i class="fas fa-stop"></i> ${t('ui.actions.stop')}`;
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-danger');
         
         document.getElementById('live-indicator').style.display = 'flex';
-        updateLogsStatus('Streaming en direct...');
+        updateLogsStatus(t('ui.logs.live_status'));
         
         logsEventSource.onmessage = function(event) {
             try {
@@ -81,7 +82,7 @@
                     }
                     logsContent.scrollTop = logsContent.scrollHeight;
                 } else if (data.error) {
-                    logsContent.textContent += `[ERREUR] ${data.error}\n`;
+                    logsContent.textContent += `${t('ui.logs.error_prefix')} ${data.error}\n`;
                 }
             } catch (e) {
                 // Ignore parse errors for heartbeats
@@ -90,11 +91,11 @@
         
         logsEventSource.onerror = function(error) {
             console.error('SSE Error:', error);
-            logsContent.textContent += '\n[Connexion perdue. Tentative de reconnexion...]\n';
-            updateLogsStatus('Reconnexion...');
+            logsContent.textContent += `\n${t('ui.logs.connection_lost')}\n`;
+            updateLogsStatus(t('ui.logs.reconnecting'));
         };
         
-        window.showToast('Logs en direct activ?s', 'success');
+        window.showToast(t('ui.logs.live_enabled'), 'success');
     }
     
     function stopLiveLogs() {
@@ -106,32 +107,32 @@
         
         // Update UI
         const btn = document.getElementById('btn-live-logs');
-        btn.innerHTML = '<i class="fas fa-play"></i> Logs en direct';
+        btn.innerHTML = `<i class="fas fa-play"></i> ${t('ui.logs.live_button')}`;
         btn.classList.remove('btn-danger');
         btn.classList.add('btn-primary');
         
         document.getElementById('live-indicator').style.display = 'none';
-        updateLogsStatus('Streaming arr?t?');
+        updateLogsStatus(t('ui.logs.live_stopped'));
         
         const logsContent = document.getElementById('logs-content');
-        logsContent.textContent += '\n\n=== Streaming arr?t? ===\n';
+        logsContent.textContent += `\n\n${t('ui.logs.stream_stopped')}\n`;
         
-        window.showToast('Logs en direct d?sactiv?s', 'info');
+        window.showToast(t('ui.logs.live_disabled'), 'info');
     }
     
     function clearLogsDisplay() {
         const logsContent = document.getElementById('logs-content');
         logsContent.textContent = '';
-        updateLogsStatus('Affichage effac?');
+        updateLogsStatus(t('ui.logs.display_cleared'));
     }
     
     async function cleanServerLogs() {
-        if (!confirm('Voulez-vous vraiment nettoyer les fichiers de logs sur le serveur ?\n\nCette action va :\n- Tronquer le fichier log principal (garder 100 derni?res lignes)\n- Supprimer les logs GStreamer\n- Supprimer les vieux fichiers de log (> 7 jours)\n- Vider le cache journald')) {
+        if (!confirm(t('ui.logs.clean_confirm'))) {
             return;
         }
         
         try {
-            window.showToast('Nettoyage des logs en cours...', 'info');
+            window.showToast(t('ui.logs.cleaning'), 'info');
             
             const response = await fetch('/api/logs/clean', {
                 method: 'POST'
@@ -143,11 +144,11 @@
                 // Reload logs to show the cleaned state
                 loadLogs();
             } else {
-                window.showToast(data.message || 'Erreur lors du nettoyage', 'error');
+                window.showToast(data.message || t('ui.logs.clean_error'), 'error');
             }
         } catch (error) {
             console.error('Error cleaning logs:', error);
-            window.showToast('Erreur lors du nettoyage des logs', 'error');
+            window.showToast(t('ui.logs.clean_error'), 'error');
         }
     }
     

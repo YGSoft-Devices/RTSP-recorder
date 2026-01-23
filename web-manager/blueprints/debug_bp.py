@@ -18,8 +18,13 @@ from flask import Blueprint, request, jsonify
 from services.platform_service import run_command, PLATFORM
 from services.meeting_service import is_debug_enabled
 from services.system_service import get_rtc_debug_info
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 debug_bp = Blueprint('debug', __name__, url_prefix='/api')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # ACCESS CONTROL DECORATOR
@@ -33,7 +38,7 @@ def require_debug_access(f):
             return jsonify({
                 'success': False,
                 'error': 'Debug access not authorized',
-                'message': 'This feature requires the "vnc" or "debug" service to be declared in Meeting.'
+                'message': _t('ui.debug.access_required')
             }), 403
         return f(*args, **kwargs)
     return decorated_function
@@ -201,13 +206,13 @@ def set_apt_scheduler():
             save_debug_state(state)
             return jsonify({
                 'success': True,
-                'message': 'Planification mise à jour',
+                'message': _t('ui.debug.scheduler.updated'),
                 'scheduler': scheduler
             })
         else:
             return jsonify({
                 'success': False,
-                'message': 'Erreur lors de la mise à jour du cron'
+                'message': _t('ui.debug.scheduler.update_error')
             }), 500
             
     except Exception as e:
@@ -282,7 +287,7 @@ def firmware_check():
             output = result.stdout + result.stderr
             update_available = 'UPDATE AVAILABLE' in output.upper()
             
-            current_version = "Inconnu"
+            current_version = _t('ui.status.unknown')
             for line in output.split('\n'):
                 if 'CURRENT:' in line or 'current:' in line.lower():
                     current_version = line.split(':')[-1].strip()
@@ -295,7 +300,7 @@ def firmware_check():
                 'update_available': update_available,
                 'current_version': current_version,
                 'output': output,
-                'message': 'Mise à jour EEPROM disponible' if update_available else 'EEPROM à jour',
+                'message': _t('ui.debug.firmware.eeprom_available') if update_available else _t('ui.debug.firmware.eeprom_up_to_date'),
                 'can_update': True
             })
         else:
@@ -304,7 +309,7 @@ def firmware_check():
                     uname_result = subprocess.run(['uname', '-r'], capture_output=True, text=True, timeout=5)
                     kernel_version = uname_result.stdout.strip()
                 except:
-                    kernel_version = "Inconnu"
+                    kernel_version = _t('ui.status.unknown')
                 
                 return jsonify({
                     'success': True,
@@ -312,9 +317,8 @@ def firmware_check():
                     'model': 'Pi 3/2/Zero (initramfs)',
                     'update_available': False,
                     'current_version': kernel_version,
-                    'output': 'Ce système utilise initramfs, incompatible avec rpi-update.\n'
-                              'Utilisez "apt upgrade" pour les mises à jour du kernel et firmware.',
-                    'message': 'Utilisez apt upgrade pour les mises à jour (initramfs détecté)',
+                    'output': _t('ui.debug.firmware.initramfs_output'),
+                    'message': _t('ui.debug.firmware.use_apt_message'),
                     'can_update': False,
                     'use_apt': True
                 })
@@ -331,7 +335,7 @@ def firmware_check():
             output = result.stdout + result.stderr
             update_available = 'update required' in output.lower() or 'running for the first time' in output.lower()
             
-            current_version = "Inconnu"
+            current_version = _t('ui.status.unknown')
             for line in output.split('\n'):
                 if 'FW_REV:' in line:
                     current_version = line.split(':')[-1].strip()[:12] + '...'
@@ -344,21 +348,21 @@ def firmware_check():
                 'update_available': update_available,
                 'current_version': current_version,
                 'output': output,
-                'message': 'Mise à jour firmware disponible' if update_available else 'Firmware à jour',
+                'message': _t('ui.debug.firmware.available') if update_available else _t('ui.debug.firmware.up_to_date'),
                 'can_update': True
             })
             
     except FileNotFoundError as e:
         return jsonify({
             'success': False,
-            'message': f'Outil de mise à jour non trouvé: {str(e)}',
-            'output': 'Installez rpi-update ou rpi-eeprom-update selon votre modèle de Pi.'
+            'message': _t('ui.debug.firmware.tool_not_found', error=str(e)),
+            'output': _t('ui.debug.firmware.install_tools')
         })
     except subprocess.TimeoutExpired:
         return jsonify({
             'success': False,
-            'message': 'Timeout lors de la vérification',
-            'output': 'La vérification a pris trop de temps.'
+            'message': _t('ui.debug.firmware.check_timeout'),
+            'output': _t('ui.debug.firmware.check_timeout_output')
         }), 500
     except Exception as e:
         return jsonify({
@@ -387,7 +391,7 @@ def firmware_update():
                 'success': success,
                 'method': 'rpi-eeprom-update',
                 'output': output,
-                'message': 'EEPROM mis à jour. Redémarrez pour finaliser.' if success else 'Erreur lors de la mise à jour EEPROM',
+                'message': _t('ui.debug.firmware.eeprom_updated') if success else _t('ui.debug.firmware.eeprom_update_failed'),
                 'reboot_required': success
             })
         else:
@@ -404,20 +408,20 @@ def firmware_update():
                 'success': success,
                 'method': 'rpi-update',
                 'output': output,
-                'message': 'Firmware mis à jour. Redémarrez pour finaliser.' if success else 'Erreur lors de la mise à jour',
+                'message': _t('ui.debug.firmware.updated') if success else _t('ui.debug.firmware.update_failed'),
                 'reboot_required': success,
-                'warning': 'rpi-update installe un firmware expérimental. Utilisez avec précaution.'
+                'warning': _t('ui.debug.firmware.experimental_warning')
             })
             
     except FileNotFoundError as e:
         return jsonify({
             'success': False,
-            'message': f'Outil de mise à jour non trouvé: {str(e)}'
+            'message': _t('ui.debug.firmware.tool_not_found', error=str(e))
         })
     except subprocess.TimeoutExpired:
         return jsonify({
             'success': False,
-            'message': 'Timeout: la mise à jour a pris trop de temps'
+            'message': _t('ui.debug.firmware.update_timeout')
         }), 500
     except Exception as e:
         return jsonify({
@@ -451,12 +455,12 @@ def apt_update():
             'output': output,
             'hit_count': hit_count,
             'get_count': get_count,
-            'message': f'Terminé: {hit_count} sources vérifiées, {get_count} mises à jour' if success else 'Erreur lors de apt update'
+            'message': _t('ui.debug.apt_update.completed_message', hit_count=hit_count, get_count=get_count) if success else _t('ui.debug.apt_update.failed')
         })
     except subprocess.TimeoutExpired:
         return jsonify({
             'success': False,
-            'message': 'Timeout: apt update a pris trop de temps (>5 min)'
+            'message': _t('ui.debug.apt_update.timeout')
         }), 500
     except Exception as e:
         return jsonify({
@@ -495,7 +499,7 @@ def apt_upgradable():
             'packages': packages,
             'count': len(packages),
             'output': output,
-            'message': f'{len(packages)} paquets peuvent être mis à jour'
+            'message': _t('ui.debug.apt_upgrade.available_count', count=len(packages))
         })
     except Exception as e:
         return jsonify({
@@ -537,12 +541,12 @@ def apt_upgrade():
             'output': output,
             'upgraded': upgraded,
             'newly_installed': newly_installed,
-            'message': f'Terminé: {upgraded} mis à jour, {newly_installed} nouveaux' if success else 'Erreur lors de apt upgrade'
+            'message': _t('ui.debug.apt_upgrade.completed_message', upgraded=upgraded, newly_installed=newly_installed) if success else _t('ui.debug.apt_upgrade.failed')
         })
     except subprocess.TimeoutExpired:
         return jsonify({
             'success': False,
-            'message': 'Timeout: apt upgrade a pris trop de temps (>30 min)'
+            'message': _t('ui.debug.apt_upgrade.timeout')
         }), 500
     except Exception as e:
         return jsonify({
@@ -776,7 +780,7 @@ def ntp_set():
         if not server:
             return jsonify({
                 'success': False,
-                'message': 'Serveur NTP requis'
+                'message': _t('ui.system.ntp.server_required')
             }), 400
         
         config_content = f"""[Time]
@@ -792,7 +796,7 @@ FallbackNTP=pool.ntp.org time.google.com
         if result.returncode != 0:
             return jsonify({
                 'success': False,
-                'message': f'Erreur écriture config: {result.stderr}'
+                'message': _t('ui.system.ntp.write_error', error=result.stderr)
             }), 500
         
         subprocess.run(['sudo', 'systemctl', 'restart', 'systemd-timesyncd'],
@@ -800,7 +804,7 @@ FallbackNTP=pool.ntp.org time.google.com
         
         return jsonify({
             'success': True,
-            'message': f'Serveur NTP configuré: {server}'
+            'message': _t('ui.system.ntp.server_configured', server=server)
         })
     except Exception as e:
         return jsonify({
@@ -820,7 +824,7 @@ def ntp_sync():
         if result.returncode != 0:
             return jsonify({
                 'success': False,
-                'message': f'Erreur: {result.stderr}'
+                'message': _t('ui.errors.with_message', message=result.stderr)
             }), 500
         
         time.sleep(2)
@@ -834,7 +838,7 @@ def ntp_sync():
         return jsonify({
             'success': True,
             'synchronized': synced,
-            'message': 'Synchronisation effectuée' if synced else 'Synchronisation en cours...'
+            'message': _t('ui.system.ntp.sync_done') if synced else _t('ui.system.ntp.sync_in_progress')
         })
     except Exception as e:
         return jsonify({
