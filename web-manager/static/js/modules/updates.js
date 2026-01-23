@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Updates (repo + file)
- * Version: 2.33.01
+ * Version: 2.33.02
  */
 
 const CURRENT_VERSION = (window.APP_VERSION || '').replace(/^v/, '') || '0.0.0';
@@ -64,7 +64,7 @@ function setMainVersionFields(currentVersion, latestVersion, updateAvailable) {
                 latestEl.classList.add('new-available');
             } else {
                 latestEl.classList.add('up-to-date');
-                latestEl.textContent += ' ✓';
+                latestEl.textContent += ' ?';
             }
         } else {
             latestEl.textContent = 'Non disponible';

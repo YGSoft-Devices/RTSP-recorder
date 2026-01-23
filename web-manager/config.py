@@ -152,6 +152,7 @@ DEFAULT_CONFIG = {
     "VIDEO_OVERLAY_DATETIME_FORMAT": "%Y-%m-%d %H:%M:%S",
     "VIDEO_OVERLAY_CLOCK_POSITION": "bottom-right",
     "VIDEO_OVERLAY_FONT_SIZE": "24",
+    "CSI_OVERLAY_MODE": "software",
     "CAMERA_TYPE": "auto",
     "CAMERA_DEVICE": "/dev/video0",
     "CSI_ENABLE": "auto",
@@ -301,7 +302,7 @@ CONFIG_METADATA = {
         "label": "Overlay RTSP",
         "type": "select",
         "options": ["yes", "no"],
-        "help": "Afficher un overlay texte/date sur le flux RTSP (USB uniquement)",
+        "help": "Afficher un overlay texte/date sur le flux RTSP (USB + CSI)",
         "category": "video"
     },
     "VIDEO_OVERLAY_TEXT": {
@@ -343,6 +344,13 @@ CONFIG_METADATA = {
         "min": 1,
         "max": 64,
         "help": "Taille de police (Sans)",
+        "category": "video"
+    },
+    "CSI_OVERLAY_MODE": {
+        "label": "Mode overlay CSI",
+        "type": "select",
+        "options": ["software", "libcamera"],
+        "help": "software = overlay GStreamer (decode/encode), libcamera = rpicam-vid annotate (date/heure non supportee)",
         "category": "video"
     },
     "CSI_ENABLE": {

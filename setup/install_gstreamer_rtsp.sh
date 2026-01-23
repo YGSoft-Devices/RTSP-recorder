@@ -9,8 +9,9 @@
 #   - Create folders for recordings/logs
 #   - Provide quick post-install checks (non-destructive)
 #
-# Version: 2.2.3
+# Version: 2.2.4
 # Changelog:
+#   - 2.2.4: rpicam opencv postprocess plugin (CSI overlay annotate)
 #   - 2.2.1: Headless RTSP defaults
 #            - Do not install PipeWire/WirePlumber by default (RTSP-Full uses ALSA direct under systemd/root)
 #            - Mask PipeWire user units globally if present (prevents ALSA busy + reduces CPU on Pi 3B+)
@@ -195,7 +196,8 @@ apt_install \
   python3-picamera2 \
   python3-gi \
   gir1.2-gstreamer-1.0 \
-  gir1.2-gst-rtsp-server-1.0 || msg_warn "Picamera2/GStreamer Python non installés"
+  gir1.2-gst-rtsp-server-1.0 \
+  rpicam-apps-opencv-postprocess || msg_warn "Picamera2/GStreamer Python non installés"
 
 # ==============================================================================
 # libcamera tools (for CSI cameras on Trixie)

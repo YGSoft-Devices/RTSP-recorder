@@ -11,8 +11,9 @@
 #   - Serve RTSP stream (H264 video + optional AAC audio)
 #   - Record locally in segments (robust against power loss)
 #
-# Version: 2.12.8
+# Version: 2.12.9
 # Changelog:
+#   - 2.12.9: Export CSI_OVERLAY_MODE for CSI overlay selection
 #   - 2.12.8: Export overlay config to CSI RTSP server
 #   - 2.12.7: Disable overlay gracefully when textoverlay/clockoverlay missing
 #   - 2.12.6: Fix overlay crash when OVERLAY_SUPPORTED not initialized
@@ -104,6 +105,7 @@ set -euo pipefail
 : "${VIDEO_OVERLAY_DATETIME_FORMAT:=%Y-%m-%d %H:%M:%S}"
 : "${VIDEO_OVERLAY_CLOCK_POSITION:=bottom-right}"
 : "${VIDEO_OVERLAY_FONT_SIZE:=24}"
+: "${CSI_OVERLAY_MODE:=software}"
 
 # Track overlay compatibility for current pipeline
 OVERLAY_SUPPORTED=1
@@ -820,7 +822,11 @@ log "Camera mode: $CAM_MODE"
 if [[ "$CAM_MODE" == "csi" ]]; then
   log "CSI Camera Mode selected. Delegating to rpi_csi_rtsp_server.py (Picamera2 Native)..."
   if [[ "${VIDEO_OVERLAY_ENABLE}" == "yes" ]]; then
-    log "Overlay enabled for CSI (software re-encode in RTSP server)." >&2
+    if [[ "${CSI_OVERLAY_MODE}" == "libcamera" ]]; then
+      log "Overlay enabled for CSI (libcamera annotate via rpicam-vid)." >&2
+    else
+      log "Overlay enabled for CSI (software re-encode in RTSP server)." >&2
+    fi
   fi
   
   # Define path to Python server
@@ -844,13 +850,14 @@ if [[ "$CAM_MODE" == "csi" ]]; then
      export H264_KEYINT
      export H264_PROFILE
      export H264_QP
-     export VIDEO_OVERLAY_ENABLE
-     export VIDEO_OVERLAY_TEXT
-     export VIDEO_OVERLAY_POSITION
-     export VIDEO_OVERLAY_SHOW_DATETIME
-     export VIDEO_OVERLAY_DATETIME_FORMAT
-     export VIDEO_OVERLAY_CLOCK_POSITION
-     export VIDEO_OVERLAY_FONT_SIZE
+    export VIDEO_OVERLAY_ENABLE
+    export VIDEO_OVERLAY_TEXT
+    export VIDEO_OVERLAY_POSITION
+    export VIDEO_OVERLAY_SHOW_DATETIME
+    export VIDEO_OVERLAY_DATETIME_FORMAT
+    export VIDEO_OVERLAY_CLOCK_POSITION
+    export VIDEO_OVERLAY_FONT_SIZE
+    export CSI_OVERLAY_MODE
      export AUDIO_ENABLE
      # Detect audio info for Python script if specific device wasn't set
      if [[ "$AUDIO_ENABLE" != "no" ]]; then

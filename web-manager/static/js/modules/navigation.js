@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Navigation and tab helpers
- * Version: 2.33.01
+ * Version: 2.33.02
  */
 (function () {
     // Valid tab IDs for URL navigation (debug is optional, checked dynamically)
@@ -188,13 +188,13 @@
         
         if (user && pass) {
             statusDiv.className = 'alert alert-success';
-            messageSpan.innerHTML = `<strong>Authentification activée</strong> - L'utilisateur "${user}" sera requis pour accéder au flux RTSP.<br><small>URL: rtsp://${user}:****@IP:PORT/PATH</small>`;
+            messageSpan.innerHTML = `<strong>Authentification activ?e</strong> - L'utilisateur "${user}" sera requis pour acc?der au flux RTSP.<br><small>URL: rtsp://${user}:****@IP:PORT/PATH</small>`;
         } else if (user || pass) {
             statusDiv.className = 'alert alert-warning';
-            messageSpan.innerHTML = '<strong>Authentification incomplète</strong> - Vous devez renseigner à la fois l\'utilisateur ET le mot de passe pour activer l\'authentification.';
+            messageSpan.innerHTML = '<strong>Authentification incompl?te</strong> - Vous devez renseigner ? la fois l\'utilisateur ET le mot de passe pour activer l\'authentification.';
         } else {
             statusDiv.className = 'alert alert-info';
-            messageSpan.innerHTML = '<strong>Authentification désactivée</strong> - Le flux RTSP sera accessible sans mot de passe. Définissez un utilisateur et un mot de passe pour sécuriser l\'accès.';
+            messageSpan.innerHTML = '<strong>Authentification d?sactiv?e</strong> - Le flux RTSP sera accessible sans mot de passe. D?finissez un utilisateur et un mot de passe pour s?curiser l\'acc?s.';
         }
     }
     

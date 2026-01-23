@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Recordings and files UI
- * Version: 2.33.01
+ * Version: 2.33.02
  */
 (function () {
     /**
@@ -22,7 +22,7 @@
                     </div>
                 `).join('');
             } else {
-                listContainer.innerHTML = '<p class="text-muted" style="padding: 15px;">Aucun enregistrement trouvé</p>';
+                listContainer.innerHTML = '<p class="text-muted" style="padding: 15px;">Aucun enregistrement trouv?</p>';
             }
         } catch (error) {
             window.showToast(`Erreur: ${error.message}`, 'error');
@@ -37,11 +37,11 @@
         const files = Array.from(checkboxes).map(cb => cb.value);
         
         if (files.length === 0) {
-            window.showToast('Veuillez sélectionner des fichiers à supprimer', 'warning');
+            window.showToast('Veuillez s?lectionner des fichiers ? supprimer', 'warning');
             return;
         }
         
-        if (!confirm(`Êtes-vous sûr de vouloir supprimer ${files.length} fichier(s) ?`)) {
+        if (!confirm(`?tes-vous s?r de vouloir supprimer ${files.length} fichier(s) ?`)) {
             return;
         }
         
@@ -57,7 +57,7 @@
             const data = await response.json();
             
             if (data.success) {
-                window.showToast(`${data.deleted} fichier(s) supprimé(s)`, 'success');
+                window.showToast(`${data.deleted} fichier(s) supprim?(s)`, 'success');
                 loadRecordings();
             } else {
                 window.showToast(`Erreur: ${data.message}`, 'error');
@@ -150,7 +150,7 @@
                         availableEl.classList.remove('disk-full');
                         if (marginEl) {
                             if (data.storage_info.min_free_bytes > 0) {
-                                marginEl.innerHTML = `<i class="fas fa-shield-alt"></i> Marge: ${data.storage_info.min_free_display} réservés`;
+                                marginEl.innerHTML = `<i class="fas fa-shield-alt"></i> Marge: ${data.storage_info.min_free_display} r?serv?s`;
                                 marginEl.classList.remove('disk-full-warning');
                                 marginEl.style.display = 'flex';
                             } else {
@@ -210,7 +210,7 @@
         const listContainer = document.getElementById('files-list');
         
         if (filesData.length === 0) {
-            listContainer.innerHTML = '<div class="files-empty"><i class="fas fa-folder-open"></i> Aucun fichier trouvé</div>';
+            listContainer.innerHTML = '<div class="files-empty"><i class="fas fa-folder-open"></i> Aucun fichier trouv?</div>';
             return;
         }
         
@@ -239,10 +239,10 @@
                         <span class="file-card-size">${file.size_display}</span>
                     </div>
                     <div class="file-card-actions">
-                        <button class="btn-icon btn-download" onclick="downloadFile('${file.name}')" title="Télécharger">
+                        <button class="btn-icon btn-download" onclick="downloadFile('${file.name}')" title="T?l?charger">
                             <i class="fas fa-download"></i>
                         </button>
-                        <button class="btn-icon btn-lock" onclick="toggleFileLock('${file.name}', ${!file.locked})" title="${file.locked ? 'Déverrouiller' : 'Verrouiller'}">
+                        <button class="btn-icon btn-lock" onclick="toggleFileLock('${file.name}', ${!file.locked})" title="${file.locked ? 'D?verrouiller' : 'Verrouiller'}">
                             <i class="fas ${file.locked ? 'fa-lock-open' : 'fa-lock'}"></i>
                         </button>
                         <button class="btn-icon btn-delete" onclick="deleteSingleFile('${file.name}')" title="Supprimer">
@@ -470,7 +470,7 @@
         
         // Extract nice date from filename
         const match = filename.match(/rec_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
-        const dateLabel = match ? `${match[3]}/${match[2]}/${match[1]} à ${match[4]}:${match[5]}:${match[6]}` : filename;
+        const dateLabel = match ? `${match[3]}/${match[2]}/${match[1]} ? ${match[4]}:${match[5]}:${match[6]}` : filename;
         titleEl.textContent = dateLabel;
         
         // Reset error state
@@ -486,7 +486,7 @@
             console.error('Video playback error:', player.error);
             if (errorEl) {
                 errorEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Impossible de lire ce fichier.<br>
-                    <small>Format .ts - <a href="${streamUrl}" download="${filename}">Télécharger pour lire localement</a></small>`;
+                    <small>Format .ts - <a href="${streamUrl}" download="${filename}">T?l?charger pour lire localement</a></small>`;
                 errorEl.style.display = 'flex';
             }
             player.style.display = 'none';
@@ -551,7 +551,7 @@
         link.click();
         document.body.removeChild(link);
         
-        window.showToast(`Téléchargement de ${filename} démarré`, 'success');
+        window.showToast(`T?l?chargement de ${filename} d?marr?`, 'success');
     }
     
     /**
@@ -568,7 +568,7 @@
             const data = await response.json();
             
             if (data.success) {
-                window.showToast(`Fichier ${lock ? 'verrouillé' : 'déverrouillé'}`, 'success');
+                window.showToast(`Fichier ${lock ? 'verrouill?' : 'd?verrouill?'}`, 'success');
                 // Update local data
                 const file = filesData.find(f => f.name === filename);
                 if (file) file.locked = lock;
@@ -586,7 +586,7 @@
      */
     async function lockSelectedFiles() {
         if (selectedFiles.size === 0) {
-            window.showToast('Aucun fichier sélectionné', 'warning');
+            window.showToast('Aucun fichier s?lectionn?', 'warning');
             return;
         }
         
@@ -600,7 +600,7 @@
             const data = await response.json();
             
             if (data.success) {
-                window.showToast(`${data.modified} fichier(s) verrouillé(s)`, 'success');
+                window.showToast(`${data.modified} fichier(s) verrouill?(s)`, 'success');
                 loadFilesList();
             } else {
                 window.showToast(`Erreur: ${data.message}`, 'error');
@@ -615,7 +615,7 @@
      */
     async function unlockSelectedFiles() {
         if (selectedFiles.size === 0) {
-            window.showToast('Aucun fichier sélectionné', 'warning');
+            window.showToast('Aucun fichier s?lectionn?', 'warning');
             return;
         }
         
@@ -629,7 +629,7 @@
             const data = await response.json();
             
             if (data.success) {
-                window.showToast(`${data.modified} fichier(s) déverrouillé(s)`, 'success');
+                window.showToast(`${data.modified} fichier(s) d?verrouill?(s)`, 'success');
                 loadFilesList();
             } else {
                 window.showToast(`Erreur: ${data.message}`, 'error');
@@ -646,11 +646,11 @@
         // Check if file is locked
         const file = filesData.find(f => f.name === filename);
         if (file && file.locked) {
-            if (!confirm(`Le fichier "${filename}" est verrouillé.\n\nVoulez-vous quand même le supprimer ?`)) {
+            if (!confirm(`Le fichier "${filename}" est verrouill?.\n\nVoulez-vous quand m?me le supprimer ?`)) {
                 return;
             }
         } else {
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${filename}" ?`)) {
+            if (!confirm(`?tes-vous s?r de vouloir supprimer "${filename}" ?`)) {
                 return;
             }
         }
@@ -665,10 +665,10 @@
             const data = await response.json();
             
             if (data.success && data.deleted > 0) {
-                window.showToast('Fichier supprimé', 'success');
+                window.showToast('Fichier supprim?', 'success');
                 loadFilesList();
             } else if (data.skipped_locked?.length > 0) {
-                window.showToast('Fichier verrouillé - impossible de supprimer', 'warning');
+                window.showToast('Fichier verrouill? - impossible de supprimer', 'warning');
             } else {
                 window.showToast(`Erreur: ${data.message || 'Impossible de supprimer'}`, 'error');
             }
@@ -682,7 +682,7 @@
      */
     async function deleteSelectedFiles() {
         if (selectedFiles.size === 0) {
-            window.showToast('Aucun fichier sélectionné', 'warning');
+            window.showToast('Aucun fichier s?lectionn?', 'warning');
             return;
         }
         
@@ -692,9 +692,9 @@
             return file && file.locked;
         }).length;
         
-        let confirmMsg = `Êtes-vous sûr de vouloir supprimer ${selectedFiles.size} fichier(s) ?`;
+        let confirmMsg = `?tes-vous s?r de vouloir supprimer ${selectedFiles.size} fichier(s) ?`;
         if (lockedCount > 0) {
-            confirmMsg += `\n\n⚠️ ${lockedCount} fichier(s) verrouillé(s) seront ignorés.`;
+            confirmMsg += `\n\n?? ${lockedCount} fichier(s) verrouill?(s) seront ignor?s.`;
         }
         
         if (!confirm(confirmMsg)) {
@@ -711,9 +711,9 @@
             const data = await response.json();
             
             if (data.success) {
-                let message = `${data.deleted} fichier(s) supprimé(s)`;
+                let message = `${data.deleted} fichier(s) supprim?(s)`;
                 if (data.skipped_locked?.length > 0) {
-                    message += ` (${data.skipped_locked.length} verrouillé(s) ignoré(s))`;
+                    message += ` (${data.skipped_locked.length} verrouill?(s) ignor?(s))`;
                 }
                 window.showToast(message, 'success');
                 loadFilesList();

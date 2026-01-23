@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Power and reboot functions
- * Version: 2.33.01
+ * Version: 2.33.02
  */
 
 // LED Functions
@@ -54,7 +54,7 @@ async function setGpuMem() {
     try {
         const gpuMem = document.getElementById('gpu_mem').value;
         
-        if (!confirm(`Modifier la mémoire GPU à ${gpuMem} Mo ?\nUn redémarrage sera nécessaire.`)) {
+        if (!confirm(`Modifier la m?moire GPU ? ${gpuMem} Mo ?\nUn red?marrage sera n?cessaire.`)) {
             return;
         }
         
@@ -245,10 +245,10 @@ function updateServiceStatusText(service, enabled) {
     // Keep the original description but add status icon
     const descriptions = {
         'modemmanager': 'Gestion modems 3G/4G (inutile sans modem)',
-        'avahi': 'Découverte réseau Bonjour/Zeroconf',
+        'avahi': 'D?couverte r?seau Bonjour/Zeroconf',
         'cloudinit': 'Provisioning cloud (inutile hors cloud)',
-        'serial': 'Getty sur port série (debug uniquement)',
-        'tty1': 'Login sur écran HDMI (inutile si headless)',
+        'serial': 'Getty sur port s?rie (debug uniquement)',
+        'tty1': 'Login sur ?cran HDMI (inutile si headless)',
         'udisks2': 'Automontage disques USB'
     };
     
@@ -268,9 +268,9 @@ function updatePowerStatusText(component, enabled) {
     if (!statusElement) return;
     
     if (enabled) {
-        statusElement.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success-color);"></i> Activé';
+        statusElement.innerHTML = '<i class="fas fa-check-circle" style="color: var(--success-color);"></i> Activ?';
     } else {
-        statusElement.innerHTML = '<i class="fas fa-times-circle" style="color: var(--danger-color);"></i> Désactivé';
+        statusElement.innerHTML = '<i class="fas fa-times-circle" style="color: var(--danger-color);"></i> D?sactiv?';
     }
 }
 
@@ -290,9 +290,9 @@ async function applyPowerSettings() {
                 <div class="spinner-ring"></div>
                 <i class="bi bi-gear-fill power-icon"></i>
             </div>
-            <h2>Application des paramètres</h2>
-            <p class="power-status">Configuration des services système...</p>
-            <p class="power-hint">Cette opération peut prendre quelques secondes</p>
+            <h2>Application des param?tres</h2>
+            <p class="power-status">Configuration des services syst?me...</p>
+            <p class="power-hint">Cette op?ration peut prendre quelques secondes</p>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -339,7 +339,7 @@ async function applyPowerSettings() {
         setTimeout(() => overlay.remove(), 300);
         
         if (data.success) {
-            showToast(`Paramètres enregistrés! Économies estimées: ${data.estimated_savings_ma} mA`, 'success');
+            showToast(`Param?tres enregistr?s! ?conomies estim?es: ${data.estimated_savings_ma} mA`, 'success');
             resetPowerSettingsChanged();
             
             if (data.reboot_required) {
@@ -381,8 +381,8 @@ function showRebootOverlay() {
                 <div class="spinner-ring"></div>
                 <i class="bi bi-arrow-repeat reboot-icon"></i>
             </div>
-            <h2>Redémarrage en cours</h2>
-            <p class="reboot-status" id="reboot-status">Arrêt du système...</p>
+            <h2>Red?marrage en cours</h2>
+            <p class="reboot-status" id="reboot-status">Arr?t du syst?me...</p>
             <div class="reboot-progress-container">
                 <div class="reboot-progress-bar" id="reboot-progress-bar"></div>
             </div>
@@ -390,7 +390,7 @@ function showRebootOverlay() {
                 <span class="countdown-value" id="countdown-value">60</span>
                 <span class="countdown-label">secondes</span>
             </div>
-            <p class="reboot-hint" id="reboot-hint">Le système va redémarrer automatiquement...</p>
+            <p class="reboot-hint" id="reboot-hint">Le syst?me va red?marrer automatiquement...</p>
         </div>
     `;
     
@@ -494,13 +494,13 @@ function startRebootMonitoring() {
         // Update status based on phase
         let status, hint;
         if (elapsed < SHUTDOWN_PHASE) {
-            status = "Arrêt du système...";
-            hint = "Les services s'arrêtent proprement";
+            status = "Arr?t du syst?me...";
+            hint = "Les services s'arr?tent proprement";
         } else if (elapsed < BOOT_PHASE) {
-            status = "Redémarrage du noyau...";
-            hint = "Le Raspberry Pi redémarre";
+            status = "Red?marrage du noyau...";
+            hint = "Le Raspberry Pi red?marre";
         } else {
-            status = "Démarrage des services...";
+            status = "D?marrage des services...";
             hint = "Connexion en attente...";
         }
         
@@ -514,7 +514,7 @@ function startRebootMonitoring() {
                 clearInterval(interval);
                 
                 // Show success state
-                updateRebootProgress(TOTAL_SECONDS, TOTAL_SECONDS, "Système en ligne !", "Rechargement de la page...");
+                updateRebootProgress(TOTAL_SECONDS, TOTAL_SECONDS, "Syst?me en ligne !", "Rechargement de la page...");
                 
                 const overlay = document.getElementById('reboot-overlay');
                 if (overlay) overlay.classList.add('success');
@@ -529,7 +529,7 @@ function startRebootMonitoring() {
         // Timeout - force reload
         if (elapsed >= TOTAL_SECONDS + 30) {
             clearInterval(interval);
-            updateRebootProgress(100, 100, "Délai dépassé", "Tentative de reconnexion...");
+            updateRebootProgress(100, 100, "D?lai d?pass?", "Tentative de reconnexion...");
             setTimeout(() => {
                 window.location.reload();
             }, 2000);
@@ -551,7 +551,7 @@ async function setPowerState(component, enabled) {
  */
 async function setCpuFrequency(freqMhz) {
     try {
-        showToast('Modification de la fréquence CPU...', 'info');
+        showToast('Modification de la fr?quence CPU...', 'info');
         
         const response = await fetch('/api/power/cpu-freq', {
             method: 'POST',
@@ -581,7 +581,7 @@ async function setCpuFrequency(freqMhz) {
  * Confirm and execute system reboot - uses the overlay with countdown
  */
 async function confirmReboot() {
-    if (!confirm('Êtes-vous sûr de vouloir redémarrer le Raspberry Pi ?\nLa connexion sera perdue pendant quelques minutes.')) {
+    if (!confirm('?tes-vous s?r de vouloir red?marrer le Raspberry Pi ?\nLa connexion sera perdue pendant quelques minutes.')) {
         return;
     }
     

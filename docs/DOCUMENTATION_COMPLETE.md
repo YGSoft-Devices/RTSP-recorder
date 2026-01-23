@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.33.01
+Version: 2.33.02
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -30,6 +30,7 @@ Le projet supporte **3 sources essentielles** :
 - USB : `v4l-utils`, `gstreamer1.0-v4l2`
 - CSI : `rpicam-apps`, `gstreamer1.0-libcamera`
 - Audio : `alsa-utils`, `gstreamer1.0-alsa`
+- CSI overlay (libcamera) : `rpicam-apps-opencv-postprocess`
 
 Composants (source → cible sur le device):
 
@@ -322,13 +323,13 @@ RTSP_AUTH_METHOD="both"
 sudo ./setup/install_gstreamer_rtsp.sh
 ```
 
-### 5.7 Serveur RTSP CSI natif (Python) - v1.4.12
+### 5.7 Serveur RTSP CSI natif (Python) - v1.4.13
 
 Pour les caméras CSI (PiCam), un serveur RTSP dédié en Python utilise **Picamera2** au lieu de `test-launch`.
 
 **Fichiers:**
 - Source: `rpi_csi_rtsp_server.py` → `/usr/local/bin/rpi_csi_rtsp_server.py`
-- Version: 1.4.12
+- Version: 1.4.13
 
 **Architecture:**
 ```
@@ -1002,8 +1003,12 @@ L'onglet **Vidéo** permet de configurer la source caméra, la résolution et le
   - `VIDEO_OVERLAY_TEXT` supporte des tokens: `{CAMERA_TYPE}`, `{VIDEO_DEVICE}`, `{VIDEO_RESOLUTION}`, `{VIDEO_FPS}`, `{VIDEO_FORMAT}`
   - `VIDEO_OVERLAY_SHOW_DATETIME=yes` + `VIDEO_OVERLAY_DATETIME_FORMAT` (strftime)
   - `VIDEO_OVERLAY_FONT_SIZE` (1-64)
-  - **Limites:** pour CSI, l'overlay force un decodage/encodage software (CPU plus élevé) ; non supporté pour les sources USB en H264 direct
+  - `CSI_OVERLAY_MODE=software|libcamera` (CSI uniquement)
+    - `software`: overlay GStreamer (decode/encode software)
+    - `libcamera`: overlay rpicam-vid (H264 hardware), **pas de date/heure**
+  - **Limites:** pour CSI en `software`, l'overlay force un decodage/encodage software (CPU plus élevé) ; non supporté pour les sources USB en H264 direct
   - **Dépendances:** nécessite `clockoverlay`/`textoverlay` (GStreamer plugins). Installer `gstreamer1.0-x` si absents.
+  - **Dépendance CSI (libcamera):** `rpicam-apps-opencv-postprocess`
 
 #### Profils caméra (Contrôles avancés)
 
@@ -1548,6 +1553,7 @@ RTSP / vidéo:
 - `VIDEO_OVERLAY_DATETIME_FORMAT` (strftime)
 - `VIDEO_OVERLAY_CLOCK_POSITION` (`top-left|top-right|bottom-left|bottom-right`)
 - `VIDEO_OVERLAY_FONT_SIZE` (1-64)
+- `CSI_OVERLAY_MODE` (`software|libcamera`) - overlay CSI (libcamera = pas de date/heure)
 
 Audio:
 - `AUDIO_ENABLE` (`auto|yes|no`)

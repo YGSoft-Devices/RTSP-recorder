@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Home status and service controls
- * Version: 2.33.01
+ * Version: 2.33.02
  */
 (function () {
     async function loadHomeStatus() {
@@ -15,7 +15,7 @@
             const configData = await configResponse.json();
             // Check both RECORD_ENABLE and RECORD_ENABLED for compatibility
             const recordingEnabled = configData.config?.RECORD_ENABLE === 'yes' || configData.config?.RECORD_ENABLED === 'yes';
-            updateHomeServiceStatus('home-recording-status', recordingEnabled, recordingEnabled ? 'Activé' : 'Désactivé');
+            updateHomeServiceStatus('home-recording-status', recordingEnabled, recordingEnabled ? 'Activ?' : 'D?sactiv?');
             
             // Load ONVIF status
             const onvifResponse = await fetch('/api/onvif/status');
@@ -51,7 +51,7 @@
                 // connected is directly in meetingData, not in meetingData.status
                 const connected = meetingData.connected === true || meetingData.status?.connected === true;
                 const configured = meetingData.configured === true || meetingData.status?.configured === true;
-                updateHomeServiceStatus('home-meeting-status', connected, connected ? 'Connecté' : (configured ? 'Déconnecté' : 'Non configuré'));
+                updateHomeServiceStatus('home-meeting-status', connected, connected ? 'Connect?' : (configured ? 'D?connect?' : 'Non configur?'));
             }
             
         } catch (error) {
@@ -124,13 +124,13 @@
             if (data.success) {
                 if (data.self_restart || isSelfRestart) {
                     // Wait for service to restart then reload page
-                    window.showToast(`${serviceLabel}: redémarrage en cours...`, 'warning');
+                    window.showToast(`${serviceLabel}: red?marrage en cours...`, 'warning');
                     setTimeout(() => {
                         window.showToast('Rechargement de la page...', 'info');
                         setTimeout(() => location.reload(), 1000);
                     }, 3000);
                 } else {
-                    window.showToast(`${serviceLabel}: ${action} effectué`, 'success');
+                    window.showToast(`${serviceLabel}: ${action} effectu?`, 'success');
                     updateStatus();
                     loadHomeStatus();
                 }
@@ -140,7 +140,7 @@
         } catch (error) {
             // If it's a self-restart, the error is expected (connection lost)
             if (serviceName === 'rpi-cam-webmanager') {
-                window.showToast('Service redémarré, rechargement...', 'warning');
+                window.showToast('Service red?marr?, rechargement...', 'warning');
                 setTimeout(() => location.reload(), 3000);
             } else {
                 window.showToast(`Erreur: ${error.message}`, 'error');

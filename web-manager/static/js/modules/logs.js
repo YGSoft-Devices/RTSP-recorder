@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Logs functions
- * Version: 2.33.01
+ * Version: 2.33.02
  */
 (function () {
     let logsEventSource = null;
@@ -30,7 +30,7 @@
     
                 logsContent.textContent = logsText || 'Aucun log disponible';
                 logsContent.scrollTop = logsContent.scrollHeight;
-                updateLogsStatus(`Dernière mise à jour: ${new Date().toLocaleTimeString()}`);
+                updateLogsStatus(`Derni?re mise ? jour: ${new Date().toLocaleTimeString()}`);
             } else {
                 logsContent.textContent = 'Erreur lors du chargement des logs';
                 updateLogsStatus('Erreur');
@@ -62,7 +62,7 @@
         
         // Update UI
         const btn = document.getElementById('btn-live-logs');
-        btn.innerHTML = '<i class="fas fa-stop"></i> Arrêter';
+        btn.innerHTML = '<i class="fas fa-stop"></i> Arr?ter';
         btn.classList.remove('btn-primary');
         btn.classList.add('btn-danger');
         
@@ -94,7 +94,7 @@
             updateLogsStatus('Reconnexion...');
         };
         
-        window.showToast('Logs en direct activés', 'success');
+        window.showToast('Logs en direct activ?s', 'success');
     }
     
     function stopLiveLogs() {
@@ -111,22 +111,22 @@
         btn.classList.add('btn-primary');
         
         document.getElementById('live-indicator').style.display = 'none';
-        updateLogsStatus('Streaming arrêté');
+        updateLogsStatus('Streaming arr?t?');
         
         const logsContent = document.getElementById('logs-content');
-        logsContent.textContent += '\n\n=== Streaming arrêté ===\n';
+        logsContent.textContent += '\n\n=== Streaming arr?t? ===\n';
         
-        window.showToast('Logs en direct désactivés', 'info');
+        window.showToast('Logs en direct d?sactiv?s', 'info');
     }
     
     function clearLogsDisplay() {
         const logsContent = document.getElementById('logs-content');
         logsContent.textContent = '';
-        updateLogsStatus('Affichage effacé');
+        updateLogsStatus('Affichage effac?');
     }
     
     async function cleanServerLogs() {
-        if (!confirm('Voulez-vous vraiment nettoyer les fichiers de logs sur le serveur ?\n\nCette action va :\n- Tronquer le fichier log principal (garder 100 dernières lignes)\n- Supprimer les logs GStreamer\n- Supprimer les vieux fichiers de log (> 7 jours)\n- Vider le cache journald')) {
+        if (!confirm('Voulez-vous vraiment nettoyer les fichiers de logs sur le serveur ?\n\nCette action va :\n- Tronquer le fichier log principal (garder 100 derni?res lignes)\n- Supprimer les logs GStreamer\n- Supprimer les vieux fichiers de log (> 7 jours)\n- Vider le cache journald')) {
             return;
         }
         

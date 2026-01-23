@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 rpi_csi_rtsp_server.py
-Version: 1.4.12
+Version: 1.4.13
 
 Python-based RTSP Server for CSI Cameras (Picamera2) on Raspberry Pi.
 - Uses Picamera2 H264Encoder for HARDWARE video encoding (not x264enc!)
@@ -22,6 +22,9 @@ import signal
 import socket
 import json
 import io
+import shutil
+import subprocess
+import tempfile
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Dict, Any, Optional
 
@@ -75,8 +78,13 @@ CONF = {
     'OVERLAY_DATETIME_FORMAT': os.environ.get('VIDEO_OVERLAY_DATETIME_FORMAT', '%Y-%m-%d %H:%M:%S'),
     'OVERLAY_CLOCK_POSITION': os.environ.get('VIDEO_OVERLAY_CLOCK_POSITION', 'bottom-right'),
     'OVERLAY_FONT_SIZE': int(os.environ['VIDEO_OVERLAY_FONT_SIZE']) if os.environ.get('VIDEO_OVERLAY_FONT_SIZE', '').isdigit() else 24,
+    'CSI_OVERLAY_MODE': os.environ.get('CSI_OVERLAY_MODE', 'software').strip().lower(),
+    'CSI_RPICAM_UDP_PORT': int(os.environ.get('CSI_RPICAM_UDP_PORT', 5000)),
     'CONTROL_PORT': 8085
 }
+
+RPI_CAM_POSTPROC_PLUGIN = "/usr/lib/aarch64-linux-gnu/rpicam-apps-postproc/opencv-postproc.so"
+RPI_CAM_ANNOTATE_ASSET = "/usr/share/rpi-camera-assets/annotate_cv.json"
 
 
 def load_config_from_file():
@@ -142,7 +150,17 @@ def load_config_from_file():
                             if size_value.isdigit():
                                 CONF['OVERLAY_FONT_SIZE'] = max(1, min(64, int(size_value)))
                             else:
-                                logger.warning(f"Unknown H264_PROFILE '{value}', ignoring")
+                                logger.warning(f"Invalid VIDEO_OVERLAY_FONT_SIZE '{value}', ignoring")
+                        elif key == 'CSI_OVERLAY_MODE':
+                            mode_value = value.strip().lower()
+                            if mode_value in ('software', 'libcamera'):
+                                CONF['CSI_OVERLAY_MODE'] = mode_value
+                            else:
+                                logger.warning(f"Invalid CSI_OVERLAY_MODE '{value}', using default")
+                        elif key == 'CSI_RPICAM_UDP_PORT':
+                            port_value = value.strip()
+                            if port_value.isdigit():
+                                CONF['CSI_RPICAM_UDP_PORT'] = max(1, min(65535, int(port_value)))
                         elif key == 'AUDIO_ENABLE':
                             CONF['AUDIO_ENABLE'] = value.lower() in ('yes', 'true', '1', 'on')
                             logger.info(f"Config: AUDIO_ENABLE={CONF['AUDIO_ENABLE']}")
@@ -344,6 +362,10 @@ class Picam2RtspServer:
         self.encoder: Optional[H264Encoder] = None
         self.h264_output: Optional[StreamingOutput] = None
         self.appsrc = None
+        self.rpicam_proc: Optional[subprocess.Popen] = None
+        self.rpicam_udp_port = int(self.conf.get('CSI_RPICAM_UDP_PORT', 5000))
+        self.using_rpicam_overlay = False
+        self.rpicam_overlay_config_path: Optional[str] = None
         
         self.camera_properties = {}
         self.sensor_modes = []
@@ -494,6 +516,167 @@ class Picam2RtspServer:
         if Gst.ElementFactory.find('openh264enc') is not None:
             return f"openh264enc bitrate={bitrate * 1000}"
         return None
+
+    def _can_use_rpicam_overlay(self) -> bool:
+        if not self.conf.get('OVERLAY_ENABLE'):
+            return False
+        if self.conf.get('CSI_OVERLAY_MODE') != 'libcamera':
+            return False
+        if self.conf.get('OVERLAY_SHOW_DATETIME'):
+            logger.warning("CSI libcamera overlay does not support dynamic date/time. Falling back to software overlay.")
+            return False
+        overlay_text = (self.conf.get('OVERLAY_TEXT') or '').strip()
+        if not overlay_text:
+            logger.warning("CSI libcamera overlay requested but overlay text is empty.")
+            return False
+        if not shutil.which("rpicam-vid"):
+            logger.warning("CSI libcamera overlay unavailable: rpicam-vid not found.")
+            return False
+        if not os.path.exists(RPI_CAM_POSTPROC_PLUGIN):
+            logger.warning("CSI libcamera overlay unavailable: opencv postprocess plugin missing.")
+            return False
+        if not os.path.exists(RPI_CAM_ANNOTATE_ASSET):
+            logger.warning("CSI libcamera overlay unavailable: annotate_cv asset missing.")
+            return False
+        return True
+
+    def _build_rpicam_overlay_text(self) -> str:
+        overlay_text = (self.conf.get('OVERLAY_TEXT') or '').strip()
+        overlay_text = overlay_text.replace('{CAMERA_TYPE}', 'csi')
+        overlay_text = overlay_text.replace('{VIDEO_DEVICE}', 'CSI')
+        overlay_text = overlay_text.replace('{VIDEO_RESOLUTION}', f"{self.conf['WIDTH']}x{self.conf['HEIGHT']}")
+        overlay_text = overlay_text.replace('{VIDEO_FPS}', str(self.conf['FPS']))
+        overlay_text = overlay_text.replace('{VIDEO_FORMAT}', 'H264')
+        return overlay_text.replace('"', ' ').replace("'", ' ')
+
+    def _write_rpicam_overlay_config(self) -> str:
+        overlay_text = self._build_rpicam_overlay_text()
+        font_size = int(self.conf.get('OVERLAY_FONT_SIZE', 24))
+        scale = max(0.2, min(4.0, font_size / 24.0))
+        payload = {
+            "annotate_cv": {
+                "text": overlay_text,
+                "fg": 255,
+                "bg": 0,
+                "scale": scale,
+                "thickness": 2,
+                "alpha": 0.3
+            }
+        }
+        tmp = tempfile.NamedTemporaryFile(prefix="rpicam-annotate-", suffix=".json", delete=False)
+        tmp.close()
+        with open(tmp.name, 'w', encoding='utf-8') as handle:
+            json.dump(payload, handle)
+        self.rpicam_overlay_config_path = tmp.name
+        return tmp.name
+
+    def _build_rpicam_pipeline_launch(self) -> str:
+        video_caps = (
+            f"video/x-h264,stream-format=byte-stream,alignment=au,"
+            f"width={self.conf['WIDTH']},height={self.conf['HEIGHT']},framerate={self.conf['FPS']}/1"
+        )
+        video_pipeline = (
+            f"udpsrc port={self.rpicam_udp_port} caps=\"{video_caps}\" "
+            f"! h264parse config-interval=1 "
+            f"! rtph264pay name=pay0 pt=96 config-interval=1 "
+            f"timestamp-offset=0 seqnum-offset=0 perfect-rtptime=true"
+        )
+
+        audio_pipeline = ""
+        if self.conf['AUDIO_ENABLE']:
+            device = resolve_audio_device()
+            audio_pipeline = (
+                f" alsasrc device=\"{device}\" buffer-time=200000 latency-time=25000 "
+                f"! audioconvert ! audioresample "
+                f"! voaacenc bitrate=64000 "
+                f"! rtpmp4gpay name=pay1 pt=97 "
+                f"timestamp-offset=0 seqnum-offset=0 perfect-rtptime=true"
+            )
+
+        return f"( {video_pipeline}{audio_pipeline} )"
+
+    def _start_rpicam_annotate(self) -> None:
+        overlay_config = self._write_rpicam_overlay_config()
+        bitrate_bps = int(self.conf.get('BITRATE_KBPS', 2000)) * 1000
+        keyint = int(self.conf.get('KEYINT', 30))
+        cmd = [
+            "rpicam-vid",
+            "-n",
+            "--codec", "h264",
+            "--inline",
+            "--width", str(self.conf['WIDTH']),
+            "--height", str(self.conf['HEIGHT']),
+            "--framerate", str(self.conf['FPS']),
+            "--bitrate", str(bitrate_bps),
+            "--intra", str(keyint),
+            "--post-process-file", overlay_config,
+            "-o", f"udp://127.0.0.1:{self.rpicam_udp_port}"
+        ]
+        profile = self.conf.get('H264_PROFILE')
+        if profile:
+            cmd.extend(["--profile", profile])
+        if self.conf.get('H264_QP'):
+            logger.warning("CSI libcamera overlay does not support H264_QP; ignoring.")
+
+        logger.info(f"Starting rpicam-vid overlay process: {' '.join(cmd)}")
+        self.rpicam_proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        def _log_rpicam_stderr():
+            if not self.rpicam_proc or not self.rpicam_proc.stderr:
+                return
+            for line in self.rpicam_proc.stderr:
+                msg = line.strip()
+                if msg:
+                    logger.info(f"rpicam-vid: {msg}")
+
+        threading.Thread(target=_log_rpicam_stderr, daemon=True).start()
+
+    def _monitor_rpicam_process(self):
+        while self._running:
+            if self.rpicam_proc and self.rpicam_proc.poll() is not None:
+                logger.critical("rpicam-vid exited unexpectedly. Restarting service...")
+                sys.exit(1)
+            time.sleep(1.0)
+
+    def _start_rpicam_overlay_rtsp(self):
+        logger.info("Starting CSI RTSP Server with rpicam-vid overlay (hardware H.264).")
+        logger.info(f"Config: {self.conf['WIDTH']}x{self.conf['HEIGHT']}@{self.conf['FPS']}fps, "
+                   f"bitrate={self.conf['BITRATE_KBPS']}kbps")
+
+        self.using_rpicam_overlay = True
+        self._start_rpicam_annotate()
+        time.sleep(0.5)
+
+        self.setup_control_api()
+
+        self.main_loop = GLib.MainLoop()
+        server = GstRtspServer.RTSPServer()
+        server.set_service(str(self.conf['RTSP_PORT']))
+
+        factory = GstRtspServer.RTSPMediaFactory()
+        factory.set_launch(self._build_rpicam_pipeline_launch())
+        factory.set_shared(True)
+
+        mounts = server.get_mount_points()
+        mounts.add_factory(f"/{self.conf['RTSP_PATH']}", factory)
+
+        server.attach(None)
+        logger.info(f"RTSP Stream available at rtsp://0.0.0.0:{self.conf['RTSP_PORT']}/{self.conf['RTSP_PATH']}")
+
+        self._running = True
+        threading.Thread(target=self._monitor_rpicam_process, daemon=True).start()
+
+        try:
+            self.main_loop.run()
+        except KeyboardInterrupt:
+            logger.info("Keyboard interrupt received.")
+        finally:
+            self.stop()
 
     def _on_media_configure(self, factory, media):
         """Called when a client connects and the pipeline is created.
@@ -784,6 +967,8 @@ class Picam2RtspServer:
 
     def list_controls(self) -> Dict[str, Any]:
         """List available camera controls with their current values."""
+        if self.using_rpicam_overlay:
+            return {"error": "Controls unavailable in libcamera overlay mode"}
         if not self.picam2:
             return {"error": "Camera not initialized"}
         
@@ -913,6 +1098,10 @@ class Picam2RtspServer:
         logger.info("Starting CSI RTSP Server with HARDWARE H.264 Encoder...")
         logger.info(f"Config: {self.conf['WIDTH']}x{self.conf['HEIGHT']}@{self.conf['FPS']}fps, "
                    f"bitrate={self.conf['BITRATE_KBPS']}kbps")
+
+        if self._can_use_rpicam_overlay():
+            self._start_rpicam_overlay_rtsp()
+            return
         
         # Initialize Picamera2 with retry logic
         # The camera may be busy during boot if kernel is still initializing
@@ -1053,6 +1242,22 @@ class Picam2RtspServer:
                 logger.info("Camera stopped and closed.")
             except Exception as e:
                 logger.warning(f"Error stopping camera: {e}")
+
+        if self.rpicam_proc:
+            try:
+                self.rpicam_proc.terminate()
+                self.rpicam_proc.wait(timeout=2)
+            except Exception:
+                try:
+                    self.rpicam_proc.kill()
+                except Exception:
+                    pass
+
+        if self.rpicam_overlay_config_path:
+            try:
+                os.unlink(self.rpicam_overlay_config_path)
+            except OSError:
+                pass
         
         if self.control_server:
             self.control_server.shutdown()

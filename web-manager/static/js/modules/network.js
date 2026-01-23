@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Network and WiFi functions
- * Version: 2.33.01
+ * Version: 2.33.02
  */
 
 // WiFi Functions
@@ -35,10 +35,10 @@ async function scanWifi() {
                     </span>
                 </div>
             `).join('');
-            showToast(`${uniqueNetworks.length} réseau(x) trouvé(s)`, 'success');
+            showToast(`${uniqueNetworks.length} r?seau(x) trouv?(s)`, 'success');
         } else {
-            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucun réseau trouvé</span></div>';
-            showToast('Aucun réseau WiFi trouvé', 'warning');
+            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucun r?seau trouv?</span></div>';
+            showToast('Aucun r?seau WiFi trouv?', 'warning');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');
@@ -70,7 +70,7 @@ async function connectWifi(isFallback = false) {
             return;
         }
         
-        showToast(`Connexion à ${ssid}...`, 'info');
+        showToast(`Connexion ? ${ssid}...`, 'info');
         
         const response = await fetch('/api/wifi/connect', {
             method: 'POST',
@@ -81,7 +81,7 @@ async function connectWifi(isFallback = false) {
         const data = await response.json();
         
         if (data.success) {
-            showToast(isFallback ? 'Réseau de secours ajouté' : 'Connexion réussie !', 'success');
+            showToast(isFallback ? 'R?seau de secours ajout?' : 'Connexion r?ussie !', 'success');
             // Clear password field for security
             document.getElementById(passField).value = '';
             // Refresh status after a delay
@@ -160,7 +160,7 @@ async function loadNetworkInterfaces() {
                     </span>
                     <span class="interface-status">
                         ${iface.ip ? `<span class="interface-ip">${iface.ip}</span>` : ''}
-                        <span class="status-badge ${iface.connected ? 'connected' : 'disconnected'}">${iface.connected ? 'Connecté' : 'Déconnecté'}</span>
+                        <span class="status-badge ${iface.connected ? 'connected' : 'disconnected'}">${iface.connected ? 'Connect?' : 'D?connect?'}</span>
                     </span>
                     <span class="priority-badge">#${index + 1}</span>
                 </div>
@@ -173,7 +173,7 @@ async function loadNetworkInterfaces() {
             updateNetworkHeaderStatus(sortedInterfaces);
             
         } else {
-            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucune interface réseau trouvée</span></div>';
+            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucune interface r?seau trouv?e</span></div>';
         }
     } catch (error) {
         console.error('Error loading interfaces:', error);
@@ -196,12 +196,12 @@ function updateNetworkHeaderStatus(interfaces) {
     
     if (connectedIface) {
         indicator.className = 'status-indicator connected';
-        indicator.textContent = 'Connecté';
+        indicator.textContent = 'Connect?';
         ssidEl.textContent = connectedIface.name;
         ipEl.textContent = connectedIface.ip || '';
     } else {
         indicator.className = 'status-indicator disconnected';
-        indicator.textContent = 'Déconnecté';
+        indicator.textContent = 'D?connect?';
         ssidEl.textContent = '';
         ipEl.textContent = '';
     }
@@ -235,7 +235,7 @@ function getInterfaceTypeLabel(type) {
         case 'loopback':
             return 'Loopback';
         default:
-            return 'Réseau';
+            return 'R?seau';
     }
 }
 
@@ -250,7 +250,7 @@ function updateInterfaceSelects(interfaces) {
     
     // Update network interface select
     if (networkSelect) {
-        networkSelect.innerHTML = '<option value="">Sélectionnez une interface...</option>' +
+        networkSelect.innerHTML = '<option value="">S?lectionnez une interface...</option>' +
             usableInterfaces.map(i => {
                 const mac = i.mac ? ` | ${i.mac}` : '';
                 const ip = i.ip ? ` - ${i.ip}` : '';
@@ -329,7 +329,7 @@ async function saveInterfacePriority() {
         const items = document.querySelectorAll('.network-interface-item');
         const interfacesOrder = [...items].map(item => item.dataset.interface);
         
-        showToast('Application de la priorité...', 'info');
+        showToast('Application de la priorit?...', 'info');
         
         const response = await fetch('/api/network/priority', {
             method: 'POST',
@@ -340,7 +340,7 @@ async function saveInterfacePriority() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Priorité des interfaces mise à jour', 'success');
+            showToast('Priorit? des interfaces mise ? jour', 'success');
         } else {
             showToast(`Erreur: ${data.message}`, 'error');
         }
@@ -372,7 +372,7 @@ async function applyNetworkConfig() {
         const mode = document.querySelector('input[name="network_mode"]:checked').value;
         
         if (!iface) {
-            showToast('Veuillez sélectionner une interface', 'warning');
+            showToast('Veuillez s?lectionner une interface', 'warning');
             return;
         }
         
@@ -406,7 +406,7 @@ async function applyNetworkConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Configuration réseau appliquée', 'success');
+            showToast('Configuration r?seau appliqu?e', 'success');
             // Refresh interfaces after a delay
             setTimeout(loadNetworkInterfaces, 2000);
         } else {
@@ -450,7 +450,7 @@ async function loadWifiSimpleStatus() {
                     statusEl.innerHTML = `
                         <div class="wifi-status-connected">
                             <i class="fas fa-check-circle"></i>
-                            <span>Connecté à <strong>${status.ssid || 'Réseau WiFi'}</strong></span>
+                            <span>Connect? ? <strong>${status.ssid || 'R?seau WiFi'}</strong></span>
                             <span class="wifi-ip">${status.ip || ''}</span>
                         </div>
                     `;
@@ -458,7 +458,7 @@ async function loadWifiSimpleStatus() {
                     statusEl.innerHTML = `
                         <div class="wifi-status-disconnected">
                             <i class="fas fa-times-circle"></i>
-                            <span>Non connecté</span>
+                            <span>Non connect?</span>
                         </div>
                     `;
                 }
@@ -475,7 +475,7 @@ async function loadWifiSimpleStatus() {
             const pwdField = document.getElementById('wifi_simple_password');
             if (pwdField) {
                 pwdField.value = '';
-                pwdField.placeholder = status.has_saved_password ? '•••••••• (enregistré)' : 'Mot de passe WiFi';
+                pwdField.placeholder = status.has_saved_password ? '???????? (enregistr?)' : 'Mot de passe WiFi';
             }
             
             // IP Mode
@@ -540,7 +540,7 @@ async function saveWifiSimpleConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Configuration WiFi enregistrée', 'success');
+            showToast('Configuration WiFi enregistr?e', 'success');
             loadWifiSimpleStatus();
         } else {
             showToast(data.message || 'Erreur lors de l\'enregistrement', 'error');
@@ -574,7 +574,7 @@ async function connectWifiSimple() {
         const data = await response.json();
         
         if (data.success) {
-            showToast(data.message || 'Connexion réussie', 'success');
+            showToast(data.message || 'Connexion r?ussie', 'success');
             // Wait a bit then reload status
             setTimeout(() => {
                 loadWifiSimpleStatus();
@@ -665,7 +665,7 @@ async function loadWifiFailoverStatus() {
             if (hwToggle) {
                 hwToggle.checked = status.hardware_failover_enabled !== false;
                 if (hwToggleStatus) {
-                    hwToggleStatus.textContent = hwToggle.checked ? 'Activé' : 'Désactivé';
+                    hwToggleStatus.textContent = hwToggle.checked ? 'Activ?' : 'D?sactiv?';
                 }
             }
             
@@ -675,7 +675,7 @@ async function loadWifiFailoverStatus() {
             if (netToggle) {
                 netToggle.checked = status.network_failover_enabled !== false;
                 if (netToggleStatus) {
-                    netToggleStatus.textContent = netToggle.checked ? 'Activé' : 'Désactivé';
+                    netToggleStatus.textContent = netToggle.checked ? 'Activ?' : 'D?sactiv?';
                 }
             }
             
@@ -693,7 +693,7 @@ async function loadWifiFailoverStatus() {
             const primaryPwd = document.getElementById('wifi_primary_password');
             if (primaryPwd) {
                 primaryPwd.value = '';  // Always clear (don't expose password)
-                primaryPwd.placeholder = status.has_primary_password ? '•••••••• (enregistré)' : 'Aucun mot de passe';
+                primaryPwd.placeholder = status.has_primary_password ? '???????? (enregistr?)' : 'Aucun mot de passe';
             }
             
             // Update secondary SSID/password
@@ -703,7 +703,7 @@ async function loadWifiFailoverStatus() {
             const secondaryPwd = document.getElementById('wifi_secondary_password');
             if (secondaryPwd) {
                 secondaryPwd.value = '';  // Always clear
-                secondaryPwd.placeholder = status.has_secondary_password ? '•••••••• (enregistré)' : 'Aucun mot de passe';
+                secondaryPwd.placeholder = status.has_secondary_password ? '???????? (enregistr?)' : 'Aucun mot de passe';
             }
             
             // Update IP mode
@@ -798,7 +798,7 @@ function updateWifiFailoverStatusBanner(status) {
                 </div>
                 <div class="wifi-status-info">
                     <div class="wifi-status-main">
-                        <strong>WiFi Déconnecté</strong>
+                        <strong>WiFi D?connect?</strong>
                     </div>
                     <div class="wifi-status-details">
                         <span>Aucune interface WiFi active</span>
@@ -822,8 +822,8 @@ function updateWifiInterfacesGrid(interfaces, activeInterface) {
         const isActive = iface.name === activeInterface;
         const isAvailable = iface.phy_exists;
         const statusClass = isActive ? 'active' : (isAvailable ? 'available' : 'unavailable');
-        const statusLabel = isActive ? 'Actif' : (isAvailable ? 'Disponible' : 'Non détecté');
-        const typeLabel = iface.is_usb ? 'USB Dongle' : 'Intégré';
+        const statusLabel = isActive ? 'Actif' : (isAvailable ? 'Disponible' : 'Non d?tect?');
+        const typeLabel = iface.is_usb ? 'USB Dongle' : 'Int?gr?';
         
         return `
             <div class="wifi-interface-card ${statusClass}">
@@ -844,7 +844,7 @@ function updateWifiInterfacesGrid(interfaces, activeInterface) {
         `;
     }).join('');
     
-    grid.innerHTML = html || '<p class="text-muted">Aucune interface WiFi détectée</p>';
+    grid.innerHTML = html || '<p class="text-muted">Aucune interface WiFi d?tect?e</p>';
 }
 
 /**
@@ -921,7 +921,7 @@ async function saveWifiFailoverConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Configuration WiFi enregistrée', 'success');
+            showToast('Configuration WiFi enregistr?e', 'success');
             return true;
         } else {
             showToast(`Erreur: ${data.message}`, 'error');
@@ -962,13 +962,13 @@ async function applyWifiFailover() {
                     showToast(result.reason, 'success');
                     break;
                 case 'hardware_failover':
-                    showToast(`⚙️ ${result.reason}`, 'warning');
+                    showToast(`?? ${result.reason}`, 'warning');
                     break;
                 case 'network_failover':
-                    showToast(`📡 ${result.reason}`, 'warning');
+                    showToast(`?? ${result.reason}`, 'warning');
                     break;
                 case 'full_failover':
-                    showToast(`⚠️ ${result.reason}`, 'warning');
+                    showToast(`?? ${result.reason}`, 'warning');
                     break;
                 default:
                     showToast(result.reason, 'success');
@@ -1006,11 +1006,11 @@ async function applyHardwareFailover() {
         const data = await response.json();
         
         if (data.success) {
-            let message = 'Failover hardware appliqué';
+            let message = 'Failover hardware appliqu?';
             if (data.auto_config?.action === 'cloned_and_connected') {
-                message += ` - ${data.auto_config.ssid} cloné et connecté sur ${config.secondary_interface}`;
+                message += ` - ${data.auto_config.ssid} clon? et connect? sur ${config.secondary_interface}`;
             } else if (data.auto_config?.action === 'cloned') {
-                message += ` - Configuration clonée vers ${config.secondary_interface}`;
+                message += ` - Configuration clon?e vers ${config.secondary_interface}`;
             }
             showToast(message, 'success');
             loadWifiFailoverStatus();
@@ -1042,7 +1042,7 @@ async function applyNetworkFailover() {
             secondary_password: document.getElementById('wifi_secondary_password')?.value || ''
         };
         
-        showToast('Application du failover réseau...', 'info');
+        showToast('Application du failover r?seau...', 'info');
         
         const response = await fetch('/api/wifi/failover/apply/network', {
             method: 'POST',
@@ -1053,9 +1053,9 @@ async function applyNetworkFailover() {
         const data = await response.json();
         
         if (data.success) {
-            let message = 'Failover réseau appliqué';
+            let message = 'Failover r?seau appliqu?';
             if (data.connection?.success) {
-                message += ` - Connecté à ${primarySsid}`;
+                message += ` - Connect? ? ${primarySsid}`;
             }
             showToast(message, 'success');
             setTimeout(loadWifiFailoverStatus, 2000);
@@ -1098,7 +1098,7 @@ async function applyIpConfig() {
         
         if (data.success) {
             const ifaceCount = data.interfaces?.length || 0;
-            showToast(`Configuration IP appliquée à ${ifaceCount} interface(s)`, 'success');
+            showToast(`Configuration IP appliqu?e ? ${ifaceCount} interface(s)`, 'success');
             setTimeout(loadWifiFailoverStatus, 2000);
             setTimeout(loadNetworkInterfaces, 2000);
         } else {
@@ -1137,7 +1137,7 @@ async function scanWifiForField(fieldId) {
                 </div>
             `).join('');
         } else {
-            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucun réseau trouvé</span></div>';
+            listContainer.innerHTML = '<div class="detection-item"><span class="text-muted">Aucun r?seau trouv?</span></div>';
         }
         
         // Auto-hide after 30 seconds
@@ -1187,13 +1187,13 @@ async function loadEthernetWifiStatus() {
             const ethBadge = document.getElementById('eth-status-badge');
             if (ethBadge) {
                 if (data.ethernet.connected) {
-                    ethBadge.textContent = 'Connecté';
+                    ethBadge.textContent = 'Connect?';
                     ethBadge.className = 'badge badge-success';
                 } else if (data.ethernet.present) {
-                    ethBadge.textContent = 'Déconnecté';
+                    ethBadge.textContent = 'D?connect?';
                     ethBadge.className = 'badge badge-warning';
                 } else {
-                    ethBadge.textContent = 'Non détecté';
+                    ethBadge.textContent = 'Non d?tect?';
                     ethBadge.className = 'badge badge-secondary';
                 }
             }
@@ -1206,17 +1206,17 @@ async function loadEthernetWifiStatus() {
                         wlan0Badge.textContent = 'Mode AP';
                         wlan0Badge.className = 'badge badge-info';
                     } else if (data.wlan0.connected) {
-                        wlan0Badge.textContent = 'Connecté';
+                        wlan0Badge.textContent = 'Connect?';
                         wlan0Badge.className = 'badge badge-success';
                     } else if (data.wlan0.managed) {
-                        wlan0Badge.textContent = 'Désactivé (Eth prioritaire)';
+                        wlan0Badge.textContent = 'D?sactiv? (Eth prioritaire)';
                         wlan0Badge.className = 'badge badge-secondary';
                     } else {
-                        wlan0Badge.textContent = 'Déconnecté';
+                        wlan0Badge.textContent = 'D?connect?';
                         wlan0Badge.className = 'badge badge-warning';
                     }
                 } else {
-                    wlan0Badge.textContent = 'Non détecté';
+                    wlan0Badge.textContent = 'Non d?tect?';
                     wlan0Badge.className = 'badge badge-secondary';
                 }
             }
@@ -1230,7 +1230,7 @@ async function loadEthernetWifiStatus() {
             // Update status text
             const overrideStatus = document.getElementById('wifi-override-status');
             if (overrideStatus) {
-                overrideStatus.textContent = data.override ? 'Forcé ON' : 'Auto';
+                overrideStatus.textContent = data.override ? 'Forc? ON' : 'Auto';
                 overrideStatus.className = `control-status ${data.override ? 'status-active' : ''}`;
             }
         }
@@ -1259,11 +1259,11 @@ async function applyWifiOverride() {
         
         if (data.success) {
             const action = data.wifi_management?.action || '';
-            let message = enable ? 'WiFi forcé actif' : 'Mode automatique activé';
+            let message = enable ? 'WiFi forc? actif' : 'Mode automatique activ?';
             if (action === 'reconnected') {
-                message = 'WiFi reconnecté';
+                message = 'WiFi reconnect?';
             } else if (action === 'disabled') {
-                message = 'WiFi désactivé (Ethernet prioritaire)';
+                message = 'WiFi d?sactiv? (Ethernet prioritaire)';
             }
             showToast(message, 'success');
             // Reload status to reflect changes
@@ -1307,7 +1307,7 @@ async function loadApStatus() {
             if (status.active) {
                 statusBanner.className = 'ap-status-banner ap-active';
                 statusIcon.className = 'fas fa-circle status-active';
-                statusText.textContent = `Point d'accès actif: ${status.ssid} (${status.ip})`;
+                statusText.textContent = `Point d'acc?s actif: ${status.ssid} (${status.ip})`;
                 if (clientsCount) {
                     clientsCount.style.display = 'inline';
                     clientsCount.textContent = `${status.clients} client${status.clients !== 1 ? 's' : ''}`;
@@ -1315,7 +1315,7 @@ async function loadApStatus() {
             } else {
                 statusBanner.className = 'ap-status-banner ap-inactive';
                 statusIcon.className = 'fas fa-circle status-inactive';
-                statusText.textContent = 'Point d\'accès inactif';
+                statusText.textContent = 'Point d\'acc?s inactif';
                 if (clientsCount) clientsCount.style.display = 'none';
             }
             
@@ -1371,7 +1371,7 @@ async function saveApConfig() {
         return false;
     }
     if (config.ap_password && config.ap_password.length < 8) {
-        showToast('Le mot de passe doit faire au moins 8 caractères', 'error');
+        showToast('Le mot de passe doit faire au moins 8 caract?res', 'error');
         return false;
     }
     
@@ -1385,7 +1385,7 @@ async function saveApConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Configuration AP enregistrée', 'success');
+            showToast('Configuration AP enregistr?e', 'success');
             return true;
         } else {
             showToast(data.message || 'Erreur sauvegarde', 'error');
@@ -1402,7 +1402,7 @@ async function saveApConfig() {
  */
 async function loadApConfigFromMeeting(silent = false) {
     try {
-        if (!silent) showToast('Récupération des paramètres Meeting...', 'info');
+        if (!silent) showToast('R?cup?ration des param?tres Meeting...', 'info');
         
         const response = await fetch('/api/network/ap/config', {
             method: 'POST',
@@ -1413,7 +1413,7 @@ async function loadApConfigFromMeeting(silent = false) {
         const data = await response.json();
         
         if (data.success) {
-            if (!silent) showToast('Paramètres AP récupérés depuis Meeting', 'success');
+            if (!silent) showToast('Param?tres AP r?cup?r?s depuis Meeting', 'success');
             // Update form fields directly from response
             if (data.config) {
                 const apSsidField = document.getElementById('ap_ssid');
@@ -1434,7 +1434,7 @@ async function loadApConfigFromMeeting(silent = false) {
                 }
             }
         } else {
-            if (!silent) showToast(data.message || 'Erreur récupération Meeting', 'error');
+            if (!silent) showToast(data.message || 'Erreur r?cup?ration Meeting', 'error');
         }
     } catch (error) {
         showToast('Erreur de connexion', 'error');
@@ -1451,17 +1451,17 @@ async function startAccessPoint() {
     const apChannel = document.getElementById('ap_channel')?.value || 11;
     
     // Check for placeholder values
-    if (!apSsid || apSsid.includes('non configuré')) {
-        showToast('Configuration AP manquante. Vérifiez que Meeting est provisionné.', 'error');
+    if (!apSsid || apSsid.includes('non configur?')) {
+        showToast('Configuration AP manquante. V?rifiez que Meeting est provisionn?.', 'error');
         return;
     }
-    if (!apPassword || apPassword.includes('non configuré')) {
-        showToast('Mot de passe AP manquant. Vérifiez que Meeting est provisionné.', 'error');
+    if (!apPassword || apPassword.includes('non configur?')) {
+        showToast('Mot de passe AP manquant. V?rifiez que Meeting est provisionn?.', 'error');
         return;
     }
     
     try {
-        showToast('Démarrage du point d\'accès...', 'info');
+        showToast('D?marrage du point d\'acc?s...', 'info');
         
         const response = await fetch('/api/network/ap/start', {
             method: 'POST',
@@ -1480,7 +1480,7 @@ async function startAccessPoint() {
             setTimeout(loadApStatus, 2000);
             setTimeout(loadEthernetWifiStatus, 2000);
         } else {
-            showToast(data.message || 'Erreur démarrage AP', 'error');
+            showToast(data.message || 'Erreur d?marrage AP', 'error');
         }
     } catch (error) {
         showToast('Erreur de connexion', 'error');
@@ -1492,7 +1492,7 @@ async function startAccessPoint() {
  */
 async function stopAccessPoint() {
     try {
-        showToast('Arrêt du point d\'accès...', 'info');
+        showToast('Arr?t du point d\'acc?s...', 'info');
         
         const response = await fetch('/api/network/ap/stop', {
             method: 'POST'
@@ -1505,7 +1505,7 @@ async function stopAccessPoint() {
             setTimeout(loadApStatus, 1000);
             setTimeout(loadEthernetWifiStatus, 1000);
         } else {
-            showToast(data.message || 'Erreur arrêt AP', 'error');
+            showToast(data.message || 'Erreur arr?t AP', 'error');
         }
     } catch (error) {
         showToast('Erreur de connexion', 'error');

@@ -32,6 +32,7 @@ UPDATE_REPO_BRANCH_FALLBACK = 'main'
 UPDATE_WEB_INSTALL_DIR = '/opt/rpi-cam-webmanager'
 DEPENDENCIES_FILE_NAME = 'DEPENDENCIES.json'
 DEPENDENCIES_FILE_PATH = os.path.join(UPDATE_WEB_INSTALL_DIR, DEPENDENCIES_FILE_NAME)
+APT_CACHE_REFRESHED = False
 UPDATE_REPO_BINARIES = {
     'rpi_av_rtsp_recorder.sh': '/usr/local/bin/rpi_av_rtsp_recorder.sh',
     'rpi_csi_rtsp_server.py': '/usr/local/bin/rpi_csi_rtsp_server.py',
@@ -617,6 +618,14 @@ def _filter_required_packages(packages: list) -> tuple[list, list]:
             invalid.append(pkg_str)
     return valid, invalid
 
+def _refresh_apt_cache_once() -> None:
+    global APT_CACHE_REFRESHED
+    if APT_CACHE_REFRESHED:
+        return
+    result = run_command("apt-get update -qq", timeout=120)
+    if result.get('success'):
+        APT_CACHE_REFRESHED = True
+
 def _filter_available_packages(packages: list) -> tuple[list, list]:
     available = []
     unavailable = []
@@ -628,6 +637,17 @@ def _filter_available_packages(packages: list) -> tuple[list, list]:
             available.append(pkg)
         else:
             unavailable.append(pkg)
+    if unavailable and not APT_CACHE_REFRESHED:
+        _refresh_apt_cache_once()
+        if APT_CACHE_REFRESHED:
+            retry_unavailable = []
+            for pkg in unavailable:
+                result = run_command(f"apt-cache show {pkg} >/dev/null 2>&1", timeout=8)
+                if result['success']:
+                    available.append(pkg)
+                else:
+                    retry_unavailable.append(pkg)
+            unavailable = retry_unavailable
     return available, unavailable
 
 def _load_dependencies_spec_from_text(text: str) -> tuple[dict, list]:
