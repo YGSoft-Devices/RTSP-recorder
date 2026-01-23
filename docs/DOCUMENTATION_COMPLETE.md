@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.32.88
+Version: 2.32.89
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -881,6 +881,7 @@ L'onglet **Systeme** propose un bouton **Update** qui met a jour depuis les fich
 
 #### Notes
 - Necessite un acces Internet
+- Compare le fichier `VERSION` du repo (branche par defaut)
 - Utilise le repo defini dans `web-manager/config.py` (`GITHUB_REPO`)
 
 ### 9.2.2quater Update from file (v2.32.42+)

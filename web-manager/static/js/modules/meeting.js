@@ -1287,8 +1287,7 @@ async function testSnmpConfig() {
 // GitHub Updater Functions
 // ============================================================================
 
-const GITHUB_REPO = 'votre-user/RTSP-Full';  // À configurer
-const CURRENT_VERSION = '2.30.27';
+const CURRENT_VERSION = (window.APP_VERSION || '').replace(/^v/, '') || '0.0.0';
 
 /**
  * Check for available updates on GitHub

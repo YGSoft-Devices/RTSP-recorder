@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 System Service - Diagnostics, logs, updates, and system management
-Version: 2.30.27
+Version: 2.30.28
 """
 
 import os
@@ -1481,33 +1481,16 @@ def check_for_updates():
     }
     
     try:
-        import urllib.request
-        
-        # Get latest release from GitHub API
-        api_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-        
-        request = urllib.request.Request(api_url)
-        request.add_header('Accept', 'application/vnd.github.v3+json')
-        request.add_header('User-Agent', f'rpi-cam-webmanager/{APP_VERSION}')
-        
-        with urllib.request.urlopen(request, timeout=10) as response:
-            data = json.loads(response.read().decode('utf-8'))
-            
-            result['latest_version'] = data.get('tag_name', '').lstrip('v')
-            result['release_notes'] = data.get('body', '')
-            
-            # Find download URL
-            for asset in data.get('assets', []):
-                if asset['name'].endswith('.tar.gz') or asset['name'].endswith('.zip'):
-                    result['download_url'] = asset['browser_download_url']
-                    break
-            
-            # Compare versions
-            if result['latest_version']:
-                result['update_available'] = compare_versions(
-                    result['latest_version'],
-                    result['current_version']
-                ) > 0
+        branch = _get_repo_default_branch()
+        latest_version = _get_repo_version(branch)
+        result['latest_version'] = latest_version
+        result['download_url'] = f"https://github.com/{GITHUB_REPO}/archive/refs/heads/{branch}.tar.gz"
+
+        if latest_version:
+            result['update_available'] = compare_versions(
+                latest_version,
+                result['current_version']
+            ) > 0
     
     except Exception as e:
         result['error'] = str(e)
@@ -1649,6 +1632,14 @@ def _download_repo_archive(dest_path, branch):
     request.add_header('User-Agent', f'rpi-cam-webmanager/{APP_VERSION}')
     with urllib.request.urlopen(request, timeout=30) as response, open(dest_path, 'wb') as out_file:
         shutil.copyfileobj(response, out_file)
+
+def _get_repo_version(branch):
+    import urllib.request
+    url = f"https://raw.githubusercontent.com/{GITHUB_REPO}/{branch}/VERSION"
+    request = urllib.request.Request(url)
+    request.add_header('User-Agent', f'rpi-cam-webmanager/{APP_VERSION}')
+    with urllib.request.urlopen(request, timeout=10) as response:
+        return response.read().decode('utf-8').strip()
 
 def _find_repo_root(extract_dir):
     entries = [
