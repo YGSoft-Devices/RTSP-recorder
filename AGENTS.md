@@ -53,7 +53,7 @@ Le projet RTSP-Full a été conçu et sera TOUJOURS conçu pour supporter ces 3 
    - maintenir `web-manager/DEPENDENCIES.json` à jour (toutes les dependances APT requises)
    - Tout reglage possible ajouté au projet doit etre exposé sur le frontend. 
    - Le flux RTSP et la transmission audio/video doit toujours etre protegés d'un crash eventuel. Les services sur les devices doivent etre le moins coupés possibles.
-
+   - a chaque mise a jour, utiliser debug_tools\package_update.ps1 pour generer un package.
 
 ## 🏗️ Structure du Projet de base (à garder a jour)
 NOTE : App.py ayant été refactorisé, il est important de respecter sa nouvelle structure non monolythique.
