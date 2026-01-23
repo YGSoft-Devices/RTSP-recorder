@@ -22,7 +22,7 @@
 - Vérifier sur device que les nouveaux champs UI (Meeting local, ONVIF RTSP/identifiants, WiFi check_interval, CAMERA_DEVICE/CSI/USB, MAX_DISK_MB) se sauvegardent correctement
 - Tester le flux Backup/Restore (avec et sans logs) + reboot automatique apres restauration
 - Tester "Update from file" avec un package genere depuis `debug_tools/package_update.ps1`
-- Tester "Update" (GitHub) avec la mise a jour depuis le repo
+- Tester "Update depuis repo" (modale + force/reset settings)
 - Verifier que les scripts `/usr/local/bin` restent executables apres update depuis fichier
 - Tester la validation `required_packages` (ex: `i2c-tools`, `util-linux-extra`) lors d’un update par fichier
 - Valider scheduler profils (USB/CSI) au reboot + statut "Actif" dans l'UI

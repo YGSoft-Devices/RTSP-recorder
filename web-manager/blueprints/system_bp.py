@@ -400,8 +400,10 @@ def install_update():
     """Install application update."""
     data = request.get_json(silent=True) or {}
     backup = data.get('backup', True)
+    force = bool(data.get('force', False))
+    reset_settings = bool(data.get('reset_settings', False))
     
-    result = perform_update(backup)
+    result = perform_update(backup, force, reset_settings)
     
     status_code = 200 if result['success'] else 500
     return jsonify(result), status_code
@@ -656,8 +658,10 @@ def perform_update_legacy():
     """Perform application update (legacy path)."""
     data = request.get_json(silent=True) or {}
     backup = data.get('backup', True)
+    force = bool(data.get('force', False))
+    reset_settings = bool(data.get('reset_settings', False))
     
-    result = perform_update(backup)
+    result = perform_update(backup, force, reset_settings)
     
     status_code = 200 if result['success'] else 500
     return jsonify(result), status_code

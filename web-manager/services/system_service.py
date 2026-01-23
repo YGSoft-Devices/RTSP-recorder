@@ -1497,12 +1497,14 @@ def check_for_updates():
     
     return result
 
-def perform_update(backup=True):
+def perform_update(backup=True, force=False, reset_settings=False):
     """
     Perform an update from the GitHub repository.
     
     Args:
         backup: Create backup before updating
+        force: Allow reapply if same version
+        reset_settings: Reset configuration after update
     
     Returns:
         dict: Update result
@@ -1515,6 +1517,13 @@ def perform_update(backup=True):
     }
     
     try:
+        branch = _get_repo_default_branch()
+        repo_version = _get_repo_version(branch)
+        if repo_version and compare_versions(repo_version, APP_VERSION) <= 0 and not force:
+            result['message'] = 'Version identique, activez "forcer la reinstallation" pour continuer'
+            result['latest_version'] = repo_version
+            return result
+
         # Create backup if requested
         if backup:
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -1532,7 +1541,6 @@ def perform_update(backup=True):
                 result['message'] = f"Backup failed: {e}"
                 return result
 
-        branch = _get_repo_default_branch()
         with tempfile.TemporaryDirectory() as temp_dir:
             archive_path = os.path.join(temp_dir, 'repo.tar.gz')
             extract_dir = os.path.join(temp_dir, 'extract')
@@ -1550,6 +1558,13 @@ def perform_update(backup=True):
             result['updated_files'] = _sync_repo_update(repo_root)
             if result['updated_files'] == 0:
                 result['message'] = 'Update failed: no files were applied'
+                return result
+
+        reset_result = None
+        if reset_settings:
+            reset_result = _reset_config_directory()
+            if not reset_result.get('success'):
+                result['message'] = reset_result.get('message', 'Reset settings failed')
                 return result
 
         requirements_path = os.path.join(UPDATE_WEB_INSTALL_DIR, 'requirements.txt')
@@ -1573,6 +1588,9 @@ def perform_update(backup=True):
         result['success'] = True
         result['message'] = f'Update completed successfully (branch: {branch})'
         result['requires_restart'] = True
+        result['latest_version'] = repo_version
+        result['reset_settings'] = bool(reset_settings)
+        result['reset_result'] = reset_result
     
     except Exception as e:
         result['message'] = str(e)

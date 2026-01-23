@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.32.90 -->
+<!-- RTSP Recorder Web Interface - Version 2.32.91 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -2468,10 +2468,10 @@
                             </div>
                         </div>
 
-                        <!-- GitHub Updater -->
+                        <!-- Repo Updater -->
                         <div class="form-section">
-                            <h4><i class="fab fa-github"></i> Mise à jour logicielle</h4>
-                            <small class="section-help">Mettez à jour le système depuis GitHub.</small>
+                            <h4><i class="fab fa-github"></i> Update depuis repo</h4>
+                            <small class="section-help">Mettez a jour le systeme depuis le repo GitHub.</small>
                             
                             <div class="update-status" id="update-status">
                                 <div class="current-version">
@@ -2487,25 +2487,15 @@
                             </div>
                             
                             <div class="button-group">
-                                <button type="button" class="btn btn-secondary" onclick="checkForUpdates()">
+                                <button type="button" class="btn btn-secondary" onclick="checkUpdateRepo()">
                                     <i class="fas fa-search"></i> Vérifier les mises à jour
                                 </button>
-                                <button type="button" class="btn btn-primary" id="btn-update" onclick="performUpdate()" disabled>
-                                    <i class="fas fa-download"></i> Mettre à jour
+                                <button type="button" class="btn btn-primary" id="btn-update" onclick="openUpdateRepoModal()">
+                                    <i class="fas fa-download"></i> Update depuis repo
                                 </button>
                                 <button type="button" class="btn btn-secondary" onclick="openUpdateFilePicker()">
-                                    <i class="fas fa-file-upload"></i> Update from file
+                                    <i class="fas fa-file-upload"></i> Update depuis fichier
                                 </button>
-                            </div>
-                            <div class="checkbox-group">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" id="update-force" onchange="updateUpdateButtonState()">
-                                    Forcer la réinstallation (même version)
-                                </label>
-                            </div>
-                            
-                            <div id="update-log" class="update-log" style="display: none;">
-                                <pre></pre>
                             </div>
                             <input type="file" id="update-file-input"
                                    accept=".tar,.tar.gz,.tgz,.gz"
@@ -3379,6 +3369,55 @@
         </div>
     </div>
 
+    <div id="update-repo-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fab fa-github"></i> Update depuis repo</h3>
+                <button type="button" class="modal-close" onclick="closeUpdateRepoModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="status-row">
+                    <span>Version actuelle</span>
+                    <span id="update-repo-current-version">-</span>
+                </div>
+                <div class="status-row">
+                    <span>Version disponible</span>
+                    <span id="update-repo-latest-version">-</span>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="update-repo-force" onchange="updateRepoApplyState()">
+                        Forcer la reinstallation si meme version
+                    </label>
+                    <small>Utile en cas de fichiers corrompus ou deploiement incomplet.</small>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="update-repo-reset">
+                        Reset settings (reinitialiser la configuration)
+                    </label>
+                    <small>Supprime la configuration locale pour repartir sur une version propre.</small>
+                </div>
+
+                <div class="debug-action-status" id="update-repo-status">
+                    <span class="status-label">Statut:</span>
+                    <span class="status-value" id="update-repo-status-text">En attente</span>
+                </div>
+
+                <div class="update-log" id="update-repo-log" style="display: none;">
+                    <pre></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeUpdateRepoModal()">Fermer</button>
+                <button type="button" class="btn btn-primary" id="update-repo-apply-btn" onclick="applyUpdateRepo()" disabled>
+                    <i class="fas fa-check"></i> Appliquer
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="update-file-modal" class="modal" style="display: none;">
         <div class="modal-content">
             <div class="modal-header">
@@ -3448,6 +3487,7 @@
     <script src="{{ url_for('static', filename='js/modules/recordings.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/modules/network.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/modules/power.js') }}?v={{ app_version }}"></script>
+    <script src="{{ url_for('static', filename='js/modules/updates.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/modules/meeting.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/modules/camera.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/modules/config_video.js') }}?v={{ app_version }}"></script>

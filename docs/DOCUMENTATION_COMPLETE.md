@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.32.90
+Version: 2.32.91
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -855,17 +855,19 @@ var/log/rpi-cam/... (optionnel)
 - La version du backup est lue depuis `backup_manifest.json` (pas depuis le nom du fichier)
 - La restauration applique uniquement `etc/rpi-cam/*` (les logs restent des copies d'analyse)
 
-### 9.2.2ter Update depuis GitHub (v2.32.88+)
+### 9.2.2ter Update depuis repo (v2.32.91+)
 
-L'onglet **Systeme** propose un bouton **Update** qui met a jour depuis les fichiers du repo GitHub.
+L'onglet **Systeme** propose un bouton **Update depuis repo** qui ouvre une modale de mise a jour.
 
 #### Flux utilisateur
-- Verifie la derniere version disponible (GitHub API)
+- Verifie la derniere version disponible (VERSION du repo)
 - Telecharge l'archive du repo (branche par defaut)
 - Applique les fichiers sur le device
 - Installe les dependances Python si `requirements.txt` existe
 - Redemarre les services (web manager en dernier, apres reponse)
-- Option "forcer" pour relancer la mise a jour meme si la version est identique
+- Options dans la modale:
+  - Forcer la reinstallation (meme version)
+  - Reset settings (reinitialiser la configuration)
 
 #### Fichiers mis a jour
 - `/opt/rpi-cam-webmanager/*` (UI + backend)

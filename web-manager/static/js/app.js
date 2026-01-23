@@ -1,13 +1,10 @@
 /**
  * RTSP Recorder Web Manager - Frontend JavaScript
- * Version: 2.32.90
+ * Version: 2.32.91
  */
 
 let backupFileAction = null;
 let backupSelectedFile = null;
-let updateFileSelected = null;
-let updateFilePolling = null;
-let updateFilePollFailures = 0;
 
 
 // Initialize on page load
