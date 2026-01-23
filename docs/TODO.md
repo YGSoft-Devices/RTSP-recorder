@@ -19,6 +19,7 @@
 - Refactor `web-manager/static/js/app.js` en modules incrementaux (navigation, home, services, reseau, logs, fichiers, debug), sans changer l'API publique; maintenir le script smoke.
 - Identifier des valeurs fiables pour `AwbEnable` et `AeFlickerPeriod` (Picamera2 retourne `null` dans `/controls`)
 - Valider visuellement le bouton ghost-fix sur le flux CSI (effet ghost disparu)
+- Verifier sur device que `H264_BITRATE_KBPS` est bien applique avec `v4l2h264enc` (Synology/ONVIF)
 - Vérifier sur device que les nouveaux champs UI (Meeting local, ONVIF RTSP/identifiants, WiFi check_interval, CAMERA_DEVICE/CSI/USB, MAX_DISK_MB) se sauvegardent correctement
 - Tester le flux Backup/Restore (avec et sans logs) + reboot automatique apres restauration
 - Tester "Update from file" avec un package genere depuis `debug_tools/package_update.ps1`

@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Diagnostic functions
- * Version: 2.32.86
+ * Version: 2.32.92
  */
 
 (function () {
@@ -1779,3 +1779,4 @@ async function deleteProfile(profileId) {
     window.applyProfile = applyProfile;
     window.deleteProfile = deleteProfile;
 })();
+

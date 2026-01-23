@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.32.91
+Version: 2.32.92
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -261,6 +261,7 @@ Ordre de préférence:
 3) `x264enc` (software) en fallback (Pi 3B+: rester à `640x480@15fps`)
 
 Note importante (Pi 3B+ / Trixie): `v4l2h264enc` peut être présent mais cassé; le script teste et bascule automatiquement.
+Note: `H264_BITRATE_KBPS` s'applique aux encodeurs hardware (`v4l2h264enc`) et software.
 
 ### 5.4 Audio (optionnel)
 - Détection automatique d’un micro USB via `arecord -l`

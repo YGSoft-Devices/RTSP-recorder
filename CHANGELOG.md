@@ -7,6 +7,14 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.32.92] - H264 Bitrate Fix
+
+### Corrections
+- **rpi_av_rtsp_recorder.sh**
+  - v4l2h264enc applique maintenant `H264_BITRATE_KBPS` (plus de 4 Mbps hardcodés).
+
+---
+
 ## [2.32.87] - Refactor Recap
 
 ### Ajouts

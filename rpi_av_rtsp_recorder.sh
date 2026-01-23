@@ -11,8 +11,9 @@
 #   - Serve RTSP stream (H264 video + optional AAC audio)
 #   - Record locally in segments (robust against power loss)
 #
-# Version: 2.12.2
+# Version: 2.12.3
 # Changelog:
+#   - 2.12.3: v4l2h264enc now honors H264_BITRATE_KBPS (no hardcoded 4 Mbps)
 #   - 2.12.2: Export H264_PROFILE/H264_QP for CSI encoder tuning
 #   - 2.11.2: Added timeout to arecord --dump-hw-params to prevent blocking when device is busy
 #   - 2.11.1: Fixed USB camera detection when v4l2-ctl returns multiple Driver lines
@@ -544,8 +545,9 @@ build_video_encoder() {
     # Use I420 (YUV420p) format - compatible with jpegdec output via videoconvert
     # Force level 4 for proper caps negotiation (fixes "level too low" issues)
     # extra-controls for proper stream headers (needed for RTSP)
-    # video_bitrate in bits/sec (4000000 = 4Mbps)
-    echo "video/x-raw,format=I420 ! v4l2h264enc extra-controls=\"controls,repeat_sequence_header=1,video_bitrate=4000000\" ! video/x-h264,level=(string)4 ! h264parse config-interval=1"
+    # video_bitrate in bits/sec
+    local bitrate_bps=$((H264_BITRATE_KBPS * 1000))
+    echo "video/x-raw,format=I420 ! v4l2h264enc extra-controls=\"controls,repeat_sequence_header=1,video_bitrate=${bitrate_bps}\" ! video/x-h264,level=(string)4 ! h264parse config-interval=1"
   elif gst-inspect-1.0 x264enc >/dev/null 2>&1; then
     log "Using x264enc (SOFTWARE) - CPU intensive on Pi 3B+" >&2
     log "Tip: For Pi 3B+, keep resolution at 640x480@15fps or lower" >&2
@@ -670,7 +672,7 @@ setup_fs
 setup_logging
 
 log "=========================================="
-log "Starting rpi_av_rtsp_recorder v2.11.2"
+log "Starting rpi_av_rtsp_recorder v2.12.3"
 log "=========================================="
 log "Config: RTSP=:${RTSP_PORT}/${RTSP_PATH} Video=${VIDEO_WIDTH}x${VIDEO_HEIGHT}@${VIDEO_FPS}fps"
 log "Recording: ${RECORD_ENABLE} -> ${RECORD_DIR} (${SEGMENT_SECONDS}s segments)"
