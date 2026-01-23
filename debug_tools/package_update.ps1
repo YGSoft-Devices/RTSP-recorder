@@ -59,6 +59,21 @@ foreach ($file in $binFiles) {
     Copy-Item -Force $src $destBin
 }
 
+$depsPath = Join-Path $repoRoot "web-manager\\DEPENDENCIES.json"
+if (Test-Path $depsPath) {
+    $deps = Get-Content -Path $depsPath -Raw | ConvertFrom-Json
+    if ($deps.apt_packages) {
+        $depPackages = @($deps.apt_packages | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ })
+        if ($depPackages.Count -gt 0) {
+            if ($RequiredPackages.Count -eq 0) {
+                $RequiredPackages = $depPackages
+            } else {
+                $RequiredPackages = @($RequiredPackages + $depPackages | Select-Object -Unique)
+            }
+        }
+    }
+}
+
 $files = Get-ChildItem -Path $payloadRoot -Recurse -File
 $manifestFiles = @()
 

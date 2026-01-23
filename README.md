@@ -29,6 +29,7 @@ Le projet RTSP-Full est conçu pour supporter **3 sources essentielles** :
 
 - [Fonctionnalités](#-fonctionnalités)
 - [Prérequis](#-prérequis)
+- [Dépendances](#-dépendances)
 - [Installation](#-installation)
 - [Configuration](#-configuration)
 - [Utilisation](#-utilisation)
@@ -78,6 +79,18 @@ Le projet RTSP-Full est conçu pour supporter **3 sources essentielles** :
 ### 💡 Contrôle des LEDs
 - **LED Power (Rouge)** : Activation/désactivation de la LED d'alimentation
 - **LED Activity (Verte)** : Activation/désactivation de la LED d'activité
+
+---
+
+## 📦 Dépendances
+
+Le fichier `web-manager/DEPENDENCIES.json` est **la source de vérité** des dépendances APT du projet.
+Il doit être mis à jour à chaque ajout/suppression de dépendance.
+
+Lors d'une mise à jour (fichier ou GitHub), le système:
+- compare les paquets installés avec `DEPENDENCIES.json`
+- vérifie les dépendances Python via `requirements.txt`
+- installe automatiquement les manquants et déclenche un redémarrage si nécessaire
 - Persistance des paramètres au redémarrage (optionnel)
 - Utile pour réduire la consommation ou pour la discrétion
 

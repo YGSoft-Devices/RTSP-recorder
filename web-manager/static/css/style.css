@@ -1,5 +1,5 @@
 /* RTSP Recorder Web Manager - Stylesheet */
-/* Version: 2.32.95 */
+/* Version: 2.33.00 */
 
 :root {
     --primary-color: #2563eb;
@@ -6182,6 +6182,11 @@ body {
 .camera-type-toggle .toggle-btn { flex: 1; padding: 10px; text-align: center; background: transparent; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; transition: all 0.2s; color: var(--text-muted); }
 .camera-type-toggle input[type='radio']:checked + .toggle-btn { background: var(--primary-color); color: white; border-color: var(--primary-color); font-weight: bold; }
 .camera-type-toggle .toggle-btn:hover { background: rgba(255,255,255,0.05); }
+
+
+
+
+
 
 
 

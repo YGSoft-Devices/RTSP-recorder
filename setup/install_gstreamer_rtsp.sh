@@ -237,6 +237,7 @@ fi
 msg "Installation de GStreamer + plugins..."
 
 # Core GStreamer packages (available on both Debian and RPi OS)
+# Includes textoverlay/clockoverlay via plugins-base/plugins-good (RTSP overlay support).
 GSTREAMER_PKGS=(
   gstreamer1.0-tools
   gstreamer1.0-plugins-base
@@ -246,6 +247,7 @@ GSTREAMER_PKGS=(
   gstreamer1.0-libav
   gstreamer1.0-alsa
   gstreamer1.0-pulseaudio
+  gstreamer1.0-x
   libgstreamer1.0-dev
   libgstreamer-plugins-base1.0-dev
 )

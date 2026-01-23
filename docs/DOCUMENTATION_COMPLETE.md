@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.32.95
+Version: 2.33.00
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -897,9 +897,10 @@ L'onglet **Systeme** propose un bouton **Update from file** qui applique un pack
 - Verification complete (version, integrite, chemins autorises)
 - Option "forcer" pour reinstaller la meme version si necessaire
 - Option "reset settings" pour repartir sur une configuration propre
-- Installation automatique des dependances manquantes si declarees
+- Verification des dependances APT via `DEPENDENCIES.json` + requirements.txt Python
+- Installation automatique des dependances manquantes
 - Application et relance des services (statut affiche en continu)
- - Redemarrage automatique si requis par l'update
+- Redemarrage automatique si de nouvelles dependances sont installees
 
 #### Format du package
 ```
@@ -911,6 +912,11 @@ payload/usr/local/bin/...
 #### Champs optionnels du manifest
 - `required_packages`: liste de paquets APT requis
 - `requires_reboot`: force un redemarrage apres update
+
+#### Fichier de dependances (obligatoire)
+- `web-manager/DEPENDENCIES.json` (installe dans `/opt/rpi-cam-webmanager/DEPENDENCIES.json`)
+- Contient la liste **complete** des paquets APT requis + le fichier Python requirements
+- Toute dependance ajoutee/supprimee doit etre reflechee ici
 
 #### Logs
 - **Fichier** : `/var/log/rpi-cam/update_from_file.log`
@@ -996,6 +1002,7 @@ L'onglet **Vidéo** permet de configurer la source caméra, la résolution et le
   - `VIDEO_OVERLAY_TEXT` supporte des tokens: `{CAMERA_TYPE}`, `{VIDEO_DEVICE}`, `{VIDEO_RESOLUTION}`, `{VIDEO_FPS}`, `{VIDEO_FORMAT}`
   - `VIDEO_OVERLAY_SHOW_DATETIME=yes` + `VIDEO_OVERLAY_DATETIME_FORMAT` (strftime)
   - **Limites:** non supporté pour le serveur CSI Picamera2 (rpi_csi_rtsp_server.py) ni pour les sources USB en H264 direct
+  - **Dépendances:** nécessite `clockoverlay`/`textoverlay` (GStreamer plugins). Installer `gstreamer1.0-x` si absents.
 
 #### Profils caméra (Contrôles avancés)
 

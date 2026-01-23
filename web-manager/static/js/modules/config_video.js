@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.32.95
+ * Version: 2.33.00
  */
 
 (function () {
@@ -539,6 +539,11 @@ async function applyVideoSettings() {
     window.toggleManualResolution = toggleManualResolution;
     window.applyVideoSettings = applyVideoSettings;
 })();
+
+
+
+
+
 
 
 

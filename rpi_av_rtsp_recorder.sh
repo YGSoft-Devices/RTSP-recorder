@@ -11,8 +11,10 @@
 #   - Serve RTSP stream (H264 video + optional AAC audio)
 #   - Record locally in segments (robust against power loss)
 #
-# Version: 2.12.5
+# Version: 2.12.7
 # Changelog:
+#   - 2.12.7: Disable overlay gracefully when textoverlay/clockoverlay missing
+#   - 2.12.6: Fix overlay crash when OVERLAY_SUPPORTED not initialized
 #   - 2.12.5: Added configurable RTSP overlay (text + datetime) for USB/legacy CSI
 #   - 2.12.4: Added VIDEO_FORMAT to force MJPG/YUYV/H264 when desired
 #   - 2.12.3: v4l2h264enc now honors H264_BITRATE_KBPS (no hardcoded 4 Mbps)
@@ -101,6 +103,9 @@ set -euo pipefail
 : "${VIDEO_OVERLAY_DATETIME_FORMAT:=%Y-%m-%d %H:%M:%S}"
 : "${VIDEO_OVERLAY_CLOCK_POSITION:=bottom-right}"
 : "${VIDEO_OVERLAY_FONT_SIZE:=24}"
+
+# Track overlay compatibility for current pipeline
+OVERLAY_SUPPORTED=1
 # Camera type: auto, usb, csi
 : "${CAMERA_TYPE:=auto}"
 # Legacy support (deprecated, use CAMERA_TYPE instead)
@@ -190,24 +195,32 @@ build_video_overlay() {
   local font_desc="Sans ${VIDEO_OVERLAY_FONT_SIZE}"
 
   if [[ "${VIDEO_OVERLAY_SHOW_DATETIME}" == "yes" ]]; then
-    read -r clock_valign clock_halign <<<"$(overlay_alignment_from_position "${VIDEO_OVERLAY_CLOCK_POSITION}")"
-    overlay_chain="clockoverlay time-format=\"${VIDEO_OVERLAY_DATETIME_FORMAT}\" valignment=${clock_valign} halignment=${clock_halign} shaded-background=true font-desc=\"${font_desc}\""
+    if ! gst-inspect-1.0 clockoverlay >/dev/null 2>&1; then
+      log "Overlay clockoverlay not available; date/time overlay disabled" >&2
+    else
+      read -r clock_valign clock_halign <<<"$(overlay_alignment_from_position "${VIDEO_OVERLAY_CLOCK_POSITION}")"
+      overlay_chain="clockoverlay time-format=\"${VIDEO_OVERLAY_DATETIME_FORMAT}\" valignment=${clock_valign} halignment=${clock_halign} shaded-background=true font-desc=\"${font_desc}\""
+    fi
   fi
 
   local overlay_text="${VIDEO_OVERLAY_TEXT}"
   if [[ -n "${overlay_text}" ]]; then
-    overlay_text="${overlay_text//\{CAMERA_TYPE\}/${CAM_MODE}}"
-    overlay_text="${overlay_text//\{VIDEO_DEVICE\}/${VIDEO_DEVICE}}"
-    overlay_text="${overlay_text//\{VIDEO_RESOLUTION\}/${VIDEO_WIDTH}x${VIDEO_HEIGHT}}"
-    overlay_text="${overlay_text//\{VIDEO_FPS\}/${VIDEO_FPS}}"
-    overlay_text="${overlay_text//\{VIDEO_FORMAT\}/${VIDEO_FORMAT}}"
-    overlay_text="${overlay_text//\"/ }"
-    overlay_text="${overlay_text//\'/ }"
-    read -r text_valign text_halign <<<"$(overlay_alignment_from_position "${VIDEO_OVERLAY_POSITION}")"
-    if [[ -n "${overlay_chain}" ]]; then
-      overlay_chain="${overlay_chain} ! "
+    if ! gst-inspect-1.0 textoverlay >/dev/null 2>&1; then
+      log "Overlay textoverlay not available; text overlay disabled" >&2
+    else
+      overlay_text="${overlay_text//\{CAMERA_TYPE\}/${CAM_MODE}}"
+      overlay_text="${overlay_text//\{VIDEO_DEVICE\}/${VIDEO_DEVICE}}"
+      overlay_text="${overlay_text//\{VIDEO_RESOLUTION\}/${VIDEO_WIDTH}x${VIDEO_HEIGHT}}"
+      overlay_text="${overlay_text//\{VIDEO_FPS\}/${VIDEO_FPS}}"
+      overlay_text="${overlay_text//\{VIDEO_FORMAT\}/${VIDEO_FORMAT}}"
+      overlay_text="${overlay_text//\"/ }"
+      overlay_text="${overlay_text//\'/ }"
+      read -r text_valign text_halign <<<"$(overlay_alignment_from_position "${VIDEO_OVERLAY_POSITION}")"
+      if [[ -n "${overlay_chain}" ]]; then
+        overlay_chain="${overlay_chain} ! "
+      fi
+      overlay_chain="${overlay_chain}textoverlay text=\"${overlay_text}\" valignment=${text_valign} halignment=${text_halign} shaded-background=true font-desc=\"${font_desc}\""
     fi
-    overlay_chain="${overlay_chain}textoverlay text=\"${overlay_text}\" valignment=${text_valign} halignment=${text_halign} shaded-background=true font-desc=\"${font_desc}\""
   fi
 
   echo "${overlay_chain}"
@@ -773,7 +786,7 @@ setup_fs
 setup_logging
 
 log "=========================================="
-log "Starting rpi_av_rtsp_recorder v2.12.5"
+log "Starting rpi_av_rtsp_recorder v2.12.7"
 log "=========================================="
 log "Config: RTSP=:${RTSP_PORT}/${RTSP_PATH} Video=${VIDEO_WIDTH}x${VIDEO_HEIGHT}@${VIDEO_FPS}fps"
 log "Recording: ${RECORD_ENABLE} -> ${RECORD_DIR} (${SEGMENT_SECONDS}s segments)"

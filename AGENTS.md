@@ -50,6 +50,7 @@ Le projet RTSP-Full a été conçu et sera TOUJOURS conçu pour supporter ces 3 
    - toujours deployer sur le device et tester.
    - si un bug est trouvé, on corrige le bug à la source, on ne contourne pas, on ne fait pas de modifications exceptionnelles sur le device.
    - il faut toujours s'assurer que les fichiers setups soient complets, et ne reimplemente pas des bugs deja corrigés. Tout doit toujours etre pret pour une installation propre, complete, et sans deboggage a faire derriere.
+   - maintenir `web-manager/DEPENDENCIES.json` à jour (toutes les dependances APT requises)
    - Tout reglage possible ajouté au projet doit etre exposé sur le frontend. 
    - Le flux RTSP et la transmission audio/video doit toujours etre protegés d'un crash eventuel. Les services sur les devices doivent etre le moins coupés possibles.
 

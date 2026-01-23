@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Updates (repo + file)
- * Version: 2.32.95
+ * Version: 2.33.00
  */
 
 const CURRENT_VERSION = (window.APP_VERSION || '').replace(/^v/, '') || '0.0.0';
@@ -227,8 +227,6 @@ function showUpdateFileModal() {
     if (forceCheckbox) forceCheckbox.checked = false;
     const resetCheckbox = document.getElementById('update-file-reset');
     if (resetCheckbox) resetCheckbox.checked = false;
-    const depsCheckbox = document.getElementById('update-file-install-deps');
-    if (depsCheckbox) depsCheckbox.checked = true;
     const depsGroup = document.getElementById('update-file-deps-group');
     if (depsGroup) depsGroup.style.display = 'none';
     const depsInfo = document.getElementById('update-file-deps-info');
@@ -313,13 +311,17 @@ async function checkUpdateFile(file) {
             return;
         }
 
+        const missingApt = data.missing_apt_packages || data.missing_packages || [];
+        const missingPip = data.missing_pip_packages || [];
         const depsGroup = document.getElementById('update-file-deps-group');
         const depsInfo = document.getElementById('update-file-deps-info');
-        const depsCheckbox = document.getElementById('update-file-install-deps');
-        if (data.missing_packages && data.missing_packages.length) {
+        if (missingApt.length || missingPip.length) {
             if (depsGroup) depsGroup.style.display = 'block';
-            if (depsInfo) depsInfo.textContent = `Manquantes: ${data.missing_packages.join(', ')}`;
-            if (depsCheckbox) depsCheckbox.checked = true;
+            const aptText = missingApt.length ? `APT: ${missingApt.join(', ')}` : '';
+            const pipText = missingPip.length ? `PIP: ${missingPip.join(', ')}` : '';
+            const details = [aptText, pipText].filter(Boolean).join(' | ');
+            if (depsInfo) depsInfo.textContent = details;
+            updateUpdateFileLog('Dependances manquantes detectees: installation automatique + reboot requis.');
         } else {
             if (depsGroup) depsGroup.style.display = 'none';
             if (depsInfo) depsInfo.textContent = '';
@@ -342,14 +344,6 @@ async function applyUpdateFile() {
         return;
     }
 
-    const depsGroup = document.getElementById('update-file-deps-group');
-    const depsCheckbox = document.getElementById('update-file-install-deps');
-    if (depsGroup && depsGroup.style.display !== 'none' && depsCheckbox && !depsCheckbox.checked) {
-        updateUpdateFileStatus('Dependances manquantes non installees', 'error');
-        updateUpdateFileLog('Cochez "Installer les dependances manquantes" pour continuer.');
-        return;
-    }
-
     if (!confirm('Appliquer la mise a jour depuis ce fichier ?')) {
         return;
     }
@@ -365,10 +359,7 @@ async function applyUpdateFile() {
         if (force) formData.append('force', '1');
         const resetSettings = document.getElementById('update-file-reset')?.checked;
         if (resetSettings) formData.append('reset_settings', '1');
-        const installDeps = document.getElementById('update-file-install-deps');
-        if (installDeps && installDeps.checked) {
-            formData.append('install_deps', '1');
-        }
+        formData.append('install_deps', '1');
 
         const response = await fetch('/api/system/update/file/apply', {
             method: 'POST',
@@ -461,6 +452,11 @@ window.onUpdateFileForceChanged = onUpdateFileForceChanged;
 window.checkUpdateFile = checkUpdateFile;
 window.applyUpdateFile = applyUpdateFile;
 window.pollUpdateFileStatus = pollUpdateFileStatus;
+
+
+
+
+
 
 
 

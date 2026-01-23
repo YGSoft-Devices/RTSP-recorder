@@ -7,6 +7,57 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.33.00] - Dependencies File + Auto Install
+
+### Ajouts
+- **web-manager/DEPENDENCIES.json**
+  - Source de vérité des dépendances APT du projet.
+
+### Modifications
+- **web-manager/services/system_service.py**
+  - Vérification des dépendances APT + requirements.txt lors des updates (fichier + GitHub).
+  - Installation automatique des manquants + reboot si nécessaire.
+- **web-manager/blueprints/system_bp.py**, **web-manager/static/js/modules/updates.js**, **web-manager/templates/index.html**
+  - UI update ajustée (dépendances installées automatiquement).
+- **debug_tools/package_update.ps1**
+  - `required_packages` auto-alignés sur `DEPENDENCIES.json`.
+- **docs/DOCUMENTATION_COMPLETE.md**, **README.md**, **AGENTS.md**
+  - Instructions pour maintenir `DEPENDENCIES.json`.
+
+---
+
+## [2.32.99] - Overlay Plugin Package
+
+### Modifications
+- **setup/install_gstreamer_rtsp.sh**
+  - Ajout de `gstreamer1.0-x` pour fournir textoverlay/clockoverlay.
+
+---
+
+## [2.32.98] - Overlay Dependencies
+
+### Modifications
+- **setup/install_gstreamer_rtsp.sh**
+  - Clarifie l'installation des plugins nécessaires à l'overlay (textoverlay/clockoverlay).
+
+---
+
+## [2.32.97] - Overlay Plugin Guard
+
+### Corrections
+- **rpi_av_rtsp_recorder.sh**
+  - Désactive l'overlay si `clockoverlay`/`textoverlay` sont absents.
+
+---
+
+## [2.32.96] - Overlay Crash Fix
+
+### Corrections
+- **rpi_av_rtsp_recorder.sh**
+  - Initialisation de `OVERLAY_SUPPORTED` pour éviter un crash au démarrage.
+
+---
+
 ## [2.32.95] - RTSP Overlay
 
 ### Ajouts

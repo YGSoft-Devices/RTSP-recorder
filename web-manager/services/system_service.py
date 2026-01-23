@@ -30,6 +30,8 @@ SCHEDULED_REBOOT_STATE = '/etc/rpi-cam/reboot_schedule.json'
 UPDATE_ALLOWED_PREFIXES = ['opt/rpi-cam-webmanager', 'usr/local/bin']
 UPDATE_REPO_BRANCH_FALLBACK = 'main'
 UPDATE_WEB_INSTALL_DIR = '/opt/rpi-cam-webmanager'
+DEPENDENCIES_FILE_NAME = 'DEPENDENCIES.json'
+DEPENDENCIES_FILE_PATH = os.path.join(UPDATE_WEB_INSTALL_DIR, DEPENDENCIES_FILE_NAME)
 UPDATE_REPO_BINARIES = {
     'rpi_av_rtsp_recorder.sh': '/usr/local/bin/rpi_av_rtsp_recorder.sh',
     'rpi_csi_rtsp_server.py': '/usr/local/bin/rpi_csi_rtsp_server.py',
@@ -615,6 +617,86 @@ def _filter_required_packages(packages: list) -> tuple[list, list]:
             invalid.append(pkg_str)
     return valid, invalid
 
+def _filter_available_packages(packages: list) -> tuple[list, list]:
+    available = []
+    unavailable = []
+    for pkg in packages:
+        if not pkg:
+            continue
+        result = run_command(f"apt-cache show {pkg} >/dev/null 2>&1", timeout=8)
+        if result['success']:
+            available.append(pkg)
+        else:
+            unavailable.append(pkg)
+    return available, unavailable
+
+def _load_dependencies_spec_from_text(text: str) -> tuple[dict, list]:
+    warnings = []
+    try:
+        data = json.loads(text)
+    except Exception as e:
+        return {}, [f"Invalid dependencies file: {e}"]
+
+    if not isinstance(data, dict):
+        return {}, ["Invalid dependencies file format"]
+
+    if data.get('schema_version') != 1:
+        warnings.append("Unsupported dependencies schema version")
+
+    return data, warnings
+
+def _load_dependencies_spec(path: str) -> tuple[dict, list]:
+    if not path or not os.path.exists(path):
+        return {}, ["Dependencies file not found"]
+    try:
+        with open(path, 'r', encoding='utf-8') as handle:
+            return _load_dependencies_spec_from_text(handle.read())
+    except Exception as e:
+        return {}, [f"Failed to read dependencies file: {e}"]
+
+def _parse_requirements_text(text: str) -> list:
+    packages = []
+    for line in text.splitlines():
+        raw = line.strip()
+        if not raw or raw.startswith('#'):
+            continue
+        if raw.startswith('-r') or raw.startswith('--'):
+            continue
+        if raw.startswith('git+'):
+            continue
+        entry = raw.split(';', 1)[0].strip()
+        name = re.split(r'[<=>]', entry, 1)[0].strip()
+        if name:
+            packages.append(name)
+    return packages
+
+def _get_pip_command() -> str:
+    venv_pip = os.path.join(UPDATE_WEB_INSTALL_DIR, 'venv', 'bin', 'pip')
+    if os.path.exists(venv_pip):
+        return f"sudo {venv_pip}"
+    return "sudo pip3"
+
+def _get_missing_python_packages(packages: list) -> list:
+    if not packages:
+        return []
+    missing = []
+    pip_cmd = _get_pip_command()
+    for pkg in packages:
+        result = run_command(f"{pip_cmd} show {pkg} >/dev/null 2>&1", timeout=10)
+        if not result['success']:
+            missing.append(pkg)
+    return missing
+
+def _install_python_requirements(requirements_path: str) -> dict:
+    if not requirements_path or not os.path.exists(requirements_path):
+        return {'success': False, 'message': 'requirements.txt not found'}
+    pip_cmd = _get_pip_command()
+    result = run_command(f"{pip_cmd} install -q -r {requirements_path}", timeout=600)
+    return {
+        'success': result['success'],
+        'message': result['stdout'] if result['success'] else result['stderr']
+    }
+
 def inspect_update_package(archive_path, allow_same_version=False):
     if not os.path.exists(archive_path):
         return {'success': False, 'message': 'Update file not found'}
@@ -625,6 +707,9 @@ def inspect_update_package(archive_path, allow_same_version=False):
     errors = []
     warnings = []
     manifest = {}
+    dependencies = {}
+    requirements_text = None
+    requirements_file = None
 
     try:
         with tarfile.open(archive_path, 'r:*') as tar:
@@ -649,6 +734,15 @@ def inspect_update_package(archive_path, allow_same_version=False):
             if manifest_member:
                 manifest_data = tar.extractfile(manifest_member).read().decode('utf-8')
                 manifest = json.loads(manifest_data)
+
+            deps_member_path = f"payload/{DEPENDENCIES_FILE_PATH.lstrip('/')}"
+            try:
+                deps_member = tar.getmember(deps_member_path)
+                deps_data = tar.extractfile(deps_member).read().decode('utf-8')
+                dependencies, dep_warnings = _load_dependencies_spec_from_text(deps_data)
+                warnings.extend(dep_warnings)
+            except KeyError:
+                warnings.append('Dependencies file missing in update archive')
 
             required_packages = []
             requires_reboot = False
@@ -705,8 +799,12 @@ def inspect_update_package(archive_path, allow_same_version=False):
                         if expected_size is not None and len(data) != expected_size:
                             errors.append(f"Size mismatch: {path}")
 
-                normalized_packages = _normalize_required_packages(manifest.get('required_packages', []))
-                required_packages, invalid_packages = _filter_required_packages(normalized_packages)
+                deps_packages = _normalize_required_packages(dependencies.get('apt_packages', []))
+                manifest_packages = _normalize_required_packages(manifest.get('required_packages', []))
+                combined_packages = deps_packages or manifest_packages
+                if deps_packages and manifest_packages:
+                    combined_packages = list(dict.fromkeys(deps_packages + manifest_packages))
+                required_packages, invalid_packages = _filter_required_packages(combined_packages)
                 if invalid_packages:
                     warnings.append(f"Invalid package names ignored: {', '.join(invalid_packages)}")
                 requires_reboot = bool(manifest.get('requires_reboot', False))
@@ -715,15 +813,38 @@ def inspect_update_package(archive_path, allow_same_version=False):
                 return {'success': False, 'message': '; '.join(errors), 'errors': errors}
 
             version_cmp = compare_versions(manifest.get('version', ''), APP_VERSION) if manifest.get('version') else 0
-            missing_packages = _get_missing_packages(required_packages) if required_packages else []
+            available_packages, unavailable_packages = _filter_available_packages(required_packages)
+            if unavailable_packages:
+                warnings.append(f"Unavailable packages ignored: {', '.join(unavailable_packages)}")
+            missing_packages = _get_missing_packages(available_packages) if available_packages else []
+
+            requirements_file = dependencies.get('python_requirements_file', 'requirements.txt') if dependencies else 'requirements.txt'
+            if requirements_file:
+                req_member_path = f"payload/{UPDATE_WEB_INSTALL_DIR.lstrip('/')}/{requirements_file}"
+                try:
+                    req_member = tar.getmember(req_member_path)
+                    requirements_text = tar.extractfile(req_member).read().decode('utf-8')
+                except KeyError:
+                    warnings.append('requirements.txt missing in update archive')
+
+            pip_packages = _normalize_required_packages(dependencies.get('pip_packages', [])) if dependencies else []
+            requirements_packages = _parse_requirements_text(requirements_text) if requirements_text else []
+            combined_pip = list(dict.fromkeys(requirements_packages + pip_packages)) if (requirements_packages or pip_packages) else []
+            missing_pip = _get_missing_python_packages(combined_pip) if combined_pip else []
+            if missing_packages or missing_pip:
+                requires_reboot = True
+
             return {
                 'success': True,
                 'version': manifest.get('version'),
                 'created_at': manifest.get('created_at'),
                 'files_count': len(manifest.get('files', [])),
                 'restart_services': manifest.get('restart_services', []),
-                'required_packages': required_packages,
+                'required_packages': available_packages,
                 'missing_packages': missing_packages,
+                'missing_apt_packages': missing_packages,
+                'missing_pip_packages': missing_pip,
+                'python_requirements_file': requirements_file,
                 'requires_reboot': requires_reboot,
                 'warnings': warnings,
                 'same_version': version_cmp == 0,
@@ -737,14 +858,15 @@ def _apply_update_package(archive_path, allow_same_version=False, install_deps=F
     if not inspect_result.get('success'):
         return inspect_result
 
-    missing_packages = inspect_result.get('missing_packages', [])
-    if missing_packages and not install_deps:
-        return {'success': False, 'message': 'Missing dependencies', 'missing_packages': missing_packages}
+    missing_apt = inspect_result.get('missing_apt_packages') or inspect_result.get('missing_packages', [])
+    missing_pip = inspect_result.get('missing_pip_packages', [])
+    deps_installed = False
 
-    if missing_packages and install_deps:
-        deps_result = _install_packages(missing_packages)
+    if missing_apt:
+        deps_result = _install_packages(missing_apt)
         if not deps_result.get('success'):
             return {'success': False, 'message': deps_result.get('message', 'Dependency install failed')}
+        deps_installed = True
 
     services = inspect_result.get('restart_services') or ['rpi-cam-webmanager']
 
@@ -774,6 +896,14 @@ def _apply_update_package(archive_path, allow_same_version=False, install_deps=F
                         os.chmod(dest_path, 0o755)
                     updated += 1
 
+            if missing_pip:
+                requirements_file = inspect_result.get('python_requirements_file') or 'requirements.txt'
+                requirements_path = os.path.join(UPDATE_WEB_INSTALL_DIR, requirements_file)
+                pip_result = _install_python_requirements(requirements_path)
+                if not pip_result.get('success'):
+                    return {'success': False, 'message': pip_result.get('message', 'Python dependencies install failed')}
+                deps_installed = True
+
         reset_result = None
         if reset_settings:
             reset_result = _reset_config_directory()
@@ -786,7 +916,8 @@ def _apply_update_package(archive_path, allow_same_version=False, install_deps=F
             'updated_files': updated,
             'restart_services': services,
             'version': inspect_result.get('version'),
-            'requires_reboot': inspect_result.get('requires_reboot', False),
+            'requires_reboot': bool(inspect_result.get('requires_reboot', False)) or deps_installed,
+            'dependencies_installed': deps_installed,
             'reset_settings': bool(reset_settings),
             'reset_result': reset_result
         }
@@ -812,18 +943,16 @@ def start_update_from_file(archive_path, allow_same_version=False, install_deps=
             if not inspect_result.get('success'):
                 _set_update_status('error', inspect_result.get('message'), 0, 'Validation failed')
                 return
-            if inspect_result.get('missing_packages') and not install_deps:
-                _set_update_status('error', 'Missing dependencies', 0, 'Dependencies missing', details=inspect_result)
-                return
-
-            if inspect_result.get('missing_packages') and install_deps:
+            missing_apt = inspect_result.get('missing_apt_packages') or inspect_result.get('missing_packages', [])
+            missing_pip = inspect_result.get('missing_pip_packages', [])
+            if missing_apt or missing_pip:
                 _set_update_status('dependencies', 'Installing dependencies', 30, 'Installing dependencies', details=inspect_result)
 
             _set_update_status('applying', 'Applying update', 50, 'Copying files', details=inspect_result)
             apply_result = _apply_update_package(
                 archive_path,
                 allow_same_version=allow_same_version,
-                install_deps=install_deps,
+                install_deps=True,
                 reset_settings=reset_settings
             )
             if not apply_result.get('success'):
@@ -1541,6 +1670,11 @@ def perform_update(backup=True, force=False, reset_settings=False):
                 result['message'] = f"Backup failed: {e}"
                 return result
 
+        deps_installed = False
+        missing_apt = []
+        missing_pip = []
+        dep_warnings = []
+
         with tempfile.TemporaryDirectory() as temp_dir:
             archive_path = os.path.join(temp_dir, 'repo.tar.gz')
             extract_dir = os.path.join(temp_dir, 'extract')
@@ -1555,6 +1689,43 @@ def perform_update(backup=True, force=False, reset_settings=False):
                 result['message'] = 'Update failed: repository archive is empty'
                 return result
 
+            deps_path = os.path.join(repo_root, 'web-manager', DEPENDENCIES_FILE_NAME)
+            dependencies, dep_warnings = _load_dependencies_spec(deps_path)
+            deps_packages = _normalize_required_packages(dependencies.get('apt_packages', []))
+            if deps_packages:
+                deps_packages, invalid_packages = _filter_required_packages(deps_packages)
+                if invalid_packages:
+                    dep_warnings.append(f"Invalid package names ignored: {', '.join(invalid_packages)}")
+                available_packages, unavailable_packages = _filter_available_packages(deps_packages)
+                if unavailable_packages:
+                    dep_warnings.append(f"Unavailable packages ignored: {', '.join(unavailable_packages)}")
+                missing_apt = _get_missing_packages(available_packages) if available_packages else []
+
+            requirements_file = dependencies.get('python_requirements_file', 'requirements.txt') if dependencies else 'requirements.txt'
+            requirements_path = os.path.join(repo_root, 'web-manager', requirements_file)
+            requirements_text = None
+            if os.path.exists(requirements_path):
+                with open(requirements_path, 'r', encoding='utf-8') as handle:
+                    requirements_text = handle.read()
+
+            pip_packages = _normalize_required_packages(dependencies.get('pip_packages', [])) if dependencies else []
+            requirements_packages = _parse_requirements_text(requirements_text) if requirements_text else []
+            combined_pip = list(dict.fromkeys(requirements_packages + pip_packages)) if (requirements_packages or pip_packages) else []
+            missing_pip = _get_missing_python_packages(combined_pip) if combined_pip else []
+
+            if missing_apt:
+                deps_result = _install_packages(missing_apt)
+                if not deps_result.get('success'):
+                    result['message'] = deps_result.get('message', 'Dependency install failed')
+                    return result
+                deps_installed = True
+            if missing_pip and os.path.exists(requirements_path):
+                pip_result = _install_python_requirements(requirements_path)
+                if not pip_result.get('success'):
+                    result['message'] = pip_result.get('message', 'Python dependencies install failed')
+                    return result
+                deps_installed = True
+
             result['updated_files'] = _sync_repo_update(repo_root)
             if result['updated_files'] == 0:
                 result['message'] = 'Update failed: no files were applied'
@@ -1567,30 +1738,38 @@ def perform_update(backup=True, force=False, reset_settings=False):
                 result['message'] = reset_result.get('message', 'Reset settings failed')
                 return result
 
-        requirements_path = os.path.join(UPDATE_WEB_INSTALL_DIR, 'requirements.txt')
-        if os.path.exists(requirements_path):
-            run_command(
-                "sudo pip3 install -q -r /opt/rpi-cam-webmanager/requirements.txt 2>&1 | grep -v \"already satisfied\" || true",
-                timeout=300
+        requires_reboot = deps_installed or bool(reset_settings)
+        if requires_reboot:
+            subprocess.Popen(
+                ['bash', '-c', "sleep 5 && sudo shutdown -r now 'Update from repo reboot'"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
             )
+        else:
+            run_command("sudo systemctl restart rpi-av-rtsp-recorder", timeout=20)
+            run_command("sudo systemctl restart rtsp-recorder", timeout=20)
+            run_command("sudo systemctl restart rtsp-watchdog", timeout=20)
+            run_command("sudo systemctl restart rpi-cam-onvif", timeout=20)
 
-        run_command("sudo systemctl restart rpi-av-rtsp-recorder", timeout=20)
-        run_command("sudo systemctl restart rtsp-recorder", timeout=20)
-        run_command("sudo systemctl restart rtsp-watchdog", timeout=20)
-        run_command("sudo systemctl restart rpi-cam-onvif", timeout=20)
-
-        subprocess.Popen(
-            ['bash', '-c', "sleep 2 && sudo systemctl restart rpi-cam-webmanager"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+            subprocess.Popen(
+                ['bash', '-c', "sleep 2 && sudo systemctl restart rpi-cam-webmanager"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
 
         result['success'] = True
         result['message'] = f'Update completed successfully (branch: {branch})'
-        result['requires_restart'] = True
+        result['requires_restart'] = not requires_reboot
         result['latest_version'] = repo_version
         result['reset_settings'] = bool(reset_settings)
         result['reset_result'] = reset_result
+        result['dependencies_installed'] = deps_installed
+        result['missing_apt_packages'] = missing_apt
+        result['missing_pip_packages'] = missing_pip
+        if dep_warnings:
+            result['warnings'] = dep_warnings
+        if requires_reboot:
+            result['message'] += ' (dependencies installed, rebooting)'
     
     except Exception as e:
         result['message'] = str(e)

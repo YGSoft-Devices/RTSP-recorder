@@ -706,7 +706,7 @@ def apply_update_file():
         }), 400
 
     force_reapply = str(request.form.get('force', '')).lower() in ['1', 'true', 'yes', 'on']
-    install_deps = str(request.form.get('install_deps', '')).lower() in ['1', 'true', 'yes', 'on']
+    install_deps = True
     reset_settings = str(request.form.get('reset_settings', '')).lower() in ['1', 'true', 'yes', 'on']
 
     with tempfile.NamedTemporaryFile(delete=False, suffix='.tar.gz') as temp_file:

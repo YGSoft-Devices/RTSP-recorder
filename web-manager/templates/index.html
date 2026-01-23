@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.32.95 -->
+<!-- RTSP Recorder Web Interface - Version 2.33.00 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -3531,10 +3531,8 @@
                     <small>Supprime la configuration locale pour repartir sur une version propre.</small>
                 </div>
                 <div class="form-group" id="update-file-deps-group" style="display: none;">
-                    <label>
-                        <input type="checkbox" id="update-file-install-deps" checked>
-                        Installer les dependances manquantes
-                    </label>
+                    <label>Dependances manquantes detectees</label>
+                    <small>Installation automatique + redemarrage requis.</small>
                     <small id="update-file-deps-info"></small>
                 </div>
 
@@ -3573,6 +3571,11 @@
     <script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}"></script>
 </body>
 </html>
+
+
+
+
+
 
 
 

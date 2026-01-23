@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Logs functions
- * Version: 2.32.95
+ * Version: 2.33.00
  */
 (function () {
     let logsEventSource = null;
@@ -177,6 +177,11 @@
     window.updateLogsStatus = updateLogsStatus;
     window.formatLogEntries = formatLogEntries;
 })();
+
+
+
+
+
 
 
 
