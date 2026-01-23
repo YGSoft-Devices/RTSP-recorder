@@ -11,8 +11,9 @@
 #   - Serve RTSP stream (H264 video + optional AAC audio)
 #   - Record locally in segments (robust against power loss)
 #
-# Version: 2.12.7
+# Version: 2.12.8
 # Changelog:
+#   - 2.12.8: Export overlay config to CSI RTSP server
 #   - 2.12.7: Disable overlay gracefully when textoverlay/clockoverlay missing
 #   - 2.12.6: Fix overlay crash when OVERLAY_SUPPORTED not initialized
 #   - 2.12.5: Added configurable RTSP overlay (text + datetime) for USB/legacy CSI
@@ -786,7 +787,7 @@ setup_fs
 setup_logging
 
 log "=========================================="
-log "Starting rpi_av_rtsp_recorder v2.12.7"
+log "Starting rpi_av_rtsp_recorder v2.12.8"
 log "=========================================="
 log "Config: RTSP=:${RTSP_PORT}/${RTSP_PATH} Video=${VIDEO_WIDTH}x${VIDEO_HEIGHT}@${VIDEO_FPS}fps"
 log "Recording: ${RECORD_ENABLE} -> ${RECORD_DIR} (${SEGMENT_SECONDS}s segments)"
@@ -819,7 +820,7 @@ log "Camera mode: $CAM_MODE"
 if [[ "$CAM_MODE" == "csi" ]]; then
   log "CSI Camera Mode selected. Delegating to rpi_csi_rtsp_server.py (Picamera2 Native)..."
   if [[ "${VIDEO_OVERLAY_ENABLE}" == "yes" ]]; then
-    log "Overlay enabled but not supported with Picamera2 RTSP server (CSI). Ignoring overlay." >&2
+    log "Overlay enabled for CSI (software re-encode in RTSP server)." >&2
   fi
   
   # Define path to Python server
@@ -843,6 +844,13 @@ if [[ "$CAM_MODE" == "csi" ]]; then
      export H264_KEYINT
      export H264_PROFILE
      export H264_QP
+     export VIDEO_OVERLAY_ENABLE
+     export VIDEO_OVERLAY_TEXT
+     export VIDEO_OVERLAY_POSITION
+     export VIDEO_OVERLAY_SHOW_DATETIME
+     export VIDEO_OVERLAY_DATETIME_FORMAT
+     export VIDEO_OVERLAY_CLOCK_POSITION
+     export VIDEO_OVERLAY_FONT_SIZE
      export AUDIO_ENABLE
      # Detect audio info for Python script if specific device wasn't set
      if [[ "$AUDIO_ENABLE" != "no" ]]; then

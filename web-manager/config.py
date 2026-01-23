@@ -340,7 +340,7 @@ CONFIG_METADATA = {
     "VIDEO_OVERLAY_FONT_SIZE": {
         "label": "Taille police overlay",
         "type": "number",
-        "min": 12,
+        "min": 1,
         "max": 64,
         "help": "Taille de police (Sans)",
         "category": "video"

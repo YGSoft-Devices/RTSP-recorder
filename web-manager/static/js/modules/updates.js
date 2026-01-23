@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Updates (repo + file)
- * Version: 2.33.00
+ * Version: 2.33.01
  */
 
 const CURRENT_VERSION = (window.APP_VERSION || '').replace(/^v/, '') || '0.0.0';
@@ -26,6 +26,7 @@ function updateRepoStatus(text, state = null) {
     statusEl.textContent = text;
     statusEl.className = 'status-value';
     if (state) statusEl.classList.add(state);
+    setUpdateStatusSpinner('update-repo-status-spinner', state);
 }
 
 function updateRepoLog(text) {
@@ -256,6 +257,14 @@ function updateUpdateFileStatus(text, state = null) {
     statusEl.textContent = text;
     statusEl.className = 'status-value';
     if (state) statusEl.classList.add(state);
+    setUpdateStatusSpinner('update-file-status-spinner', state);
+}
+
+function setUpdateStatusSpinner(spinnerId, state) {
+    const spinner = document.getElementById(spinnerId);
+    if (!spinner) return;
+    const spinningStates = ['checking', 'running', 'dependencies', 'applying', 'rebooting', 'restarting'];
+    spinner.style.display = state && spinningStates.includes(state) ? 'inline-flex' : 'none';
 }
 
 function updateUpdateFileLog(text) {
@@ -452,6 +461,7 @@ window.onUpdateFileForceChanged = onUpdateFileForceChanged;
 window.checkUpdateFile = checkUpdateFile;
 window.applyUpdateFile = applyUpdateFile;
 window.pollUpdateFileStatus = pollUpdateFileStatus;
+
 
 
 

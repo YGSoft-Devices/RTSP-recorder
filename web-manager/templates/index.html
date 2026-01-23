@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.33.00 -->
+<!-- RTSP Recorder Web Interface - Version 2.33.01 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -455,6 +455,149 @@
                                 </button>
                             </div>
                         </div>
+
+                        <div class="form-section">
+                            <h4><i class="fas fa-broadcast-tower"></i> Paramètres RTSP</h4>
+                            <small class="section-help">Contrôlez le flux vidéo RTSP transmis et l'enregistrement, indépendamment de la caméra</small>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="VIDEO_FPS">
+                                        <i class="fas fa-tachometer-alt"></i> Images/seconde
+                                    </label>
+                                    <input type="number" id="VIDEO_FPS" name="VIDEO_FPS" 
+                                           value="{{ config.VIDEO_FPS }}" min="1" max="60">
+                                    <small>Nombre d'images par seconde (FPS)</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="H264_BITRATE_KBPS">
+                                        <i class="fas fa-signal"></i> Débit H264 (kbps)
+                                    </label>
+                                    <input type="number" id="H264_BITRATE_KBPS" name="H264_BITRATE_KBPS" 
+                                           value="{{ config.H264_BITRATE_KBPS }}" min="500" max="8000">
+                                    <small>Débit vidéo (défaut: 1200 pour Pi 3B+)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="H264_KEYINT">
+                                        <i class="fas fa-key"></i> Intervalle keyframes
+                                    </label>
+                                    <input type="number" id="H264_KEYINT" name="H264_KEYINT" 
+                                           value="{{ config.H264_KEYINT }}" min="10" max="120">
+                                    <small>Images clés (défaut: 30)</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="H264_PROFILE">
+                                        <i class="fas fa-layer-group"></i> Profil H264 (CSI)
+                                    </label>
+                                    <select id="H264_PROFILE" name="H264_PROFILE">
+                                        <option value="" {% if not config.H264_PROFILE %}selected{% endif %}>Auto</option>
+                                        <option value="baseline" {% if config.H264_PROFILE == 'baseline' %}selected{% endif %}>Baseline</option>
+                                        <option value="constrained baseline" {% if config.H264_PROFILE == 'constrained baseline' %}selected{% endif %}>Constrained baseline</option>
+                                        <option value="main" {% if config.H264_PROFILE == 'main' %}selected{% endif %}>Main</option>
+                                        <option value="high" {% if config.H264_PROFILE == 'high' %}selected{% endif %}>High</option>
+                                    </select>
+                                    <small>Profil H264 (CSI uniquement)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="H264_QP">
+                                        <i class="fas fa-sliders-h"></i> Quantizer H264 (CSI)
+                                    </label>
+                                    <input type="number" id="H264_QP" name="H264_QP" 
+                                           value="{{ config.H264_QP }}" min="1" max="51" placeholder="Auto">
+                                    <small>QP fixe 1-51 (vide = auto)</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="VIDEO_OVERLAY_ENABLE">
+                                        <i class="fas fa-text-height"></i> Overlay RTSP
+                                    </label>
+                                    <select id="VIDEO_OVERLAY_ENABLE" name="VIDEO_OVERLAY_ENABLE">
+                                        <option value="no" {% if config.VIDEO_OVERLAY_ENABLE != 'yes' %}selected{% endif %}>Désactivé</option>
+                                        <option value="yes" {% if config.VIDEO_OVERLAY_ENABLE == 'yes' %}selected{% endif %}>Activé</option>
+                                    </select>
+                                    <small>Overlay texte/date (USB + CSI)</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="VIDEO_OVERLAY_TEXT">
+                                        <i class="fas fa-align-left"></i> Texte overlay
+                                    </label>
+                                    <input type="text" id="VIDEO_OVERLAY_TEXT" name="VIDEO_OVERLAY_TEXT"
+                                           value="{{ config.VIDEO_OVERLAY_TEXT }}" placeholder="{CAMERA_TYPE} {VIDEO_RESOLUTION}">
+                                    <small>Tokens: {CAMERA_TYPE} {VIDEO_RESOLUTION} {VIDEO_FPS} {VIDEO_FORMAT} {VIDEO_DEVICE}</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="VIDEO_OVERLAY_POSITION">
+                                        <i class="fas fa-map-pin"></i> Position texte
+                                    </label>
+                                    <select id="VIDEO_OVERLAY_POSITION" name="VIDEO_OVERLAY_POSITION">
+                                        <option value="top-left" {% if config.VIDEO_OVERLAY_POSITION == 'top-left' %}selected{% endif %}>Haut gauche</option>
+                                        <option value="top-right" {% if config.VIDEO_OVERLAY_POSITION == 'top-right' %}selected{% endif %}>Haut droite</option>
+                                        <option value="bottom-left" {% if config.VIDEO_OVERLAY_POSITION == 'bottom-left' %}selected{% endif %}>Bas gauche</option>
+                                        <option value="bottom-right" {% if config.VIDEO_OVERLAY_POSITION == 'bottom-right' %}selected{% endif %}>Bas droite</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="VIDEO_OVERLAY_SHOW_DATETIME">
+                                        <i class="fas fa-clock"></i> Date/heure
+                                    </label>
+                                    <select id="VIDEO_OVERLAY_SHOW_DATETIME" name="VIDEO_OVERLAY_SHOW_DATETIME">
+                                        <option value="no" {% if config.VIDEO_OVERLAY_SHOW_DATETIME != 'yes' %}selected{% endif %}>Désactivé</option>
+                                        <option value="yes" {% if config.VIDEO_OVERLAY_SHOW_DATETIME == 'yes' %}selected{% endif %}>Activé</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="VIDEO_OVERLAY_DATETIME_FORMAT">
+                                        <i class="fas fa-calendar-alt"></i> Format date/heure
+                                    </label>
+                                    <input type="text" id="VIDEO_OVERLAY_DATETIME_FORMAT" name="VIDEO_OVERLAY_DATETIME_FORMAT"
+                                           value="{{ config.VIDEO_OVERLAY_DATETIME_FORMAT }}" placeholder="%Y-%m-%d %H:%M:%S">
+                                    <small>Format strftime</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="VIDEO_OVERLAY_CLOCK_POSITION">
+                                        <i class="fas fa-map-pin"></i> Position date/heure
+                                    </label>
+                                    <select id="VIDEO_OVERLAY_CLOCK_POSITION" name="VIDEO_OVERLAY_CLOCK_POSITION">
+                                        <option value="top-left" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'top-left' %}selected{% endif %}>Haut gauche</option>
+                                        <option value="top-right" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'top-right' %}selected{% endif %}>Haut droite</option>
+                                        <option value="bottom-left" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'bottom-left' %}selected{% endif %}>Bas gauche</option>
+                                        <option value="bottom-right" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'bottom-right' %}selected{% endif %}>Bas droite</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="VIDEO_OVERLAY_FONT_SIZE">
+                                        <i class="fas fa-font"></i> Taille police
+                                    </label>
+                                    <input type="number" id="VIDEO_OVERLAY_FONT_SIZE" name="VIDEO_OVERLAY_FONT_SIZE"
+                                           value="{{ config.VIDEO_OVERLAY_FONT_SIZE }}" min="1" max="64">
+                                    <small>Taille de police (Sans)</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="button" class="btn btn-success btn-full" onclick="applyVideoSettings()">
+                                <i class="fas fa-check"></i> Appliquer les paramètres RTSP
+                            </button>
+                            <small class="hint">Sauvegarde et redémarre le service RTSP avec les nouveaux paramètres</small>
+                        </div>
                     </div>
 
                     <!-- ONVIF Tab (new separate tab) -->
@@ -811,151 +954,6 @@
                             </div>
                         </div>
                         
-                        <!-- RTSP Settings Section (third - stream parameters) -->
-                        <div class="form-section">
-                            <h4><i class="fas fa-broadcast-tower"></i> Paramètres RTSP</h4>
-                            <small class="section-help">Contrôlez le flux vidéo RTSP transmis et l'enregistrement, indépendamment de la caméra</small>
-                            
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="VIDEO_FPS">
-                                            <i class="fas fa-tachometer-alt"></i> Images/seconde
-                                        </label>
-                                        <input type="number" id="VIDEO_FPS" name="VIDEO_FPS" 
-                                               value="{{ config.VIDEO_FPS }}" min="1" max="60">
-                                        <small>Nombre d'images par seconde (FPS)</small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="H264_BITRATE_KBPS">
-                                            <i class="fas fa-signal"></i> Débit H264 (kbps)
-                                        </label>
-                                        <input type="number" id="H264_BITRATE_KBPS" name="H264_BITRATE_KBPS" 
-                                               value="{{ config.H264_BITRATE_KBPS }}" min="500" max="8000">
-                                        <small>Débit vidéo (défaut: 1200 pour Pi 3B+)</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="H264_KEYINT">
-                                            <i class="fas fa-key"></i> Intervalle keyframes
-                                        </label>
-                                        <input type="number" id="H264_KEYINT" name="H264_KEYINT" 
-                                               value="{{ config.H264_KEYINT }}" min="10" max="120">
-                                        <small>Images clés (défaut: 30)</small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="H264_PROFILE">
-                                            <i class="fas fa-layer-group"></i> Profil H264 (CSI)
-                                        </label>
-                                        <select id="H264_PROFILE" name="H264_PROFILE">
-                                            <option value="" {% if not config.H264_PROFILE %}selected{% endif %}>Auto</option>
-                                            <option value="baseline" {% if config.H264_PROFILE == 'baseline' %}selected{% endif %}>Baseline</option>
-                                            <option value="constrained baseline" {% if config.H264_PROFILE == 'constrained baseline' %}selected{% endif %}>Constrained baseline</option>
-                                            <option value="main" {% if config.H264_PROFILE == 'main' %}selected{% endif %}>Main</option>
-                                            <option value="high" {% if config.H264_PROFILE == 'high' %}selected{% endif %}>High</option>
-                                        </select>
-                                        <small>Profil H264 (CSI uniquement)</small>
-                                    </div>
-                                </div>
-                                
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="H264_QP">
-                                            <i class="fas fa-sliders-h"></i> Quantizer H264 (CSI)
-                                        </label>
-                                        <input type="number" id="H264_QP" name="H264_QP" 
-                                               value="{{ config.H264_QP }}" min="1" max="51" placeholder="Auto">
-                                        <small>QP fixe 1-51 (vide = auto)</small>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="VIDEO_OVERLAY_ENABLE">
-                                            <i class="fas fa-text-height"></i> Overlay RTSP
-                                        </label>
-                                        <select id="VIDEO_OVERLAY_ENABLE" name="VIDEO_OVERLAY_ENABLE">
-                                            <option value="no" {% if config.VIDEO_OVERLAY_ENABLE != 'yes' %}selected{% endif %}>Désactivé</option>
-                                            <option value="yes" {% if config.VIDEO_OVERLAY_ENABLE == 'yes' %}selected{% endif %}>Activé</option>
-                                        </select>
-                                        <small>Overlay texte/date (USB uniquement)</small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="VIDEO_OVERLAY_TEXT">
-                                            <i class="fas fa-align-left"></i> Texte overlay
-                                        </label>
-                                        <input type="text" id="VIDEO_OVERLAY_TEXT" name="VIDEO_OVERLAY_TEXT"
-                                               value="{{ config.VIDEO_OVERLAY_TEXT }}" placeholder="{CAMERA_TYPE} {VIDEO_RESOLUTION}">
-                                        <small>Tokens: {CAMERA_TYPE} {VIDEO_RESOLUTION} {VIDEO_FPS} {VIDEO_FORMAT} {VIDEO_DEVICE}</small>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="VIDEO_OVERLAY_POSITION">
-                                            <i class="fas fa-map-pin"></i> Position texte
-                                        </label>
-                                        <select id="VIDEO_OVERLAY_POSITION" name="VIDEO_OVERLAY_POSITION">
-                                            <option value="top-left" {% if config.VIDEO_OVERLAY_POSITION == 'top-left' %}selected{% endif %}>Haut gauche</option>
-                                            <option value="top-right" {% if config.VIDEO_OVERLAY_POSITION == 'top-right' %}selected{% endif %}>Haut droite</option>
-                                            <option value="bottom-left" {% if config.VIDEO_OVERLAY_POSITION == 'bottom-left' %}selected{% endif %}>Bas gauche</option>
-                                            <option value="bottom-right" {% if config.VIDEO_OVERLAY_POSITION == 'bottom-right' %}selected{% endif %}>Bas droite</option>
-                                        </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="VIDEO_OVERLAY_SHOW_DATETIME">
-                                            <i class="fas fa-clock"></i> Date/heure
-                                        </label>
-                                        <select id="VIDEO_OVERLAY_SHOW_DATETIME" name="VIDEO_OVERLAY_SHOW_DATETIME">
-                                            <option value="no" {% if config.VIDEO_OVERLAY_SHOW_DATETIME != 'yes' %}selected{% endif %}>Désactivé</option>
-                                            <option value="yes" {% if config.VIDEO_OVERLAY_SHOW_DATETIME == 'yes' %}selected{% endif %}>Activé</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="VIDEO_OVERLAY_DATETIME_FORMAT">
-                                            <i class="fas fa-calendar-alt"></i> Format date/heure
-                                        </label>
-                                        <input type="text" id="VIDEO_OVERLAY_DATETIME_FORMAT" name="VIDEO_OVERLAY_DATETIME_FORMAT"
-                                               value="{{ config.VIDEO_OVERLAY_DATETIME_FORMAT }}" placeholder="%Y-%m-%d %H:%M:%S">
-                                        <small>Format strftime</small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="VIDEO_OVERLAY_CLOCK_POSITION">
-                                            <i class="fas fa-map-pin"></i> Position date/heure
-                                        </label>
-                                        <select id="VIDEO_OVERLAY_CLOCK_POSITION" name="VIDEO_OVERLAY_CLOCK_POSITION">
-                                            <option value="top-left" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'top-left' %}selected{% endif %}>Haut gauche</option>
-                                            <option value="top-right" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'top-right' %}selected{% endif %}>Haut droite</option>
-                                            <option value="bottom-left" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'bottom-left' %}selected{% endif %}>Bas gauche</option>
-                                            <option value="bottom-right" {% if config.VIDEO_OVERLAY_CLOCK_POSITION == 'bottom-right' %}selected{% endif %}>Bas droite</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="form-row">
-                                    <div class="form-group">
-                                        <label for="VIDEO_OVERLAY_FONT_SIZE">
-                                            <i class="fas fa-font"></i> Taille police
-                                        </label>
-                                        <input type="number" id="VIDEO_OVERLAY_FONT_SIZE" name="VIDEO_OVERLAY_FONT_SIZE"
-                                               value="{{ config.VIDEO_OVERLAY_FONT_SIZE }}" min="12" max="64">
-                                        <small>Taille de police (Sans)</small>
-                                    </div>
-                                </div>
-                            </div>
-                        
-                        <!-- Apply Button -->
-                        <div class="form-group">
-                            <button type="button" class="btn btn-success btn-full" onclick="applyVideoSettings()">
-                                <i class="fas fa-check"></i> Appliquer les paramètres vidéo
-                            </button>
-                            <small class="hint">Sauvegarde et redémarre le service RTSP avec les nouveaux paramètres</small>
-                        </div>
-
                         <!-- Camera Controls Section -->
                         <div class="form-section">
                             <h4><i class="fas fa-sliders-h"></i> Contrôles Caméra</h4>
@@ -3480,6 +3478,9 @@
 
                 <div class="debug-action-status" id="update-repo-status">
                     <span class="status-label">Statut:</span>
+                    <span class="status-spinner" id="update-repo-status-spinner" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
                     <span class="status-value" id="update-repo-status-text">En attente</span>
                 </div>
 
@@ -3538,6 +3539,9 @@
 
                 <div class="debug-action-status" id="update-file-status">
                     <span class="status-label">Statut:</span>
+                    <span class="status-spinner" id="update-file-status-spinner" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                    </span>
                     <span class="status-value" id="update-file-status-text">En attente</span>
                 </div>
 
@@ -3571,6 +3575,7 @@
     <script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}"></script>
 </body>
 </html>
+
 
 
 

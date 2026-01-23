@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Frontend JavaScript
- * Version: 2.33.00
+ * Version: 2.33.01
  */
 
 let backupFileAction = null;
@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 
 // ============================================================================
+
 
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 rpi_csi_rtsp_server.py
-Version: 1.4.11
+Version: 1.4.12
 
 Python-based RTSP Server for CSI Cameras (Picamera2) on Raspberry Pi.
 - Uses Picamera2 H264Encoder for HARDWARE video encoding (not x264enc!)
@@ -68,6 +68,13 @@ CONF = {
     'AUDIO_ENABLE': os.environ.get('AUDIO_ENABLE', 'yes').lower() in ('yes', 'true', '1', 'on'),
     'AUDIO_DEVICE': os.environ.get('AUDIO_DEVICE', 'plughw:0,0'),
     'AUDIO_RATE': int(os.environ.get('AUDIO_RATE', 44100)),
+    'OVERLAY_ENABLE': os.environ.get('VIDEO_OVERLAY_ENABLE', 'no').lower() in ('yes', 'true', '1', 'on'),
+    'OVERLAY_TEXT': os.environ.get('VIDEO_OVERLAY_TEXT', ''),
+    'OVERLAY_POSITION': os.environ.get('VIDEO_OVERLAY_POSITION', 'top-left'),
+    'OVERLAY_SHOW_DATETIME': os.environ.get('VIDEO_OVERLAY_SHOW_DATETIME', 'no').lower() in ('yes', 'true', '1', 'on'),
+    'OVERLAY_DATETIME_FORMAT': os.environ.get('VIDEO_OVERLAY_DATETIME_FORMAT', '%Y-%m-%d %H:%M:%S'),
+    'OVERLAY_CLOCK_POSITION': os.environ.get('VIDEO_OVERLAY_CLOCK_POSITION', 'bottom-right'),
+    'OVERLAY_FONT_SIZE': int(os.environ['VIDEO_OVERLAY_FONT_SIZE']) if os.environ.get('VIDEO_OVERLAY_FONT_SIZE', '').isdigit() else 24,
     'CONTROL_PORT': 8085
 }
 
@@ -118,6 +125,22 @@ def load_config_from_file():
                             }
                             if profile in allowed_profiles:
                                 CONF['H264_PROFILE'] = profile
+                        elif key == 'VIDEO_OVERLAY_ENABLE':
+                            CONF['OVERLAY_ENABLE'] = value.strip().lower() in ('yes', 'true', '1', 'on')
+                        elif key == 'VIDEO_OVERLAY_TEXT':
+                            CONF['OVERLAY_TEXT'] = value
+                        elif key == 'VIDEO_OVERLAY_POSITION' and value:
+                            CONF['OVERLAY_POSITION'] = value.strip()
+                        elif key == 'VIDEO_OVERLAY_SHOW_DATETIME':
+                            CONF['OVERLAY_SHOW_DATETIME'] = value.strip().lower() in ('yes', 'true', '1', 'on')
+                        elif key == 'VIDEO_OVERLAY_DATETIME_FORMAT' and value:
+                            CONF['OVERLAY_DATETIME_FORMAT'] = value
+                        elif key == 'VIDEO_OVERLAY_CLOCK_POSITION' and value:
+                            CONF['OVERLAY_CLOCK_POSITION'] = value.strip()
+                        elif key == 'VIDEO_OVERLAY_FONT_SIZE':
+                            size_value = value.strip()
+                            if size_value.isdigit():
+                                CONF['OVERLAY_FONT_SIZE'] = max(1, min(64, int(size_value)))
                             else:
                                 logger.warning(f"Unknown H264_PROFILE '{value}', ignoring")
                         elif key == 'AUDIO_ENABLE':
@@ -362,14 +385,33 @@ class Picam2RtspServer:
         """
         # Video pipeline - receives pre-encoded H.264 from Picamera2 hardware encoder
         # The H264Encoder outputs Annex B format (start codes 00 00 00 01)
-        video_pipeline = (
-            f"appsrc name=src is-live=true do-timestamp=true format=time "
-            f"caps=video/x-h264,stream-format=byte-stream,alignment=au,"
-            f"width={self.conf['WIDTH']},height={self.conf['HEIGHT']},framerate={self.conf['FPS']}/1 "
-            f"! h264parse config-interval=1 "
-            f"! rtph264pay name=pay0 pt=96 config-interval=1 "
-            f"timestamp-offset=0 seqnum-offset=0 perfect-rtptime=true"
+        video_caps = (
+            f"video/x-h264,stream-format=byte-stream,alignment=au,"
+            f"width={self.conf['WIDTH']},height={self.conf['HEIGHT']},framerate={self.conf['FPS']}/1"
         )
+
+        overlay_chain = self._build_overlay_chain()
+        if overlay_chain:
+            logger.warning("CSI overlay enabled: software decode/encode path used (CPU intensive).")
+            encoder = self._select_overlay_encoder()
+            video_pipeline = (
+                f"appsrc name=src is-live=true do-timestamp=true format=time caps={video_caps} "
+                f"! h264parse "
+                f"! avdec_h264 "
+                f"! videoconvert "
+                f"! {overlay_chain} "
+                f"! {encoder} "
+                f"! h264parse config-interval=1 "
+                f"! rtph264pay name=pay0 pt=96 config-interval=1 "
+                f"timestamp-offset=0 seqnum-offset=0 perfect-rtptime=true"
+            )
+        else:
+            video_pipeline = (
+                f"appsrc name=src is-live=true do-timestamp=true format=time caps={video_caps} "
+                f"! h264parse config-interval=1 "
+                f"! rtph264pay name=pay0 pt=96 config-interval=1 "
+                f"timestamp-offset=0 seqnum-offset=0 perfect-rtptime=true"
+            )
 
         # Audio pipeline (optional)
         audio_pipeline = ""
@@ -387,6 +429,71 @@ class Picam2RtspServer:
         full_pipeline = f"( {video_pipeline}{audio_pipeline} )"
         logger.info(f"GStreamer Pipeline: {full_pipeline}")
         return full_pipeline
+
+    def _overlay_alignment_from_position(self, pos: str) -> tuple[str, str]:
+        mapping = {
+            'top-left': ('top', 'left'),
+            'top-right': ('top', 'right'),
+            'bottom-left': ('bottom', 'left'),
+            'bottom-right': ('bottom', 'right')
+        }
+        return mapping.get(pos, ('top', 'left'))
+
+    def _build_overlay_chain(self) -> str:
+        if not self.conf.get('OVERLAY_ENABLE'):
+            return ""
+
+        clock_available = Gst.ElementFactory.find('clockoverlay') is not None
+        text_available = Gst.ElementFactory.find('textoverlay') is not None
+        decoder_available = Gst.ElementFactory.find('avdec_h264') is not None
+        converter_available = Gst.ElementFactory.find('videoconvert') is not None
+        encoder_available = self._select_overlay_encoder() is not None
+
+        if not decoder_available or not converter_available or not encoder_available:
+            logger.warning("CSI overlay disabled: missing decoder/encoder elements.")
+            return ""
+
+        overlay_chain = ""
+        font_desc = f"Sans {self.conf.get('OVERLAY_FONT_SIZE', 24)}"
+
+        if self.conf.get('OVERLAY_SHOW_DATETIME') and clock_available:
+            valign, halign = self._overlay_alignment_from_position(self.conf.get('OVERLAY_CLOCK_POSITION', 'bottom-right'))
+            overlay_chain = (
+                f"clockoverlay time-format=\"{self.conf.get('OVERLAY_DATETIME_FORMAT')}\" "
+                f"valignment={valign} halignment={halign} shaded-background=true font-desc=\"{font_desc}\""
+            )
+
+        overlay_text = (self.conf.get('OVERLAY_TEXT') or '').strip()
+        if overlay_text and text_available:
+            overlay_text = overlay_text.replace('{CAMERA_TYPE}', 'csi')
+            overlay_text = overlay_text.replace('{VIDEO_DEVICE}', 'CSI')
+            overlay_text = overlay_text.replace('{VIDEO_RESOLUTION}', f"{self.conf['WIDTH']}x{self.conf['HEIGHT']}")
+            overlay_text = overlay_text.replace('{VIDEO_FPS}', str(self.conf['FPS']))
+            overlay_text = overlay_text.replace('{VIDEO_FORMAT}', 'H264')
+            overlay_text = overlay_text.replace('"', ' ').replace("'", ' ')
+            valign, halign = self._overlay_alignment_from_position(self.conf.get('OVERLAY_POSITION', 'top-left'))
+            if overlay_chain:
+                overlay_chain += " ! "
+            overlay_chain += (
+                f"textoverlay text=\"{overlay_text}\" valignment={valign} halignment={halign} "
+                f"shaded-background=true font-desc=\"{font_desc}\""
+            )
+
+        if overlay_chain and (not clock_available and self.conf.get('OVERLAY_SHOW_DATETIME')):
+            logger.warning("CSI overlay: clockoverlay not available.")
+        if overlay_text and not text_available:
+            logger.warning("CSI overlay: textoverlay not available.")
+
+        return overlay_chain
+
+    def _select_overlay_encoder(self) -> Optional[str]:
+        bitrate = int(self.conf.get('BITRATE_KBPS', 2000))
+        keyint = int(self.conf.get('KEYINT', 30))
+        if Gst.ElementFactory.find('x264enc') is not None:
+            return f"x264enc tune=zerolatency speed-preset=ultrafast bitrate={bitrate} key-int-max={keyint} bframes=0 threads=2"
+        if Gst.ElementFactory.find('openh264enc') is not None:
+            return f"openh264enc bitrate={bitrate * 1000}"
+        return None
 
     def _on_media_configure(self, factory, media):
         """Called when a client connects and the pipeline is created.

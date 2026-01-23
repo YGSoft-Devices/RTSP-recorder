@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.33.00
+Version: 2.33.01
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -322,13 +322,13 @@ RTSP_AUTH_METHOD="both"
 sudo ./setup/install_gstreamer_rtsp.sh
 ```
 
-### 5.7 Serveur RTSP CSI natif (Python) - v1.4.11
+### 5.7 Serveur RTSP CSI natif (Python) - v1.4.12
 
 Pour les caméras CSI (PiCam), un serveur RTSP dédié en Python utilise **Picamera2** au lieu de `test-launch`.
 
 **Fichiers:**
 - Source: `rpi_csi_rtsp_server.py` → `/usr/local/bin/rpi_csi_rtsp_server.py`
-- Version: 1.4.11
+- Version: 1.4.12
 
 **Architecture:**
 ```
@@ -978,10 +978,10 @@ L'onglet **Vidéo** permet de configurer la source caméra, la résolution et le
    - Mode manuel : configuration personnalisée (largeur, hauteur)
    - **Auto-remplissage FPS** : sélectionner une résolution remplit automatiquement le champ Images/seconde avec le FPS max
    
-3. **Paramètres RTSP** (v2.30.34+)
+3. **Paramètres RTSP** (onglet RTSP)
    - Images/seconde (FPS) : framerate du flux RTSP (indépendant de la caméra)
    - Débit H264 (kbps) : bitrate vidéo de l'encodeur (défaut: 1200 kbps pour Pi 3B+)
-   - **Overlay RTSP** : texte + date/heure (USB uniquement; non supporté par Picamera2 RTSP)
+   - **Overlay RTSP** : texte + date/heure (USB + CSI, decode/encode software sur CSI)
    - **Note:** Ces réglages contrôlent le flux RTSP et l'enregistrement, pas la caméra elle-même
    
 4. **Bouton Appliquer** : Sauvegarde la config et redémarre le service RTSP
@@ -998,10 +998,11 @@ L'onglet **Vidéo** permet de configurer la source caméra, la résolution et le
   - L'encodeur hardware utilise la majorité du GPU (VideoCore)
 
 - **Overlay RTSP:** Affichage d'un texte et/ou de la date/heure sur le flux
-  - `VIDEO_OVERLAY_ENABLE=yes` pour activer
+  - `VIDEO_OVERLAY_ENABLE=yes` pour activer (USB + CSI)
   - `VIDEO_OVERLAY_TEXT` supporte des tokens: `{CAMERA_TYPE}`, `{VIDEO_DEVICE}`, `{VIDEO_RESOLUTION}`, `{VIDEO_FPS}`, `{VIDEO_FORMAT}`
   - `VIDEO_OVERLAY_SHOW_DATETIME=yes` + `VIDEO_OVERLAY_DATETIME_FORMAT` (strftime)
-  - **Limites:** non supporté pour le serveur CSI Picamera2 (rpi_csi_rtsp_server.py) ni pour les sources USB en H264 direct
+  - `VIDEO_OVERLAY_FONT_SIZE` (1-64)
+  - **Limites:** pour CSI, l'overlay force un decodage/encodage software (CPU plus élevé) ; non supporté pour les sources USB en H264 direct
   - **Dépendances:** nécessite `clockoverlay`/`textoverlay` (GStreamer plugins). Installer `gstreamer1.0-x` si absents.
 
 #### Profils caméra (Contrôles avancés)
@@ -1540,13 +1541,13 @@ RTSP / vidéo:
 - `H264_BITRATE_KBPS`, `H264_KEYINT`
 - `H264_PROFILE` (`baseline|constrained baseline|main|high`) - profil H.264 (CSI RTSP Server)
 - `H264_QP` (1-51, optionnel) - quantizer fixe (CSI RTSP Server)
-- `VIDEO_OVERLAY_ENABLE` (`yes|no`) - active l'overlay texte/date (USB uniquement)
+- `VIDEO_OVERLAY_ENABLE` (`yes|no`) - active l'overlay texte/date (USB + CSI)
 - `VIDEO_OVERLAY_TEXT` - texte overlay (tokens: `{CAMERA_TYPE}`, `{VIDEO_DEVICE}`, `{VIDEO_RESOLUTION}`, `{VIDEO_FPS}`, `{VIDEO_FORMAT}`)
 - `VIDEO_OVERLAY_POSITION` (`top-left|top-right|bottom-left|bottom-right`)
 - `VIDEO_OVERLAY_SHOW_DATETIME` (`yes|no`)
 - `VIDEO_OVERLAY_DATETIME_FORMAT` (strftime)
 - `VIDEO_OVERLAY_CLOCK_POSITION` (`top-left|top-right|bottom-left|bottom-right`)
-- `VIDEO_OVERLAY_FONT_SIZE` (12-64)
+- `VIDEO_OVERLAY_FONT_SIZE` (1-64)
 
 Audio:
 - `AUDIO_ENABLE` (`auto|yes|no`)

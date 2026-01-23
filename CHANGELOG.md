@@ -7,6 +7,24 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.33.01] - RTSP UI + CSI Overlay
+
+### Ajouts
+- **rpi_csi_rtsp_server.py**
+  - Overlay RTSP supporté en mode CSI (decode/encode software).
+- **web-manager/templates/index.html**, **web-manager/static/js/modules/updates.js**
+  - Spinner + statut d’update (repo + fichier).
+
+### Modifications
+- **web-manager/templates/index.html**
+  - Paramètres RTSP déplacés dans l’onglet RTSP.
+- **web-manager/config.py**, **web-manager/templates/index.html**
+  - Taille police overlay autorisée dès 1.
+- **rpi_av_rtsp_recorder.sh**
+  - Export des paramètres overlay vers le serveur CSI.
+
+---
+
 ## [2.33.00] - Dependencies File + Auto Install
 
 ### Ajouts
