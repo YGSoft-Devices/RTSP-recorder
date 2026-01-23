@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Network and WiFi functions
- * Version: 2.32.92
+ * Version: 2.32.93
  */
 
 // WiFi Functions
@@ -1521,4 +1521,5 @@ function toggleSection(header) {
 }
 
 // ============================================================================
+
 

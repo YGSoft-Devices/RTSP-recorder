@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Camera Blueprint - Camera controls and profiles routes
-Version: 2.30.11
+Version: 2.30.12
 """
 
 import os
@@ -19,6 +19,7 @@ from services.camera_service import (
     get_scheduler_state, set_scheduler_enabled,
     add_schedule, remove_schedule,
     get_camera_formats, detect_camera_type,
+    get_hw_encoder_capabilities,
     get_active_profile_by_schedule, set_current_profile
 )
 from services.csi_camera_service import (
@@ -625,6 +626,8 @@ def api_camera_formats():
     """Get available camera formats and resolutions."""
     device = request.args.get('device', '/dev/video0')
     formats = get_camera_formats(device)
+    camera_type = detect_camera_type()
+    encoder_caps = get_hw_encoder_capabilities()
     config = load_config()
     current = {
         'width': int(config.get('VIDEO_WIDTH', 640)),
@@ -635,6 +638,8 @@ def api_camera_formats():
         'success': True,
         'device': device,
         'formats': formats,
+        'camera_type': camera_type,
+        'encoder': encoder_caps,
         'current': current
     })
 # ============================================================================

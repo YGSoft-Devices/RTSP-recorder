@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 Camera Service - Camera controls, profiles, and detection
-Version: 2.30.9
+Version: 2.30.10
 
 Changes in 2.30.4:
 - Added libcamera/CSI camera support (PiCam)
 - Fixed resolution detection for unicam/CSI devices (Stepwise issue)
 - New function detect_camera_type() to identify USB vs CSI cameras
 - New function get_libcamera_formats() for CSI camera resolution detection
+Changes in 2.30.10:
+- Added get_hw_encoder_capabilities() for v4l2h264enc limits
 """
 
 import os
@@ -1302,6 +1304,57 @@ def get_camera_formats(device='/dev/video0'):
     # Otherwise, use v4l2 detection for USB cameras
     return get_v4l2_formats(device)
 
+
+def get_hw_encoder_capabilities():
+    """Get v4l2h264enc capabilities (max resolution) when available."""
+    info = {
+        'available': False,
+        'type': None,
+        'device': None,
+        'max_width': 0,
+        'max_height': 0
+    }
+
+    encoder_device = '/dev/video11'
+    if not os.path.exists(encoder_device):
+        return info
+
+    result = run_command("gst-inspect-1.0 v4l2h264enc >/dev/null 2>&1", timeout=5)
+    if not result['success']:
+        return info
+
+    info['available'] = True
+    info['type'] = 'v4l2h264enc'
+    info['device'] = encoder_device
+
+    result = run_command(f"v4l2-ctl -d {encoder_device} --list-formats-ext 2>/dev/null", timeout=5)
+    if not result['success'] or not result['stdout']:
+        return info
+
+    max_area = 0
+    max_width = 0
+    max_height = 0
+    for line in result['stdout'].splitlines():
+        step_match = re.search(r'Size:\s*Stepwise\s*(\d+)x(\d+)\s*-\s*(\d+)x(\d+)', line)
+        if step_match:
+            width = int(step_match.group(3))
+            height = int(step_match.group(4))
+        else:
+            discrete_match = re.search(r'Size:\s*Discrete\s*(\d+)x(\d+)', line)
+            if not discrete_match:
+                continue
+            width = int(discrete_match.group(1))
+            height = int(discrete_match.group(2))
+
+        area = width * height
+        if area > max_area:
+            max_area = area
+            max_width = width
+            max_height = height
+
+    info['max_width'] = max_width
+    info['max_height'] = max_height
+    return info
 
 def get_v4l2_formats(device='/dev/video0'):
     """Get available video formats for USB cameras via v4l2.

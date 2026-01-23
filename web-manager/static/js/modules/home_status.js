@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Home status and service controls
- * Version: 2.32.92
+ * Version: 2.32.93
  */
 (function () {
     async function loadHomeStatus() {
@@ -154,4 +154,5 @@
     window.controlService = controlService;
     window.controlServiceAction = controlServiceAction;
 })();
+
 

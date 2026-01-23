@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.32.92
+ * Version: 2.32.93
  */
 
 (function () {
@@ -269,6 +269,25 @@ function updateAudioGainDisplay(value) {
 // Global storage for detected resolutions
 let detectedResolutions = [];
 
+function getEncoderLabel(format, width, height, cameraType, encoderCaps) {
+    const formatUpper = (format || '').toUpperCase();
+    if (cameraType === 'libcamera') {
+        return 'hardware (Picamera2)';
+    }
+    if (formatUpper === 'H264') {
+        return 'direct (H264)';
+    }
+    if (encoderCaps && encoderCaps.available) {
+        const maxWidth = parseInt(encoderCaps.max_width) || 0;
+        const maxHeight = parseInt(encoderCaps.max_height) || 0;
+        if (maxWidth > 0 && maxHeight > 0) {
+            return (width <= maxWidth && height <= maxHeight) ? 'hardware' : 'software';
+        }
+        return 'hardware';
+    }
+    return 'software';
+}
+
 /**
  * Load resolutions automatically into dropdown
  */
@@ -291,6 +310,8 @@ async function loadResolutions() {
         if (data.success && data.formats.length > 0) {
             detectedResolutions = [];
             let options = '<option value="">-- Sélectionnez une résolution --</option>';
+            const cameraType = data.camera_type?.type || 'usb';
+            const encoderCaps = data.encoder || {};
             
             // Get current values to pre-select
             const currentWidth = parseInt(document.getElementById('VIDEO_WIDTH')?.value) || 0;
@@ -307,20 +328,22 @@ async function loadResolutions() {
                     
                     // Store resolution data for later use
                     const resIndex = detectedResolutions.length;
+                    const encoderLabel = getEncoderLabel(fmt.format, res.width, res.height, cameraType, encoderCaps);
                     detectedResolutions.push({
                         format: fmt.format,
                         width: res.width,
                         height: res.height,
                         fps: fps,
                         framerates: res.framerates.map(f => Math.floor(f)),
-                        megapixels: megapixels
+                        megapixels: megapixels,
+                        encoder: encoderLabel
                     });
                     
                     const isSelected = (res.width === currentWidth && res.height === currentHeight);
                     const selectedAttr = isSelected ? ' selected' : '';
                     
                     options += `<option value="${resIndex}"${selectedAttr}>`;
-                    options += `${res.width}×${res.height} @ ${fps}fps (${megapixels}MP)`;
+                    options += `${res.width}×${res.height} @ ${fps}fps (${megapixels}MP) - ${encoderLabel}`;
                     options += `</option>`;
                 }
                 
@@ -490,4 +513,5 @@ async function applyVideoSettings() {
     window.toggleManualResolution = toggleManualResolution;
     window.applyVideoSettings = applyVideoSettings;
 })();
+
 

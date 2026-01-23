@@ -7,6 +7,18 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.32.93] - Encoder Label in Resolutions
+
+### Ajouts
+- **web-manager/static/js/modules/config_video.js**
+  - Ajout de l'indication hardware/software/direct dans le dropdown des resolutions.
+
+### Modifications
+- **web-manager/blueprints/camera_bp.py**, **web-manager/services/camera_service.py**
+  - Exposition des capacites encodeur (v4l2h264enc) pour l'UI.
+
+---
+
 ## [2.32.92] - H264 Bitrate Fix
 
 ### Corrections

@@ -40,7 +40,8 @@ from .camera_service import (
     apply_camera_profile,
     capture_camera_profile,
     get_camera_formats,
-    get_libcamera_formats
+    get_libcamera_formats,
+    get_hw_encoder_capabilities
 )
 
 from .network_service import (
@@ -148,6 +149,7 @@ __all__ = [
     'get_all_camera_controls', 'reset_camera_control', 'auto_camera_controls',
     'focus_oneshot', 'load_camera_profiles', 'save_camera_profiles',
     'apply_camera_profile', 'capture_camera_profile', 'get_camera_formats',
+    'get_hw_encoder_capabilities',
     # Network
     'get_network_interfaces', 'get_interface_details', 'configure_static_ip',
     'configure_dhcp', 'set_interface_priority', 'get_wifi_networks',

@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Meeting/NTP/RTC functions
- * Version: 2.32.92
+ * Version: 2.32.93
  */
 
 (function () {
@@ -2421,4 +2421,5 @@ document.addEventListener('DOMContentLoaded', () => {
     window.clearTerminal = clearTerminal;
     window.showAllowedCommands = showAllowedCommands;
 })();
+
 

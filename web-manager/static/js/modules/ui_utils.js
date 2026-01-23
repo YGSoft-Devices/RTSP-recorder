@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - UI utilities
- * Version: 2.32.92
+ * Version: 2.32.93
  */
 (function () {
     function showToast(message, type = 'info') {
@@ -85,4 +85,5 @@
     window.fallbackCopyToClipboard = fallbackCopyToClipboard;
     window.copyOnvifUrl = copyOnvifUrl;
 })();
+
 
