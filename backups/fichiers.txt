@@ -1,0 +1,25 @@
+Fichiers et rôles (à jour)
+
+Documentation de référence:
+- docs/Encyclopedie.md
+
+Installation (scripts dans setup/):
+- setup/install.sh : installateur maître (options --all/--gstreamer/--rtsp/--recorder/--webui/--onvif)
+- setup/install_gstreamer_rtsp.sh : dépendances + vérifications + installation/compilation de test-launch
+- setup/install_rpi_av_rtsp_recorder.sh : installe /usr/local/bin/rpi_av_rtsp_recorder.sh + service rpi-av-rtsp-recorder
+- setup/install_rtsp_recorder.sh : installe /usr/local/bin/rtsp_recorder.sh + service rtsp-recorder
+- setup/install_rtsp_watchdog.sh : installe watchdog systemd + udev (rtsp-watchdog + rtsp-camera-recovery)
+- setup/install_web_manager.sh : installe l’interface web (Gunicorn) + service rpi-cam-webmanager
+- setup/install_onvif_server.sh : installe ONVIF + service rpi-cam-onvif
+
+Runtime:
+- rpi_av_rtsp_recorder.sh : serveur RTSP (GStreamer/test-launch) avec détection caméra/audio et fallback d’encodage
+- rtsp_recorder.sh : enregistrement du flux RTSP local via ffmpeg (segments .ts) + gestion d’espace disque
+- rtsp_watchdog.sh : surveillance du stream RTSP et redémarrage automatique
+
+Configuration (device):
+- /etc/rpi-cam/config.env : configuration principale (web-manager + scripts)
+- /etc/rpi-cam/recorder.conf : configuration legacy (si config.env absent)
+- /etc/rpi-cam/onvif.conf : configuration ONVIF (JSON)
+- /etc/rpi-cam/wifi_failover.json : configuration failover WiFi (JSON)
+- /etc/rpi-cam/camera_profiles.json : profils caméra (JSON)

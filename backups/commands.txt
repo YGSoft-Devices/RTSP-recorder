@@ -1,0 +1,16 @@
+Commandes rapides (à jour)
+
+Documentation de référence:
+- docs/Encyclopedie.md
+
+Installation complète (recommandée):
+  sudo ./setup/install.sh --all
+
+RTSP (service principal):
+  sudo systemctl enable --now rpi-av-rtsp-recorder
+  sudo systemctl status rpi-av-rtsp-recorder
+  tail -f /var/log/rpi-cam/rpi_av_rtsp_recorder.log
+
+Enregistrement (optionnel):
+  sudo systemctl enable --now rtsp-recorder
+  tail -f /var/log/rpi-cam/rtsp_recorder.log

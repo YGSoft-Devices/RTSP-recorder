@@ -1,0 +1,104 @@
+#!/bin/bash
+# Policy-based routing pour éviter le routage asymétrique
+# Quand les deux interfaces sont actives, chaque interface répond avec sa propre IP
+# + Redémarre le RTSP quand une interface tombe pour libérer les connexions zombies
+# Version: 1.1.0
+
+INTERFACE=$1
+ACTION=$2
+GATEWAY="192.168.1.254"
+
+log() {
+    logger -t "policy-routing" "$@"
+}
+
+# Redémarrer le service RTSP pour libérer les connexions sur l'ancienne interface
+restart_rtsp_service() {
+    log "Restarting RTSP service to clear stale connections..."
+    # Petite pause pour laisser le réseau se stabiliser
+    sleep 2
+    systemctl restart rpi-av-rtsp-recorder 2>/dev/null || true
+    log "RTSP service restarted"
+}
+
+setup_eth0_routing() {
+    local IP=$(ip -4 addr show eth0 2>/dev/null | grep -oP '(?<=inet )\d+\.\d+\.\d+\.\d+')
+    if [ -n "$IP" ]; then
+        # Supprimer les anciennes règles
+        ip rule del from $IP table eth0_table 2>/dev/null
+        ip route flush table eth0_table 2>/dev/null
+        
+        # Ajouter les nouvelles règles
+        ip route add default via $GATEWAY dev eth0 table eth0_table
+        ip route add 192.168.1.0/24 dev eth0 src $IP table eth0_table
+        ip rule add from $IP table eth0_table priority 100
+        
+        log "eth0 routing configured: $IP -> eth0_table"
+    fi
+}
+
+setup_wlan_routing() {
+    # Trouver l'interface WiFi active (wlan0 ou wlan1)
+    local WLAN_IF=""
+    for iface in wlan0 wlan1; do
+        if ip link show $iface 2>/dev/null | grep -q "state UP"; then
+            WLAN_IF=$iface
+            break
+        fi
+    done
+    
+    if [ -n "$WLAN_IF" ]; then
+        local IP=$(ip -4 addr show $WLAN_IF 2>/dev/null | grep -oP '(?<=inet )\d+\.\d+\.\d+\.\d+')
+        if [ -n "$IP" ]; then
+            # Supprimer les anciennes règles
+            ip rule del from $IP table wlan_table 2>/dev/null
+            ip route flush table wlan_table 2>/dev/null
+            
+            # Ajouter les nouvelles règles
+            ip route add default via $GATEWAY dev $WLAN_IF table wlan_table
+            ip route add 192.168.1.0/24 dev $WLAN_IF src $IP table wlan_table
+            ip rule add from $IP table wlan_table priority 101
+            
+            log "wlan routing configured: $IP via $WLAN_IF -> wlan_table"
+        fi
+    fi
+}
+
+cleanup_eth0_routing() {
+    ip rule del table eth0_table 2>/dev/null
+    ip route flush table eth0_table 2>/dev/null
+    log "eth0 routing cleaned up"
+    # Redémarrer RTSP pour libérer les connexions zombies sur eth0
+    restart_rtsp_service &
+}
+
+cleanup_wlan_routing() {
+    ip rule del table wlan_table 2>/dev/null
+    ip route flush table wlan_table 2>/dev/null
+    log "wlan routing cleaned up"
+}
+
+case "$INTERFACE" in
+    eth0)
+        case "$ACTION" in
+            up|dhcp4-change)
+                setup_eth0_routing
+                ;;
+            down)
+                cleanup_eth0_routing
+                ;;
+        esac
+        ;;
+    wlan0|wlan1)
+        case "$ACTION" in
+            up|dhcp4-change)
+                setup_wlan_routing
+                ;;
+            down)
+                cleanup_wlan_routing
+                ;;
+        esac
+        ;;
+esac
+
+exit 0

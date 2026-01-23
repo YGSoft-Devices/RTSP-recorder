@@ -1,0 +1,20 @@
+[Unit]
+Description=RTSP Streaming Watchdog - Auto-recovery for camera issues
+After=rpi-av-rtsp-recorder.service
+Wants=rpi-av-rtsp-recorder.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/bin/rtsp_watchdog.sh
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/rpi-cam/rtsp_watchdog.log
+StandardError=append:/var/log/rpi-cam/rtsp_watchdog.log
+
+# Reduced priority - watchdog shouldn't impact streaming
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

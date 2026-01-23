@@ -1,0 +1,6 @@
+{
+    "api_url": "https://meeting.ygsoft.fr/api",
+    "device_key": "YOUR_DEVICE_KEY_HERE",
+    "token_code": "YOUR_TOKEN_CODE_HERE",
+    "_comment": "Copier ce fichier en 'meeting_config.json' et remplacer les valeurs"
+}

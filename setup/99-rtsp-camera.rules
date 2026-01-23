@@ -1,0 +1,14 @@
+# /etc/udev/rules.d/99-rtsp-camera.rules
+#
+# Udev rules for RTSP streaming camera
+# Triggers service restart when USB camera is connected/reconnected
+#
+# This complements the watchdog by providing immediate response
+# to camera plug/unplug events.
+
+# When a V4L2 video device is added (camera connected)
+ACTION=="add", SUBSYSTEM=="video4linux", KERNEL=="video[0-9]*", TAG+="systemd", ENV{SYSTEMD_WANTS}="rtsp-camera-recovery.service"
+
+# Alternative: Direct script execution (more immediate)
+# ACTION=="add", SUBSYSTEM=="video4linux", KERNEL=="video[0-9]*", RUN+="/usr/local/bin/rtsp_camera_event.sh add %k"
+# ACTION=="remove", SUBSYSTEM=="video4linux", KERNEL=="video[0-9]*", RUN+="/usr/local/bin/rtsp_camera_event.sh remove %k"

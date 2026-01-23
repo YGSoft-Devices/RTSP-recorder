@@ -1,0 +1,107 @@
+#!/bin/bash
+# Single IP Failover - Une seule IP partagée entre toutes les interfaces
+# L'interface active (par priorité: eth0 > wlan1 > wlan0) obtient l'IP statique
+# Les autres interfaces sont désactivées ou sans IP
+# Version: 1.0.0
+
+INTERFACE=$1
+ACTION=$2
+
+# Configuration
+STATIC_IP="192.168.1.191/24"
+GATEWAY="192.168.1.254"
+DNS="8.8.8.8"
+
+# Priorité des interfaces (du plus prioritaire au moins prioritaire)
+INTERFACE_PRIORITY="eth0 wlan1 wlan0"
+
+log() {
+    logger -t "single-ip-failover" "$@"
+    echo "[single-ip-failover] $@"
+}
+
+# Obtenir l'interface active la plus prioritaire
+get_best_interface() {
+    for iface in $INTERFACE_PRIORITY; do
+        # Vérifier si l'interface existe et est UP
+        if ip link show "$iface" 2>/dev/null | grep -q "state UP"; then
+            echo "$iface"
+            return 0
+        fi
+    done
+    echo ""
+    return 1
+}
+
+# Configurer l'IP sur une interface
+configure_ip() {
+    local iface=$1
+    log "Configuring IP $STATIC_IP on $iface"
+    
+    # Ajouter l'IP si elle n'est pas déjà présente
+    if ! ip addr show "$iface" | grep -q "${STATIC_IP%/*}"; then
+        ip addr add "$STATIC_IP" dev "$iface" 2>/dev/null || true
+    fi
+    
+    # Configurer la route par défaut
+    ip route del default 2>/dev/null || true
+    ip route add default via "$GATEWAY" dev "$iface" 2>/dev/null || true
+    
+    log "IP configured on $iface"
+}
+
+# Retirer l'IP d'une interface
+remove_ip() {
+    local iface=$1
+    log "Removing IP from $iface"
+    ip addr del "$STATIC_IP" dev "$iface" 2>/dev/null || true
+}
+
+# Redémarrer le service RTSP pour libérer les connexions sur l'ancienne interface
+restart_rtsp() {
+    log "Restarting RTSP service..."
+    sleep 1
+    systemctl restart rpi-av-rtsp-recorder 2>/dev/null || true
+    log "RTSP service restarted"
+}
+
+# Logique principale de failover
+do_failover() {
+    local best_iface=$(get_best_interface)
+    
+    if [ -z "$best_iface" ]; then
+        log "WARNING: No interface available!"
+        return 1
+    fi
+    
+    log "Best interface: $best_iface (triggered by $INTERFACE $ACTION)"
+    
+    # Retirer l'IP de toutes les autres interfaces
+    for iface in $INTERFACE_PRIORITY; do
+        if [ "$iface" != "$best_iface" ]; then
+            remove_ip "$iface"
+        fi
+    done
+    
+    # Configurer l'IP sur la meilleure interface
+    configure_ip "$best_iface"
+    
+    # Redémarrer RTSP en arrière-plan
+    restart_rtsp &
+}
+
+# Traitement des événements
+case "$ACTION" in
+    up|dhcp4-change)
+        log "Interface $INTERFACE came UP"
+        do_failover
+        ;;
+    down)
+        log "Interface $INTERFACE went DOWN"
+        # Attendre un peu que l'interface soit vraiment down
+        sleep 1
+        do_failover
+        ;;
+esac
+
+exit 0

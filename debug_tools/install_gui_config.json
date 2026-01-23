@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-01-21T18:17:37.5970568+01:00",
+  "user": "device",
+  "noReboot": false,
+  "ip": "192.168.1.124",
+  "monitor": false,
+  "timezone": "Europe/Paris",
+  "noProvision": false,
+  "deviceKey": "F743F2371A834C31B56B3B47708064FF",
+  "noBurnToken": false,
+  "meetingApiUrl": "https://meeting.ygsoft.fr/api",
+  "skipInstall": false,
+  "checkOnly": false
+}

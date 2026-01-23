@@ -1,0 +1,6 @@
+- ajouter parametrage amplification micro
+- ressortir vers un flux http mjpeg en plus du RTSP sous reserve d'activation (en utilisant videocore IV) ?
+- ajouter notifications mails/discord/chat
+- ajouter login page activable (desactivée par defaut)
+- ajouter overlay avec info cam/media/etc ?
+- ajouter la date et l'heure du systeme dans le cadre systeme du frontend.

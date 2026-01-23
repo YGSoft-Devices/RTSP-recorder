@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<!-- RTSP Recorder Web Interface (ESP32) - Version 0.1.2 -->
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RTSP Recorder - ESP32</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" role="img" focusable="false">
+                            <path d="M17 10.5V7c0-1.1-.9-2-2-2H5C3.9 5 3 5.9 3 7v10c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-3.5l4 4v-11l-4 4z"/>
+                        </svg>
+                    </div>
+                    <h1>RTSP Recorder</h1>
+                </div>
+                <div class="status-badge">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span class="status-text" id="statusText">Chargement…</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section class="dashboard-cards">
+                <div class="card info-card card-system">
+                    <div class="card-header">
+                        <h3>Système</h3>
+                        <button class="btn btn-secondary" id="btnReload">Recharger</button>
+                    </div>
+                    <div class="card-content">
+                        <div class="system-details" id="systemDetails"></div>
+                        <div class="metric-row" id="systemMetrics"></div>
+                        <div class="hint" id="subheader"></div>
+                    </div>
+                </div>
+
+                <div class="card info-card card-rtsp">
+                    <div class="card-header">
+                        <h3>URL Stream</h3>
+                        <button class="btn btn-primary" id="btnCopyStream">Copier</button>
+                    </div>
+                    <div class="card-content">
+                        <div class="url-display-compact">
+                            <div class="url-row">
+                                <span class="url-badge primary">MJPEG</span>
+                                <code class="url-text" id="streamUrl" title=""></code>
+                                <button class="btn-icon" id="btnOpenStream" title="Ouvrir">
+                                    ↗
+                                </button>
+                            </div>
+                        </div>
+                        <div class="hint">Si l’image freeze: “Recharger” ou relancer l’onglet Live.</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="config-section">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="home">Live</button>
+                    <button class="tab-btn" data-tab="video">Vidéo</button>
+                    <button class="tab-btn" data-tab="wifi">WiFi</button>
+                    <button class="tab-btn" data-tab="meeting">Meeting</button>
+                    <button class="tab-btn" data-tab="system">Système</button>
+                </div>
+
+                <div class="tab-content active" id="tab-home">
+                    <div class="stream-wrap">
+                        <img id="stream" src="/stream" alt="MJPEG stream">
+                    </div>
+                    <div class="actions-row">
+                        <button class="btn btn-secondary" id="btnReloadStream">Recharger le stream</button>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-video">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="frameSize">Résolution</label>
+                            <select id="frameSize">
+                                <option value="10">UXGA (1600x1200)</option>
+                                <option value="9">SXGA (1280x1024)</option>
+                                <option value="8">XGA (1024x768)</option>
+                                <option value="6">SVGA (800x600)</option>
+                                <option value="5" selected>VGA (640x480)</option>
+                                <option value="4">CIF (400x296)</option>
+                                <option value="3">QVGA (320x240)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="jpegQuality">Qualité JPEG (10=meilleur)</label>
+                            <input id="jpegQuality" type="number" min="10" max="63" value="12">
+                        </div>
+                        <div class="form-group">
+                            <label for="brightness">Brightness (-2..2)</label>
+                            <input id="brightness" type="number" min="-2" max="2" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="contrast">Contrast (-2..2)</label>
+                            <input id="contrast" type="number" min="-2" max="2" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="saturation">Saturation (-2..2)</label>
+                            <input id="saturation" type="number" min="-2" max="2" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Flip/Mirror</label>
+                            <div class="actions-row">
+                                <label><input id="vflip" type="checkbox"> Flip vertical</label>
+                                <label><input id="hmirror" type="checkbox"> Mirror horizontal</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="actions-row">
+                        <button class="btn btn-primary" id="btnSaveCamera">Appliquer</button>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-wifi">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ssid">SSID</label>
+                            <input id="ssid" type="text" placeholder="MonWiFi">
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Mot de passe</label>
+                            <input id="password" type="password" placeholder="********">
+                        </div>
+                    </div>
+                    <div class="actions-row">
+                        <button class="btn btn-primary" id="btnSaveWifi">Enregistrer</button>
+                        <button class="btn btn-danger" id="btnFactory">Reset WiFi</button>
+                    </div>
+                    <div class="hint">Changer le WiFi nécessite un reboot.</div>
+                </div>
+
+                <div class="tab-content" id="tab-meeting">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label><input id="meetingEnabled" type="checkbox"> Activer Meeting</label>
+                            <div class="hint">Heartbeat vers l’API Meeting via `/api/devices/{device_key}/online`.</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="meetingInterval">Intervalle heartbeat (s)</label>
+                            <input id="meetingInterval" type="number" min="10" max="600" value="30">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="meetingApiUrl">Meeting API URL</label>
+                            <input id="meetingApiUrl" type="text" placeholder="https://meeting.example.com/api">
+                        </div>
+                        <div class="form-group">
+                            <label for="meetingDeviceKey">DeviceKey</label>
+                            <input id="meetingDeviceKey" type="text" placeholder="ABCDEF...">
+                        </div>
+                    </div>
+                    <div class="actions-row">
+                        <button class="btn btn-primary" id="btnSaveMeeting">Enregistrer</button>
+                        <button class="btn btn-secondary" id="btnMeetingHeartbeat">Heartbeat maintenant</button>
+                    </div>
+                    <div class="hint" id="meetingHint"></div>
+                </div>
+
+                <div class="tab-content" id="tab-system">
+                    <div class="actions-row">
+                        <button class="btn btn-danger" id="btnReboot">Reboot</button>
+                    </div>
+                    <div class="hint">Diagnostics bruts (API status):</div>
+                    <pre class="mono" id="statusJson">…</pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+<script src="/app.js"></script>
+</body>
+</html>

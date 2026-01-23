@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "version": "2.32.67",
+  "created_at": "2026-01-23T03:00:01",
+  "requires_reboot": true,
+  "required_packages": [
+    "i2c-tools",
+    "util-linux-extra"
+  ],
+  "restart_services": [
+    "rpi-av-rtsp-recorder",
+    "rpi-cam-onvif",
+    "rpi-cam-webmanager"
+  ],
+  "files": [
+    {
+      "path": "opt\\rpi-cam-webmanager\\app_new.py",
+      "size": 10910,
+      "sha256": "3b4532907e334f4d72aac207c5e851719a0da5b7696faf6bab1ddec6003c68fa"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\app.py",
+      "size": 19013,
+      "sha256": "37d7dfe2f3acd68577d42eb8106d7315944f879fe263cbc14c9c8d2c1b43f4f4"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\config.env.example",
+      "size": 895,
+      "sha256": "51e9a40a19e732a394791025088bf812628eb828f7c1e6b3b144d344f4af0d2c"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\config.py",
+      "size": 18851,
+      "sha256": "4373f27cd95bbe8fb493ff8a63346ce4cf9cacfec1d80f439ebc19d24fc8dd98"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\README.md",
+      "size": 5148,
+      "sha256": "87ae784780a48ceb692f2c50593b06b8b3ba2ce8ee67874eb428e397a195aa7c"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\requirements.txt",
+      "size": 32,
+      "sha256": "1556419a4bfe6c8a5d9bf6f26b9e9809a6c05c1bbca126f36364182d75301d8f"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\VERSION",
+      "size": 8,
+      "sha256": "1447016bc52e6f0df584b06ac43ba4149faf462471c5c684cf4b2cdeca6931da"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\__init__.py",
+      "size": 913,
+      "sha256": "36e2a2f96ec1b4e16636cd161b38a9772e31daa1870ff04961c558b1fa94dc4a"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\camera_bp.py",
+      "size": 28629,
+      "sha256": "c26e4ecb56c743f0b657753ac1f169a33d74e77a77747cf03539a3b00714689a"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\config_bp.py",
+      "size": 7940,
+      "sha256": "4a42ffd146ff64e5b68a1f9e02b5c4b43f36717434a0e6b23f8036445ddfb16e"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\debug_bp.py",
+      "size": 29935,
+      "sha256": "ce6fea0e191d4ebe10a714c32f8672be5fdc46e3dd183f528c37fd5287f5574d"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\detect_bp.py",
+      "size": 5023,
+      "sha256": "af576294636c986189eaf34eb6efbca01f2091bbb98b88db56b9349edc10bba9"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\legacy_bp.py",
+      "size": 2452,
+      "sha256": "14cd30da05f55282478cea2b28003d27bd026a413bfd41c37c089238f5f66d79"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\logs_bp.py",
+      "size": 7152,
+      "sha256": "e8ec0a246cdedf2776f41ac1a1fb7cc7d060d4804d9edb8575939d8d5e9cbbcd"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\meeting_bp.py",
+      "size": 8275,
+      "sha256": "bab4e554575be2cf9199b0241ce69ef716221d9342cdac74a92cb93c6edea1ee"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\network_bp.py",
+      "size": 16696,
+      "sha256": "4a9cfc76d25bce48ba5d9ad5338db27b3f760f57752bf108dd3a0171f492c6cc"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\onvif_bp.py",
+      "size": 13267,
+      "sha256": "1dd93400ee6e3a2172f8f5342bd1b2faed1ff152f861b16539e5f611e1982214"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\power_bp.py",
+      "size": 11854,
+      "sha256": "16ba2f209cbbd925d17a9091126c697fac6f5ae67715e914efd13de39e825e27"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\recordings_bp.py",
+      "size": 19757,
+      "sha256": "2e932ec7c9a1389082061c8b0f31416f210cb32b309169fe55f70fcececb2cf6"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\system_bp.py",
+      "size": 24925,
+      "sha256": "d2a66f9edfa20b56dea1a1a0be4bf00fce14a74f51ed513c4b8a712e48087584"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\video_bp.py",
+      "size": 13692,
+      "sha256": "800ec8e25f88ba6cf7bfb64e3c574147749f7c052819a104414446c9277443bb"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\watchdog_bp.py",
+      "size": 5151,
+      "sha256": "59ed8f163986394a444e43264ab484e24cd16f0adcbd0ea47d32846283261e77"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\wifi_bp.py",
+      "size": 25354,
+      "sha256": "09ca637439df66979479ea7e5709d92aa8067381c28af0fe86f270b0f9e5d36e"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\__pycache__\\recordings_bp.cpython-311.pyc",
+      "size": 25500,
+      "sha256": "5a5d9c1ee1c8f9786464e5d20bb4c89ef3adfc78241e371d1f6b59a28523ee97"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\blueprints\\__pycache__\\system_bp.cpython-311.pyc",
+      "size": 34222,
+      "sha256": "eea39bf5d9971f8acc63cefa1d897d042783f4a92cbfbd3b5ebdd76446acf0a2"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\onvif-server\\onvif_server.py",
+      "size": 73919,
+      "sha256": "41b592853a9db25d9ad8b5e071533ed24b4a4fb2b14c06296b45a31c860b100e"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\__init__.py",
+      "size": 5300,
+      "sha256": "69772301c30e7332891552eb8ed91ee19438e469a2bfa86a1db02de1caf4cc6c"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\camera_service.py",
+      "size": 48495,
+      "sha256": "7f01cf4d437775260bb437ebeeb79134352487f4b219f75073cbca7b4481323a"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\config_service.py",
+      "size": 19964,
+      "sha256": "aa50a00e35595134e9f53f0f48fe457093b32acdf667d69eb5a555733dbf47ab"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\csi_camera_service.py",
+      "size": 19320,
+      "sha256": "693cf5df5545eb0b1c5b4b18f634896f82b3f813470369a15272e349a7255f84"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\media_cache_service.py",
+      "size": 27298,
+      "sha256": "a1e82af0e3b3620d0de73ff862a84f14ad2824e211ced11e013222076bf8a244"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\meeting_service.py",
+      "size": 44309,
+      "sha256": "3de14657f5633cf49efef5b03f82c578348135e5f7e8c88ceb0bc08d54f3b1f1"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\network_service.py",
+      "size": 61926,
+      "sha256": "372ce15f8409e956d54a9ffcb0cae8a0e6fb2adda6398db95e30ea1076d55577"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\platform_service.py",
+      "size": 6628,
+      "sha256": "3d6476580800ac74b8cbb73d17eb9deec46a085f4f60c3375b15da1a354515c5"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\power_service.py",
+      "size": 43097,
+      "sha256": "7f2b25b361bc20d2b19c84c9249f4348c1790bef0d7c9b64fd1b5d4c7f451a3c"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\recording_service.py",
+      "size": 16009,
+      "sha256": "b07c0a38d124843b8ce18c4927c9b21ff2b7763d10d187553d3190615f10bbc4"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\system_service.py",
+      "size": 65851,
+      "sha256": "50259cc4b62ed8c72f267f091597dcc4a4d5a7ec75882929654abcc45269755c"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\watchdog_service.py",
+      "size": 20591,
+      "sha256": "a8f25418e738d5a585e6a31130ee4cb2b155229049fa6b6161b2cb4da2d57012"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\__pycache__\\camera_service.cpython-311.pyc",
+      "size": 52345,
+      "sha256": "8b4d16dc13562386a2923f6e81bb0b1da90155454cb7afce7946031ea5228939"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\__pycache__\\config_service.cpython-311.pyc",
+      "size": 22909,
+      "sha256": "75621b9e99a0a1222c94e531d45a68e14774583f68e8f5187dc8f127b0f2014f"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\__pycache__\\media_cache_service.cpython-311.pyc",
+      "size": 35332,
+      "sha256": "7a87334980f7fcb4e8347dd9f7b6216f102141c254ebc64305feb5093a178916"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\__pycache__\\system_service.cpython-311.pyc",
+      "size": 66854,
+      "sha256": "d4b4bfc9e538340f8c8c6b34af27642e5bfd336f09a06bebb67ac4e0b94fbfa1"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\services\\__pycache__\\watchdog_service.cpython-311.pyc",
+      "size": 23253,
+      "sha256": "7223de89838fbd1000df5af60e7b36259f937ab7fc7c641c8543468fbc717c99"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\static\\css\\style.css",
+      "size": 124630,
+      "sha256": "9d5f3d626567edb2441209e50333b8f09653ad0573a1c8f0f00c66e24fc79e80"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\static\\js\\app.js",
+      "size": 326760,
+      "sha256": "bff5b551900fdcdf6115c8018e4dee96623ea984bbb8ac94527d519a7aed62d0"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\templates\\index.html",
+      "size": 231054,
+      "sha256": "dd4022b05bd917c1e9f22ae4d7457ec2c4c3f82c2dcdca747f1b95852e151614"
+    },
+    {
+      "path": "opt\\rpi-cam-webmanager\\__pycache__\\config.cpython-311.pyc",
+      "size": 13346,
+      "sha256": "f0370c6700fa14bfd1bf21b0bc422088c40f0b05a531a928fde0b5ec66e38449"
+    },
+    {
+      "path": "usr\\local\\bin\\rpi_av_rtsp_recorder.sh",
+      "size": 29790,
+      "sha256": "583c3b5b2d214b69314a2413b64787b2b2b4bba59ae900254f83f367070447c2"
+    },
+    {
+      "path": "usr\\local\\bin\\rpi_csi_rtsp_server.py",
+      "size": 44569,
+      "sha256": "a88e14be464d9e07dfa6f15ba42604a82bef413b7420cccd0af25a8772e9d766"
+    },
+    {
+      "path": "usr\\local\\bin\\rtsp_recorder.sh",
+      "size": 12246,
+      "sha256": "11ae1b35852f05db749b51b30004f232b0ef20c790091d0dcadb92a2715ee867"
+    },
+    {
+      "path": "usr\\local\\bin\\rtsp_watchdog.sh",
+      "size": 11308,
+      "sha256": "eb84704a6c590915453ed8ecaf67c6eea317cd2e75bf37b863127651dcc849df"
+    }
+  ]
+}

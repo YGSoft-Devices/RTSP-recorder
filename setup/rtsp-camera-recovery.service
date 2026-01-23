@@ -1,0 +1,12 @@
+[Unit]
+Description=RTSP Camera Recovery - Restart streaming after camera reconnect
+After=rpi-av-rtsp-recorder.service
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/sleep 5
+ExecStart=/bin/systemctl restart rpi-av-rtsp-recorder.service
+ExecStartPost=/bin/systemctl restart rtsp-recorder.service
+
+# Don't start multiple instances
+RemainAfterExit=no

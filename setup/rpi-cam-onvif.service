@@ -1,0 +1,40 @@
+[Unit]
+Description=ONVIF Server for RTSP Cameras
+Documentation=https://github.com/sn8k/RTSP-Full
+After=network-online.target rpi-av-rtsp-recorder.service
+Wants=network-online.target
+# Note: Removed PartOf= to prevent cascading restarts when RTSP service restarts
+# StartLimit in [Unit] section (not [Service])
+StartLimitIntervalSec=300
+StartLimitBurst=10
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Configuration
+Environment=PYTHONUNBUFFERED=1
+
+# Start the ONVIF server
+ExecStart=/usr/bin/python3 /opt/rpi-cam-webmanager/onvif-server/onvif_server.py
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy - always restart unless manually stopped
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rpi-cam-onvif
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/rpi-cam /tmp
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
