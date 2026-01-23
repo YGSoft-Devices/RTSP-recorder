@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.32.93
+Version: 2.32.94
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -967,6 +967,7 @@ L'onglet **Vidéo** permet de configurer la source caméra, la résolution et le
 2. **Résolution vidéo**
    - Dropdown de résolution détectée avec format, résolution et FPS max
    - Indication du type d'encodage (hardware/software/direct) dans le menu déroulant
+   - Le format sélectionné (MJPG/YUYV/H264) est mémorisé via `VIDEO_FORMAT`
    - Affichage des détails (mégapixels, FPS disponibles)
    - Mode manuel : configuration personnalisée (largeur, hauteur)
    - **Auto-remplissage FPS** : sélectionner une résolution remplit automatiquement le champ Images/seconde avec le FPS max

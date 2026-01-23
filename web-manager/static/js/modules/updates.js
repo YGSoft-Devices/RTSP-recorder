@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Updates (repo + file)
- * Version: 2.32.93
+ * Version: 2.32.94
  */
 
 const CURRENT_VERSION = (window.APP_VERSION || '').replace(/^v/, '') || '0.0.0';
@@ -461,5 +461,6 @@ window.onUpdateFileForceChanged = onUpdateFileForceChanged;
 window.checkUpdateFile = checkUpdateFile;
 window.applyUpdateFile = applyUpdateFile;
 window.pollUpdateFileStatus = pollUpdateFileStatus;
+
 
 

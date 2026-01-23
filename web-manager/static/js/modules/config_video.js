@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.32.93
+ * Version: 2.32.94
  */
 
 (function () {
@@ -316,6 +316,9 @@ async function loadResolutions() {
             // Get current values to pre-select
             const currentWidth = parseInt(document.getElementById('VIDEO_WIDTH')?.value) || 0;
             const currentHeight = parseInt(document.getElementById('VIDEO_HEIGHT')?.value) || 0;
+            const currentFormat = (document.getElementById('VIDEO_FORMAT')?.value || '').toUpperCase();
+            let selectedIndex = '';
+            let fallbackIndex = '';
             
             for (const fmt of data.formats) {
                 // Add optgroup for each format
@@ -339,10 +342,17 @@ async function loadResolutions() {
                         encoder: encoderLabel
                     });
                     
-                    const isSelected = (res.width === currentWidth && res.height === currentHeight);
-                    const selectedAttr = isSelected ? ' selected' : '';
+                    const matchesSize = (res.width === currentWidth && res.height === currentHeight);
+                    const formatUpper = (fmt.format || '').toUpperCase();
+                    if (matchesSize) {
+                        if (currentFormat && formatUpper === currentFormat) {
+                            selectedIndex = resIndex;
+                        } else if (!fallbackIndex) {
+                            fallbackIndex = resIndex;
+                        }
+                    }
                     
-                    options += `<option value="${resIndex}"${selectedAttr}>`;
+                    options += `<option value="${resIndex}">`;
                     options += `${res.width}×${res.height} @ ${fps}fps (${megapixels}MP) - ${encoderLabel}`;
                     options += `</option>`;
                 }
@@ -352,6 +362,11 @@ async function loadResolutions() {
             
             select.innerHTML = options;
             select.disabled = false;
+            if (selectedIndex !== '') {
+                select.value = String(selectedIndex);
+            } else if (fallbackIndex !== '') {
+                select.value = String(fallbackIndex);
+            }
             
             // Trigger change to show details if something is selected
             if (select.value) {
@@ -393,6 +408,7 @@ function onResolutionSelectChange(userTriggered = false) {
     // Update hidden/manual fields with selected values
     document.getElementById('VIDEO_WIDTH').value = res.width;
     document.getElementById('VIDEO_HEIGHT').value = res.height;
+    document.getElementById('VIDEO_FORMAT').value = res.format || 'auto';
     
     // Only set FPS if user manually changed resolution (not on page load)
     // This preserves user's custom FPS value when page loads
@@ -433,6 +449,8 @@ function toggleManualResolution() {
         if (detailsDiv) detailsDiv.style.display = 'none';
         if (selectContainer) selectContainer.style.opacity = '0.5';
         document.getElementById('resolution-select').disabled = true;
+        const formatInput = document.getElementById('VIDEO_FORMAT');
+        if (formatInput) formatInput.value = 'auto';
     } else {
         // Hide manual fields, enable dropdown
         if (manualFields) manualFields.style.display = 'none';
@@ -454,6 +472,7 @@ async function applyVideoSettings() {
             VIDEO_WIDTH: document.getElementById('VIDEO_WIDTH').value,
             VIDEO_HEIGHT: document.getElementById('VIDEO_HEIGHT').value,
             VIDEO_FPS: document.getElementById('VIDEO_FPS').value,
+            VIDEO_FORMAT: document.getElementById('VIDEO_FORMAT')?.value || 'auto',
             H264_BITRATE_KBPS: document.getElementById('H264_BITRATE_KBPS').value,
             H264_KEYINT: document.getElementById('H264_KEYINT').value,
             H264_PROFILE: document.getElementById('H264_PROFILE').value,
@@ -513,5 +532,6 @@ async function applyVideoSettings() {
     window.toggleManualResolution = toggleManualResolution;
     window.applyVideoSettings = applyVideoSettings;
 })();
+
 
 

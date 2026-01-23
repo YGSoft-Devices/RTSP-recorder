@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Power and reboot functions
- * Version: 2.32.93
+ * Version: 2.32.94
  */
 
 // LED Functions
@@ -590,5 +590,6 @@ async function confirmReboot() {
 }
 
 // ============================================================================
+
 
 

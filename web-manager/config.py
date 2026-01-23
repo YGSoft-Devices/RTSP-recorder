@@ -3,7 +3,7 @@
 RTSP Recorder Web Manager - Configuration
 Central configuration file for constants, defaults, and metadata.
 
-Version: 1.1.3
+Version: 1.1.4
 """
 
 import os
@@ -144,6 +144,7 @@ DEFAULT_CONFIG = {
     "VIDEO_HEIGHT": "480",
     "VIDEO_FPS": "15",
     "VIDEO_DEVICE": "/dev/video0",
+    "VIDEO_FORMAT": "auto",
     "CAMERA_TYPE": "auto",
     "CAMERA_DEVICE": "/dev/video0",
     "CSI_ENABLE": "auto",
@@ -280,6 +281,13 @@ CONFIG_METADATA = {
         "label": "Périphérique vidéo",
         "type": "text",
         "help": "Chemin du périphérique USB (ex: /dev/video0)",
+        "category": "video"
+    },
+    "VIDEO_FORMAT": {
+        "label": "Format vidéo",
+        "type": "select",
+        "options": ["auto", "MJPG", "YUYV", "H264"],
+        "help": "Format préféré pour les caméras USB (auto = sélection automatique)",
         "category": "video"
     },
     "CSI_ENABLE": {

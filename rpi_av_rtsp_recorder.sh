@@ -11,8 +11,9 @@
 #   - Serve RTSP stream (H264 video + optional AAC audio)
 #   - Record locally in segments (robust against power loss)
 #
-# Version: 2.12.3
+# Version: 2.12.4
 # Changelog:
+#   - 2.12.4: Added VIDEO_FORMAT to force MJPG/YUYV/H264 when desired
 #   - 2.12.3: v4l2h264enc now honors H264_BITRATE_KBPS (no hardcoded 4 Mbps)
 #   - 2.12.2: Export H264_PROFILE/H264_QP for CSI encoder tuning
 #   - 2.11.2: Added timeout to arecord --dump-hw-params to prevent blocking when device is busy
@@ -88,6 +89,8 @@ set -euo pipefail
 : "${VIDEO_HEIGHT:=480}"
 : "${VIDEO_FPS:=15}"
 : "${VIDEO_DEVICE:=/dev/video0}"
+# Preferred USB format: auto, MJPG, YUYV, H264 (optional)
+: "${VIDEO_FORMAT:=auto}"
 # Camera type: auto, usb, csi
 : "${CAMERA_TYPE:=auto}"
 # Legacy support (deprecated, use CAMERA_TYPE instead)
@@ -436,6 +439,41 @@ build_video_source() {
     # USB camera - check supported formats
     # io-mode=2 (mmap) is more efficient for USB cameras
     # do-timestamp=true ensures proper frame timing
+    local requested_format="${VIDEO_FORMAT:-auto}"
+    requested_format=$(echo "$requested_format" | tr '[:lower:]' '[:upper:]')
+
+    if [[ -n "$requested_format" && "$requested_format" != "AUTO" ]]; then
+      case "$requested_format" in
+        MJPG|MJPEG|MOTION-JPEG)
+          if camera_supports_format "MJPG\|Motion-JPEG"; then
+            log "USB camera: forcing MJPEG format" >&2
+            echo "v4l2src device=${VIDEO_DEVICE} io-mode=2 do-timestamp=true ! image/jpeg,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! jpegdec ! videoconvert"
+            return 0
+          fi
+          log "Requested MJPEG not supported, falling back to auto" >&2
+          ;;
+        H264|H.264)
+          if camera_supports_format "H264\|H.264"; then
+            log "USB camera: forcing H264 format" >&2
+            echo "v4l2src device=${VIDEO_DEVICE} ! video/x-h264,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1"
+            return 0
+          fi
+          log "Requested H264 not supported, falling back to auto" >&2
+          ;;
+        YUYV|YUY2)
+          if camera_supports_format "YUYV"; then
+            log "USB camera: forcing YUYV format" >&2
+            echo "v4l2src device=${VIDEO_DEVICE} ! video/x-raw,format=YUY2,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! videoconvert"
+            return 0
+          fi
+          log "Requested YUYV not supported, falling back to auto" >&2
+          ;;
+        *)
+          log "Unknown VIDEO_FORMAT '${VIDEO_FORMAT}', falling back to auto" >&2
+          ;;
+      esac
+    fi
+
     if camera_supports_format "MJPG\|Motion-JPEG"; then
       log "USB camera supports MJPEG - using it (recommended)" >&2
       # MJPEG is more efficient to decode than raw YUYV
@@ -672,7 +710,7 @@ setup_fs
 setup_logging
 
 log "=========================================="
-log "Starting rpi_av_rtsp_recorder v2.12.3"
+log "Starting rpi_av_rtsp_recorder v2.12.4"
 log "=========================================="
 log "Config: RTSP=:${RTSP_PORT}/${RTSP_PATH} Video=${VIDEO_WIDTH}x${VIDEO_HEIGHT}@${VIDEO_FPS}fps"
 log "Recording: ${RECORD_ENABLE} -> ${RECORD_DIR} (${SEGMENT_SECONDS}s segments)"

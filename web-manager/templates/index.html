@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.32.93 -->
+<!-- RTSP Recorder Web Interface - Version 2.32.94 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -675,6 +675,7 @@
                                 <div class="input-with-button">
                                     <input type="text" id="VIDEO_DEVICE" name="VIDEO_DEVICE" 
                                            value="{{ config.VIDEO_DEVICE }}">
+                                    <input type="hidden" id="VIDEO_FORMAT" name="VIDEO_FORMAT" value="{{ config.VIDEO_FORMAT or 'auto' }}">
                                     <button type="button" class="btn btn-secondary" onclick="detectCameras()">
                                         <i class="fas fa-search"></i> Détecter
                                     </button>
@@ -3495,5 +3496,6 @@
     <script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}"></script>
 </body>
 </html>
+
 
 

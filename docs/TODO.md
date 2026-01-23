@@ -20,6 +20,7 @@
 - Identifier des valeurs fiables pour `AwbEnable` et `AeFlickerPeriod` (Picamera2 retourne `null` dans `/controls`)
 - Valider visuellement le bouton ghost-fix sur le flux CSI (effet ghost disparu)
 - Tester l'indication encodeur (hardware/software/direct) dans le menu des resolutions
+- Tester la persistance `VIDEO_FORMAT` (choix MJPG/YUYV) apres sauvegarde + reboot
 - Verifier sur device que `H264_BITRATE_KBPS` est bien applique avec `v4l2h264enc` (Synology/ONVIF)
 - Vérifier sur device que les nouveaux champs UI (Meeting local, ONVIF RTSP/identifiants, WiFi check_interval, CAMERA_DEVICE/CSI/USB, MAX_DISK_MB) se sauvegardent correctement
 - Tester le flux Backup/Restore (avec et sans logs) + reboot automatique apres restauration

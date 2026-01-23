@@ -7,6 +7,22 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.32.94] - Resolution Format Lock
+
+### Corrections
+- **web-manager/static/js/modules/config_video.js**
+  - Le format sélectionné est mémorisé et rechargé pour éviter les bascules MJPG/YUYV.
+- **rpi_av_rtsp_recorder.sh**
+  - Support de `VIDEO_FORMAT` pour forcer MJPG/YUYV/H264 si disponible.
+
+### Modifications
+- **web-manager/config.py**, **web-manager/templates/index.html**
+  - Ajout du champ `VIDEO_FORMAT` dans la configuration.
+- **setup/install_web_manager.sh**, **web-manager/config.env.example**
+  - Valeur par défaut `VIDEO_FORMAT="auto"`.
+
+---
+
 ## [2.32.93] - Encoder Label in Resolutions
 
 ### Ajouts

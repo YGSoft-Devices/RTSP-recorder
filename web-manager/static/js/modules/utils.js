@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Utility functions
- * Version: 2.32.93
+ * Version: 2.32.94
  */
 (function () {
     function escapeHtml(text) {
@@ -11,5 +11,6 @@
     
     window.escapeHtml = escapeHtml;
 })();
+
 
 

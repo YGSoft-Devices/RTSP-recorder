@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Recordings and files UI
- * Version: 2.32.93
+ * Version: 2.32.94
  */
 (function () {
     /**
@@ -764,5 +764,6 @@
     window.deleteSingleFile = deleteSingleFile;
     window.deleteSelectedFiles = deleteSelectedFiles;
 })();
+
 
 
