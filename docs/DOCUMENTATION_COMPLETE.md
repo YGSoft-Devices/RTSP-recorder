@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.32.87
+Version: 2.32.88
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -855,7 +855,35 @@ var/log/rpi-cam/... (optionnel)
 - La version du backup est lue depuis `backup_manifest.json` (pas depuis le nom du fichier)
 - La restauration applique uniquement `etc/rpi-cam/*` (les logs restent des copies d'analyse)
 
-### 9.2.2ter Update from file (v2.32.42+)
+### 9.2.2ter Update depuis GitHub (v2.32.88+)
+
+L'onglet **Systeme** propose un bouton **Update** qui met a jour depuis les fichiers du repo GitHub.
+
+#### Flux utilisateur
+- Verifie la derniere version disponible (GitHub API)
+- Telecharge l'archive du repo (branche par defaut)
+- Applique les fichiers sur le device
+- Installe les dependances Python si `requirements.txt` existe
+- Redemarre les services (web manager en dernier, apres reponse)
+
+#### Fichiers mis a jour
+- `/opt/rpi-cam-webmanager/*` (UI + backend)
+- `/opt/rpi-cam-webmanager/onvif-server/*`
+- `/usr/local/bin/rpi_av_rtsp_recorder.sh`
+- `/usr/local/bin/rpi_csi_rtsp_server.py`
+- `/usr/local/bin/rtsp_recorder.sh`
+- `/usr/local/bin/rtsp_watchdog.sh`
+- `/opt/rpi-cam-webmanager/VERSION`
+
+#### Backup
+- Un backup est cree dans `/tmp/rpi-cam-backup-<timestamp>.tar.gz` si l'option est activee
+- La configuration `/etc/rpi-cam/*` n'est pas modifiee
+
+#### Notes
+- Necessite un acces Internet
+- Utilise le repo defini dans `web-manager/config.py` (`GITHUB_REPO`)
+
+### 9.2.2quater Update from file (v2.32.42+)
 
 L'onglet **Systeme** propose un bouton **Update from file** qui applique un package local.
 

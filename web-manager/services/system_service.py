@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 System Service - Diagnostics, logs, updates, and system management
-Version: 2.30.26
+Version: 2.30.27
 """
 
 import os
@@ -28,6 +28,14 @@ UPDATE_LOG_FILE = '/var/log/rpi-cam/update_from_file.log'
 SCHEDULED_REBOOT_CRON = '/etc/cron.d/rpi-cam-reboot'
 SCHEDULED_REBOOT_STATE = '/etc/rpi-cam/reboot_schedule.json'
 UPDATE_ALLOWED_PREFIXES = ['opt/rpi-cam-webmanager', 'usr/local/bin']
+UPDATE_REPO_BRANCH_FALLBACK = 'main'
+UPDATE_WEB_INSTALL_DIR = '/opt/rpi-cam-webmanager'
+UPDATE_REPO_BINARIES = {
+    'rpi_av_rtsp_recorder.sh': '/usr/local/bin/rpi_av_rtsp_recorder.sh',
+    'rpi_csi_rtsp_server.py': '/usr/local/bin/rpi_csi_rtsp_server.py',
+    'rtsp_recorder.sh': '/usr/local/bin/rtsp_recorder.sh',
+    'rtsp_watchdog.sh': '/usr/local/bin/rtsp_watchdog.sh'
+}
 RTC_CONFIG_FILE = '/etc/rpi-cam/rtc_config.json'
 RTC_I2C_PARAM = 'dtparam=i2c_arm=on'
 RTC_OVERLAY_LINE = 'dtoverlay=i2c-rtc,ds3231'
@@ -1516,41 +1524,72 @@ def perform_update(backup=True):
     Returns:
         dict: Update result
     """
-    # This would typically:
-    # 1. Download the latest release
-    # 2. Create a backup of current installation
-    # 3. Extract and replace files
-    # 4. Restart services
-    
     result = {
         'success': False,
         'message': '',
-        'requires_restart': False
+        'requires_restart': False,
+        'updated_files': 0
     }
     
     try:
         # Create backup if requested
         if backup:
-            backup_result = run_command(
-                "sudo tar -czf /tmp/rpi-cam-backup-$(date +%Y%m%d%H%M%S).tar.gz /opt/rpi-cam-webmanager",
-                timeout=60
-            )
-            if not backup_result['success']:
-                result['message'] = f"Backup failed: {backup_result['stderr']}"
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            backup_path = f"/tmp/rpi-cam-backup-{timestamp}.tar.gz"
+            backup_sources = [UPDATE_WEB_INSTALL_DIR]
+            for dest_path in UPDATE_REPO_BINARIES.values():
+                if os.path.exists(dest_path):
+                    backup_sources.append(dest_path)
+            try:
+                with tarfile.open(backup_path, 'w:gz') as tar:
+                    for source in backup_sources:
+                        if os.path.exists(source):
+                            tar.add(source, arcname=source.lstrip('/'))
+            except Exception as e:
+                result['message'] = f"Backup failed: {e}"
                 return result
-        
-        # Pull latest from git (if installed via git)
-        git_result = run_command(
-            "cd /opt/rpi-cam-webmanager && sudo git pull origin main",
-            timeout=120
+
+        branch = _get_repo_default_branch()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            archive_path = os.path.join(temp_dir, 'repo.tar.gz')
+            extract_dir = os.path.join(temp_dir, 'extract')
+            os.makedirs(extract_dir, exist_ok=True)
+
+            _download_repo_archive(archive_path, branch)
+            with tarfile.open(archive_path, 'r:*') as tar:
+                tar.extractall(path=extract_dir)
+
+            repo_root = _find_repo_root(extract_dir)
+            if not repo_root:
+                result['message'] = 'Update failed: repository archive is empty'
+                return result
+
+            result['updated_files'] = _sync_repo_update(repo_root)
+            if result['updated_files'] == 0:
+                result['message'] = 'Update failed: no files were applied'
+                return result
+
+        requirements_path = os.path.join(UPDATE_WEB_INSTALL_DIR, 'requirements.txt')
+        if os.path.exists(requirements_path):
+            run_command(
+                "sudo pip3 install -q -r /opt/rpi-cam-webmanager/requirements.txt 2>&1 | grep -v \"already satisfied\" || true",
+                timeout=300
+            )
+
+        run_command("sudo systemctl restart rpi-av-rtsp-recorder", timeout=20)
+        run_command("sudo systemctl restart rtsp-recorder", timeout=20)
+        run_command("sudo systemctl restart rtsp-watchdog", timeout=20)
+        run_command("sudo systemctl restart rpi-cam-onvif", timeout=20)
+
+        subprocess.Popen(
+            ['bash', '-c', "sleep 2 && sudo systemctl restart rpi-cam-webmanager"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
         )
-        
-        if git_result['success']:
-            result['success'] = True
-            result['message'] = 'Update completed successfully'
-            result['requires_restart'] = True
-        else:
-            result['message'] = f"Update failed: {git_result['stderr']}"
+
+        result['success'] = True
+        result['message'] = f'Update completed successfully (branch: {branch})'
+        result['requires_restart'] = True
     
     except Exception as e:
         result['message'] = str(e)
@@ -1582,6 +1621,88 @@ def compare_versions(version1, version2):
             return 1
     
     return 0
+
+# ============================================================================
+# UPDATE FROM REPOSITORY
+# ============================================================================
+
+def _get_repo_default_branch():
+    try:
+        import urllib.request
+        api_url = f"https://api.github.com/repos/{GITHUB_REPO}"
+        request = urllib.request.Request(api_url)
+        request.add_header('Accept', 'application/vnd.github.v3+json')
+        request.add_header('User-Agent', f'rpi-cam-webmanager/{APP_VERSION}')
+        with urllib.request.urlopen(request, timeout=10) as response:
+            data = json.loads(response.read().decode('utf-8'))
+            branch = data.get('default_branch')
+            if branch:
+                return branch
+    except Exception:
+        pass
+    return UPDATE_REPO_BRANCH_FALLBACK
+
+def _download_repo_archive(dest_path, branch):
+    import urllib.request
+    url = f"https://github.com/{GITHUB_REPO}/archive/refs/heads/{branch}.tar.gz"
+    request = urllib.request.Request(url)
+    request.add_header('User-Agent', f'rpi-cam-webmanager/{APP_VERSION}')
+    with urllib.request.urlopen(request, timeout=30) as response, open(dest_path, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
+
+def _find_repo_root(extract_dir):
+    entries = [
+        name for name in os.listdir(extract_dir)
+        if os.path.isdir(os.path.join(extract_dir, name))
+    ]
+    if not entries:
+        return None
+    entries.sort()
+    return os.path.join(extract_dir, entries[0])
+
+def _copy_repo_file(src_path, dest_path):
+    os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+    shutil.copy2(src_path, dest_path)
+    os.chmod(dest_path, 0o755)
+
+def _copy_repo_tree(src_dir, dest_dir):
+    for root, _, filenames in os.walk(src_dir):
+        rel_root = os.path.relpath(root, src_dir)
+        dest_root = dest_dir if rel_root == '.' else os.path.join(dest_dir, rel_root)
+        os.makedirs(dest_root, exist_ok=True)
+        for filename in filenames:
+            src_path = os.path.join(root, filename)
+            dest_path = os.path.join(dest_root, filename)
+            shutil.copy2(src_path, dest_path)
+
+def _sync_repo_update(repo_root):
+    updated_files = 0
+
+    web_src = os.path.join(repo_root, 'web-manager')
+    if os.path.isdir(web_src):
+        _copy_repo_tree(web_src, UPDATE_WEB_INSTALL_DIR)
+        updated_files += 1
+
+    onvif_src = os.path.join(repo_root, 'onvif-server')
+    if os.path.isdir(onvif_src):
+        dest = os.path.join(UPDATE_WEB_INSTALL_DIR, 'onvif-server')
+        _copy_repo_tree(onvif_src, dest)
+        updated_files += 1
+
+    version_src = os.path.join(repo_root, 'VERSION')
+    if os.path.isfile(version_src):
+        version_dest = os.path.join(UPDATE_WEB_INSTALL_DIR, 'VERSION')
+        os.makedirs(os.path.dirname(version_dest), exist_ok=True)
+        shutil.copy2(version_src, version_dest)
+        updated_files += 1
+
+    for repo_file, dest_path in UPDATE_REPO_BINARIES.items():
+        src_path = os.path.join(repo_root, repo_file)
+        if os.path.isfile(src_path):
+            _copy_repo_file(src_path, dest_path)
+            updated_files += 1
+
+    return updated_files
 
 # ============================================================================
 # APT PACKAGE MANAGEMENT

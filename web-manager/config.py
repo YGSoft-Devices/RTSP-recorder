@@ -3,7 +3,7 @@
 RTSP Recorder Web Manager - Configuration
 Central configuration file for constants, defaults, and metadata.
 
-Version: 1.1.2
+Version: 1.1.3
 """
 
 import os
@@ -28,7 +28,7 @@ def _read_version():
     return '2.30.20'  # Fallback
 
 APP_VERSION = _read_version()
-GITHUB_REPO = 'sn8k/RTSP-Full'
+GITHUB_REPO = 'YGSoft-Devices/RTSP-recorder'
 
 # ============================================================================
 # File Paths
