@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.32.89
+Version: 2.32.90
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -865,6 +865,7 @@ L'onglet **Systeme** propose un bouton **Update** qui met a jour depuis les fich
 - Applique les fichiers sur le device
 - Installe les dependances Python si `requirements.txt` existe
 - Redemarre les services (web manager en dernier, apres reponse)
+- Option "forcer" pour relancer la mise a jour meme si la version est identique
 
 #### Fichiers mis a jour
 - `/opt/rpi-cam-webmanager/*` (UI + backend)

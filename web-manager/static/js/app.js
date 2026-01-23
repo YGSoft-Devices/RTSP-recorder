@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Frontend JavaScript
- * Version: 2.32.89
+ * Version: 2.32.90
  */
 
 let backupFileAction = null;

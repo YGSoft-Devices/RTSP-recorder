@@ -1288,6 +1288,17 @@ async function testSnmpConfig() {
 // ============================================================================
 
 const CURRENT_VERSION = (window.APP_VERSION || '').replace(/^v/, '') || '0.0.0';
+let lastUpdateAvailable = false;
+
+function updateUpdateButtonState() {
+    const updateBtn = document.getElementById('btn-update');
+    const forceCheckbox = document.getElementById('update-force');
+    const forceEnabled = forceCheckbox ? forceCheckbox.checked : false;
+
+    if (updateBtn) {
+        updateBtn.disabled = !(lastUpdateAvailable || forceEnabled);
+    }
+}
 
 /**
  * Check for available updates on GitHub
@@ -1300,6 +1311,8 @@ async function checkForUpdates() {
         latestVersionEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
         latestVersionEl.className = 'version';
     }
+    lastUpdateAvailable = false;
+    updateUpdateButtonState();
     
     try {
         const response = await fetch('/api/system/update/check');
@@ -1310,13 +1323,14 @@ async function checkForUpdates() {
                 latestVersionEl.textContent = data.latest_version || 'v' + CURRENT_VERSION;
                 
                 if (data.update_available) {
+                    lastUpdateAvailable = true;
                     latestVersionEl.classList.add('new-available');
                     if (updateBtn) updateBtn.disabled = false;
                     showToast(`Mise à jour disponible: ${data.latest_version}`, 'info');
                 } else {
                     latestVersionEl.classList.add('up-to-date');
                     latestVersionEl.textContent += ' ✓';
-                    if (updateBtn) updateBtn.disabled = true;
+                    updateUpdateButtonState();
                 }
             }
             
@@ -1334,12 +1348,14 @@ async function checkForUpdates() {
                 latestVersionEl.classList.add('outdated');
             }
             showToast(`Erreur: ${data.message}`, 'error');
+            updateUpdateButtonState();
         }
     } catch (error) {
         if (latestVersionEl) {
             latestVersionEl.textContent = 'Non disponible';
         }
         console.error('Error checking updates:', error);
+        updateUpdateButtonState();
     }
 }
 
@@ -1354,6 +1370,8 @@ async function performUpdate() {
     const logDiv = document.getElementById('update-log');
     const logPre = logDiv?.querySelector('pre');
     const updateBtn = document.getElementById('btn-update');
+    const forceCheckbox = document.getElementById('update-force');
+    const forceEnabled = forceCheckbox ? forceCheckbox.checked : false;
     
     if (logDiv) logDiv.style.display = 'block';
     if (logPre) logPre.innerHTML = '<span class="log-info">Démarrage de la mise à jour...</span>\n';
@@ -1361,7 +1379,9 @@ async function performUpdate() {
     
     try {
         const response = await fetch('/api/system/update/perform', {
-            method: 'POST'
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ force: forceEnabled })
         });
         
         const data = await response.json();
@@ -1383,14 +1403,14 @@ async function performUpdate() {
                 if (data.log) logPre.innerHTML += data.log;
             }
             showToast(`Erreur mise à jour: ${data.message}`, 'error');
-            if (updateBtn) updateBtn.disabled = false;
+            updateUpdateButtonState();
         }
     } catch (error) {
         if (logPre) {
             logPre.innerHTML += `<span class="log-error">Erreur: ${error.message}</span>\n`;
         }
         showToast(`Erreur: ${error.message}`, 'error');
-        if (updateBtn) updateBtn.disabled = false;
+        updateUpdateButtonState();
     }
 }
 
