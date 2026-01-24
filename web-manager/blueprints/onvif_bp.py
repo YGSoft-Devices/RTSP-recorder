@@ -12,8 +12,13 @@ from flask import Blueprint, request, jsonify
 from services.platform_service import run_command
 from services.config_service import control_service, get_service_status, load_config
 from config import ONVIF_CONFIG_FILE, ONVIF_SERVICE_NAME
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 onvif_bp = Blueprint('onvif', __name__, url_prefix='/api/onvif')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # HELPER FUNCTIONS
@@ -127,7 +132,7 @@ def restart_onvif():
         config = load_onvif_config()
         
         if not config.get('enabled', False):
-            return jsonify({'success': False, 'message': 'Service ONVIF non activé'}), 400
+            return jsonify({'success': False, 'message': _t('ui.onvif.service_disabled')}), 400
         
         result = subprocess.run(
             ['sudo', 'systemctl', 'restart', ONVIF_SERVICE_NAME],
@@ -137,10 +142,10 @@ def restart_onvif():
         if result.returncode != 0:
             return jsonify({
                 'success': False,
-                'message': f'Erreur redémarrage: {result.stderr}'
+                'message': _t('ui.onvif.restart_failed', error=result.stderr)
             }), 500
         
-        return jsonify({'success': True, 'message': 'Service ONVIF redémarré'})
+        return jsonify({'success': True, 'message': _t('ui.onvif.service_restarted')})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -203,7 +208,7 @@ def set_config():
         }
         
         if not save_onvif_config(new_config):
-            return jsonify({'success': False, 'message': 'Erreur sauvegarde configuration'}), 500
+            return jsonify({'success': False, 'message': _t('ui.config.save_failed')}), 500
         
         # Enable/disable service based on config
         if new_config['enabled']:
@@ -215,7 +220,7 @@ def set_config():
             subprocess.run(['sudo', 'systemctl', 'stop', ONVIF_SERVICE_NAME], capture_output=True)
             subprocess.run(['sudo', 'systemctl', 'disable', ONVIF_SERVICE_NAME], capture_output=True)
         
-        return jsonify({'success': True, 'message': 'Configuration ONVIF enregistrée'})
+        return jsonify({'success': True, 'message': _t('ui.onvif.saved')})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
@@ -242,7 +247,7 @@ def set_discovery():
     if not data or 'enabled' not in data:
         return jsonify({
             'success': False,
-            'error': 'enabled (true/false) required'
+            'error': _t('ui.errors.enabled_required')
         }), 400
     
     config = load_onvif_config()
@@ -252,9 +257,9 @@ def set_discovery():
         # Restart ONVIF service to apply changes if enabled
         if config.get('enabled', False):
             subprocess.run(['sudo', 'systemctl', 'restart', ONVIF_SERVICE_NAME], capture_output=True)
-        return jsonify({'success': True, 'message': 'Discovery settings saved'})
+        return jsonify({'success': True, 'message': _t('ui.onvif.discovery_saved')})
     
-    return jsonify({'success': False, 'message': 'Error saving configuration'}), 500
+    return jsonify({'success': False, 'message': _t('ui.config.save_failed')}), 500
 
 # ============================================================================
 # ONVIF AUTHENTICATION ROUTES
@@ -279,7 +284,7 @@ def set_auth():
     if not data:
         return jsonify({
             'success': False,
-            'error': 'Authentication configuration required'
+            'error': _t('ui.errors.auth_config_required')
         }), 400
     
     config = load_onvif_config()
@@ -297,9 +302,9 @@ def set_auth():
         # Restart ONVIF service to apply changes if enabled
         if config.get('enabled', False):
             subprocess.run(['sudo', 'systemctl', 'restart', ONVIF_SERVICE_NAME], capture_output=True)
-        return jsonify({'success': True, 'message': 'Authentication settings saved'})
+        return jsonify({'success': True, 'message': _t('ui.onvif.auth_saved')})
     
-    return jsonify({'success': False, 'message': 'Error saving configuration'}), 500
+    return jsonify({'success': False, 'message': _t('ui.config.save_failed')}), 500
 
 # ============================================================================
 # HELPER FUNCTIONS

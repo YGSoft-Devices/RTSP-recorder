@@ -37,7 +37,7 @@ def require_debug_access(f):
         if not is_debug_enabled():
             return jsonify({
                 'success': False,
-                'error': 'Debug access not authorized',
+                'error': _t('ui.debug.access_denied'),
                 'message': _t('ui.debug.access_required')
             }), 403
         return f(*args, **kwargs)
@@ -622,7 +622,7 @@ def terminal_exec():
         if not command:
             return jsonify({
                 'success': False,
-                'error': 'No command provided'
+                'error': _t('ui.debug.terminal.no_command')
             }), 400
         
         # Parse command to check if it's allowed
@@ -632,13 +632,13 @@ def terminal_exec():
         except ValueError as e:
             return jsonify({
                 'success': False,
-                'error': f'Invalid command syntax: {e}'
+                'error': _t('ui.debug.terminal.invalid_syntax', error=str(e))
             }), 400
         
         if not parts:
             return jsonify({
                 'success': False,
-                'error': 'Empty command'
+                'error': _t('ui.debug.terminal.empty_command')
             }), 400
         
         # Check if base command is allowed
@@ -646,7 +646,7 @@ def terminal_exec():
         if base_cmd not in TERMINAL_ALLOWED_COMMANDS:
             return jsonify({
                 'success': False,
-                'error': f'Command not allowed: {base_cmd}',
+                'error': _t('ui.debug.terminal.command_not_allowed', command=base_cmd),
                 'allowed': TERMINAL_ALLOWED_COMMANDS
             }), 403
         
@@ -656,7 +656,7 @@ def terminal_exec():
             if actual_cmd not in TERMINAL_ALLOWED_COMMANDS:
                 return jsonify({
                     'success': False,
-                    'error': f'Command not allowed with sudo: {actual_cmd}'
+                    'error': _t('ui.debug.terminal.command_not_allowed_sudo', command=actual_cmd)
                 }), 403
         
         # Execute command with timeout
@@ -682,7 +682,7 @@ def terminal_exec():
     except subprocess.TimeoutExpired:
         return jsonify({
             'success': False,
-            'error': f'Command timed out after {timeout}s',
+            'error': _t('ui.debug.terminal.command_timeout', seconds=timeout),
             'command': command
         }), 408
     except Exception as e:

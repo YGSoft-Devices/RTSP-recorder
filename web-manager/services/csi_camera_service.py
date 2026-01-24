@@ -17,6 +17,11 @@ import json
 import logging
 import os
 
+from flask import has_request_context, request
+
+from .config_service import load_config
+from .i18n_service import t as i18n_t, resolve_request_lang
+
 logger = logging.getLogger(__name__)
 
 # Cache for Picamera2 availability - only cache positive results
@@ -25,6 +30,23 @@ _picamera2_available = None
 # Use system Python for Picamera2 (not venv Python)
 # because picamera2 has system dependencies that are hard to install in venv
 SYSTEM_PYTHON = '/usr/bin/python3'
+
+# ==============================================================================
+# I18n helpers
+# ==============================================================================
+
+def _resolve_lang(config=None):
+    if config is None:
+        try:
+            config = load_config()
+        except Exception:
+            config = {}
+    req = request if has_request_context() else None
+    return resolve_request_lang(req, config)
+
+
+def _t(key, config=None, **params):
+    return i18n_t(key, lang=_resolve_lang(config), params=params)
 
 def is_picamera2_available():
     """Check if Picamera2 module is available in system Python."""
@@ -77,7 +99,7 @@ def _format_csi_response(picam2_data):
                      where 'controls' is {name: (min, max, default)}
     """
     if not picam2_data:
-        return {'success': False, 'error': 'No data'}
+        return {'success': False, 'error': _t('ui.errors.no_data_provided')}
         
     raw_controls = picam2_data.get('controls', {})
     props = picam2_data.get('properties', {})
@@ -209,7 +231,7 @@ def get_csi_camera_controls():
         logger.warning("CSI server is running but IPC failed - server may be starting up")
         return {
             'success': False,
-            'error': 'Serveur CSI en cours de démarrage. Réessayez dans quelques secondes.',
+            'error': _t('ui.camera.csi.starting_retry'),
             'controls': {},
             'grouped': {},
             'retry': True
@@ -221,7 +243,7 @@ def get_csi_camera_controls():
     if not is_picamera2_available():
         return {
             'success': False,
-            'error': 'Picamera2 non installé. Lancez: sudo apt install python3-picamera2',
+            'error': _t('ui.camera.csi.picamera2_not_installed'),
             'controls': {},
             'grouped': {}
         }
@@ -329,32 +351,35 @@ except Exception as e:
             data = json.loads(result.stdout.strip())
             return data
         else:
-            error_msg = result.stderr.strip() if result.stderr else 'Unknown error'
+            error_msg = result.stderr.strip() if result.stderr else _t('ui.errors.unknown_error')
+            camera_busy = False
             # Check for common errors
             if 'No cameras available' in error_msg:
-                error_msg = "Aucune caméra CSI détectée. Vérifiez la connexion du ruban."
+                error_msg = _t('ui.camera.csi.not_detected')
             elif 'Camera is already' in error_msg or 'in use' in error_msg.lower() or 'Device or resource busy' in error_msg:
-                error_msg = "Caméra occupée par le flux RTSP. Arrêtez le flux pour modifier les paramètres, puis redémarrez-le."
+                error_msg = _t('ui.camera.csi.busy_stop_stream_restart')
+                camera_busy = True
             elif 'Camera' in error_msg and 'failed' in error_msg.lower():
-                error_msg = "Caméra occupée par le flux RTSP. Arrêtez le flux pour modifier les paramètres."
+                error_msg = _t('ui.camera.csi.busy_stop_stream')
+                camera_busy = True
             return {
                 'success': False,
                 'error': error_msg,
-                'camera_busy': 'occupée' in error_msg or 'busy' in error_msg.lower(),
+                'camera_busy': camera_busy,
                 'controls': {},
                 'grouped': {}
             }
     except subprocess.TimeoutExpired:
         return {
             'success': False,
-            'error': 'Timeout lors de la lecture des contrôles CSI',
+            'error': _t('ui.camera.csi.controls_timeout'),
             'controls': {},
             'grouped': {}
         }
     except json.JSONDecodeError as e:
         return {
             'success': False,
-            'error': f'Erreur de parsing JSON: {e}',
+            'error': _t('ui.errors.json_parse_failed', error=str(e)),
             'controls': {},
             'grouped': {}
         }
@@ -398,10 +423,10 @@ def set_csi_camera_control(control_name, value):
     save_res = save_csi_tuning_to_config({control_name: value})
     
     if ipc_success:
-        return {'success': True, 'message': f'Contrôle {control_name} appliqué (aussi sauvegardé pour redémarrage).'}
+        return {'success': True, 'message': _t('ui.camera.csi.control_applied_saved', name=control_name)}
     elif save_res['success']:
         logger.warning(f"CSI control {control_name} saved to config but IPC application failed - will apply on next server restart")
-        return {'success': True, 'message': f'Contrôle {control_name} sauvegardé. NOTE: Le serveur CSI est en streaming, le changement prendra effet au prochain redémarrage du serveur.'}
+        return {'success': True, 'message': _t('ui.camera.csi.control_saved_streaming', name=control_name)}
     else:
         return {'success': False, 'message': save_res['message']}
 
@@ -414,7 +439,7 @@ def get_csi_camera_info():
         dict with camera model, resolution, sensor info
     """
     if not is_picamera2_available():
-        return {'success': False, 'error': 'Picamera2 non disponible'}
+        return {'success': False, 'error': _t('ui.camera.csi.picamera2_unavailable')}
     
     script = '''
 import json
@@ -464,7 +489,7 @@ except Exception as e:
         
         if result.returncode == 0 and result.stdout.strip():
             return json.loads(result.stdout.strip())
-        return {'success': False, 'error': result.stderr.strip() or 'Erreur'}
+        return {'success': False, 'error': result.stderr.strip() or _t('ui.errors.generic')}
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
@@ -504,7 +529,7 @@ def save_csi_tuning_to_config(controls_dict):
         with open(config_path, 'w') as f:
             json.dump(existing, f, indent=2)
         
-        return {'success': True, 'message': f'Configuration sauvegardée dans {config_path}'}
+        return {'success': True, 'message': _t('ui.camera.csi.config_saved', path=config_path)}
     except Exception as e:
         return {'success': False, 'message': str(e)}
 

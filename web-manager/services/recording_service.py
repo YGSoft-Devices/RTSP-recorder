@@ -10,11 +10,32 @@ import json
 import glob
 from datetime import datetime
 
+from flask import has_request_context, request
+
 from .platform_service import run_command
+from .config_service import load_config
+from .i18n_service import t as i18n_t, resolve_request_lang
 from config import DEFAULT_CONFIG
 
 # Lazy import to avoid circular dependency
 _media_cache = None
+
+# ---------------------------------------------------------------------------
+# I18n helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_lang(config=None):
+    if config is None:
+        try:
+            config = load_config()
+        except Exception:
+            config = {}
+    req = request if has_request_context() else None
+    return resolve_request_lang(req, config)
+
+
+def _t(key, config=None, **params):
+    return i18n_t(key, lang=_resolve_lang(config), params=params)
 
 def _get_media_cache():
     """Lazy load media cache service."""
@@ -66,7 +87,7 @@ def ensure_recording_dir(config=None):
         return {
             'success': True,
             'path': record_dir,
-            'message': f'Recording directory ready: {record_dir}'
+            'message': _t('ui.recordings.dir_ready', config=config, path=record_dir)
         }
     except Exception as e:
         return {
@@ -172,7 +193,7 @@ def get_recording_info(filepath):
         dict: Recording information or error
     """
     if not os.path.exists(filepath):
-        return {'error': 'File not found'}
+        return {'error': _t('ui.errors.file_not_found')}
     
     try:
         stat = os.stat(filepath)
@@ -285,13 +306,13 @@ def delete_recording(filepath, config=None):
         if not real_path.startswith(real_record_dir):
             return {
                 'success': False,
-                'message': 'Access denied: path outside recording directory'
+                'message': _t('ui.recordings.access_denied_outside_dir', config=config)
             }
         
         if not os.path.exists(filepath):
             return {
                 'success': False,
-                'message': 'File not found'
+                'message': _t('ui.errors.file_not_found', config=config)
             }
         
         os.remove(filepath)
@@ -303,7 +324,7 @@ def delete_recording(filepath, config=None):
         
         return {
             'success': True,
-            'message': f'Recording deleted: {os.path.basename(filepath)}'
+            'message': _t('ui.recordings.deleted', config=config, filename=os.path.basename(filepath))
         }
     
     except Exception as e:
@@ -368,7 +389,7 @@ def cleanup_recordings(max_size_gb=None, max_count=None, config=None):
     recordings = get_recordings_list(config, sort_by='date', reverse=False)  # Oldest first
     
     if not recordings:
-        return {'success': True, 'deleted_count': 0, 'message': 'No recordings found'}
+        return {'success': True, 'deleted_count': 0, 'message': _t('ui.recordings.none_found', config=config)}
     
     deleted_count = 0
     freed_space = 0

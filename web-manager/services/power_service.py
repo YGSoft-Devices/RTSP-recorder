@@ -9,12 +9,33 @@ import re
 import subprocess
 from datetime import datetime
 
+from flask import has_request_context, request
+
 from .platform_service import run_command, is_raspberry_pi, PLATFORM
+from .config_service import load_config
+from .i18n_service import t as i18n_t, resolve_request_lang
 
 # Boot config file path
 BOOT_CONFIG_FILE = '/boot/firmware/config.txt' if os.path.exists('/boot/firmware/config.txt') else (
     '/boot/config.txt' if os.path.exists('/boot/config.txt') else None
 )
+
+# ---------------------------------------------------------------------------
+# I18n helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_lang(config=None):
+    if config is None:
+        try:
+            config = load_config()
+        except Exception:
+            config = {}
+    req = request if has_request_context() else None
+    return resolve_request_lang(req, config)
+
+
+def _t(key, config=None, **params):
+    return i18n_t(key, lang=_resolve_lang(config), params=params)
 
 # ============================================================================
 # LED MANAGEMENT
@@ -66,7 +87,7 @@ def save_led_boot_config(pwr_enabled=None, act_enabled=None):
         dict: {success: bool, message: str}
     """
     if not BOOT_CONFIG_FILE:
-        return {'success': False, 'message': 'Boot config not found'}
+        return {'success': False, 'message': _t('ui.power.boot_config_not_found')}
     
     try:
         content = ""
@@ -97,7 +118,7 @@ def save_led_boot_config(pwr_enabled=None, act_enabled=None):
         
         return {
             'success': True,
-            'message': 'LED boot configuration saved. Reboot required.',
+            'message': _t('ui.power.led_boot_saved_reboot'),
             'reboot_required': True
         }
     except Exception as e:
@@ -314,7 +335,7 @@ def configure_leds_boot(pwr_enabled, act_enabled):
     - Set activelow to 'off' (LED stays off when trigger is none)
     """
     if not BOOT_CONFIG_FILE:
-        return False, "Boot config not found"
+        return False, _t('ui.power.boot_config_not_found')
     
     try:
         config_content = ""
@@ -834,14 +855,14 @@ def get_full_power_status():
 OPTIONAL_SERVICES = {
     'modemmanager': {
         'unit': 'ModemManager.service',
-        'description': 'Gestion modems 3G/4G',
+        'description_key': 'ui.power.service.modemmanager_desc',
         'savings_ma': 5
     },
     'avahi': {
         'unit': 'avahi-daemon.service',
-        'description': 'Découverte réseau mDNS/Bonjour',
+        'description_key': 'ui.power.service.avahi_desc',
         'savings_ma': 5,
-        'warning': 'Désactive la découverte .local'
+        'warning_key': 'ui.power.service.avahi_warning'
     },
     'cloudinit': {
         'units': [
@@ -852,7 +873,7 @@ OPTIONAL_SERVICES = {
             'cloud-config.service',
             'cloud-final.service'
         ],
-        'description': 'Configuration cloud automatique',
+        'description_key': 'ui.power.service.cloudinit_desc',
         'savings_ma': 0
     },
     'serial': {
@@ -860,18 +881,18 @@ OPTIONAL_SERVICES = {
             'serial-getty@ttyAMA0.service',
             'serial-getty@ttyS0.service'
         ],
-        'description': 'Console série',
+        'description_key': 'ui.power.service.serial_desc',
         'savings_ma': 2,
         'mask_on_disable': True
     },
     'tty1': {
         'unit': 'getty@tty1.service',
-        'description': 'Console TTY1',
+        'description_key': 'ui.power.service.tty1_desc',
         'savings_ma': 2
     },
     'udisks2': {
         'unit': 'udisks2.service',
-        'description': 'Gestion disques automatique',
+        'description_key': 'ui.power.service.udisks2_desc',
         'savings_ma': 5
     }
 }
@@ -1031,7 +1052,7 @@ def configure_boot_power_settings(bluetooth_enabled=True, hdmi_enabled=True, aud
         tuple: (success: bool, message: str)
     """
     if not BOOT_CONFIG_FILE:
-        return False, "Boot config not found"
+        return False, _t('ui.power.boot_config_not_found')
     
     try:
         config_content = ""

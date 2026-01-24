@@ -13,8 +13,13 @@ from flask import Blueprint, request, jsonify, Response
 from services.camera_service import find_camera_device
 from services.config_service import load_config, get_service_status
 from services.platform_service import run_command
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 video_bp = Blueprint('video', __name__, url_prefix='/api/video')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # GLOBAL STATE
@@ -50,7 +55,7 @@ def start_preview():
         if preview_state['active']:
             return jsonify({
                 'success': True,
-                'message': 'Preview already active',
+                'message': _t('ui.video.preview_already_active'),
                 'port': preview_state['port']
             })
     
@@ -64,7 +69,7 @@ def start_preview():
     if not device:
         return jsonify({
             'success': False,
-            'error': 'No camera found'
+            'error': _t('ui.camera.no_camera_found')
         }), 404
     
     # Parse resolution
@@ -94,7 +99,7 @@ def start_preview():
             stderr = process.stderr.read().decode()
             return jsonify({
                 'success': False,
-                'error': f'Failed to start preview: {stderr}'
+                'error': _t('ui.video.preview_start_failed', error=stderr)
             }), 500
         
         with preview_state['lock']:
@@ -104,7 +109,7 @@ def start_preview():
         
         return jsonify({
             'success': True,
-            'message': 'Preview started',
+            'message': _t('ui.preview.started'),
             'port': port,
             'url': f'http://localhost:{port}'
         })
@@ -124,7 +129,7 @@ def stop_preview():
         if not preview_state['active']:
             return jsonify({
                 'success': True,
-                'message': 'Preview not active'
+                'message': _t('ui.video.preview_not_started')
             })
         
         if preview_state['process']:
@@ -139,7 +144,7 @@ def stop_preview():
     
     return jsonify({
         'success': True,
-        'message': 'Preview stopped'
+        'message': _t('ui.preview.stopped')
     })
 
 @video_bp.route('/preview/stream')
@@ -279,7 +284,7 @@ def take_snapshot():
     if not device:
         return jsonify({
             'success': False,
-            'error': 'No camera found'
+            'error': _t('ui.camera.no_camera_found')
         }), 404
     
     # Create temporary file
@@ -317,7 +322,7 @@ def take_snapshot():
         else:
             return jsonify({
                 'success': False,
-                'error': 'Failed to capture snapshot'
+                'error': _t('ui.video.snapshot_failed')
             }), 500
     
     except Exception as e:
@@ -340,7 +345,7 @@ def save_snapshot():
     if not device:
         return jsonify({
             'success': False,
-            'error': 'No camera found'
+            'error': _t('ui.camera.no_camera_found')
         }), 404
     
     # Get snapshots directory from config
@@ -367,14 +372,14 @@ def save_snapshot():
     if os.path.exists(filepath) and os.path.getsize(filepath) > 0:
         return jsonify({
             'success': True,
-            'message': 'Snapshot saved',
+            'message': _t('ui.video.snapshot_saved'),
             'path': filepath,
             'filename': filename
         })
     else:
         return jsonify({
             'success': False,
-            'error': 'Failed to save snapshot'
+            'error': _t('ui.video.snapshot_save_failed')
         }), 500
 
 # ============================================================================
@@ -428,5 +433,5 @@ def test_stream():
             'success': True,
             'accessible': False,
             'url': rtsp_url,
-            'error': result['stderr'] or 'Stream not accessible'
+            'error': result['stderr'] or _t('ui.video.stream_not_accessible')
         })

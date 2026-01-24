@@ -14,8 +14,11 @@ import urllib.request
 import urllib.error
 from datetime import datetime
 
+from flask import has_request_context, request
+
 from .platform_service import run_command
-from .config_service import set_hostname
+from .config_service import set_hostname, load_config
+from .i18n_service import t as i18n_t, resolve_request_lang
 from config import MEETING_CONFIG_FILE, CONFIG_FILE
 
 # ============================================================================
@@ -43,6 +46,23 @@ _heartbeat_stop_event = threading.Event()
 # Immediate heartbeat trigger (for failover, reconnection events)
 _immediate_heartbeat_event = threading.Event()
 _last_known_connectivity_state = None  # Track connectivity changes
+
+# ---------------------------------------------------------------------------
+# I18n helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_lang(config=None):
+    if config is None:
+        try:
+            config = load_config()
+        except Exception:
+            config = {}
+    req = request if has_request_context() else None
+    return resolve_request_lang(req, config)
+
+
+def _t(key, config=None, **params):
+    return i18n_t(key, lang=_resolve_lang(config), params=params)
 
 # ============================================================================
 # CONFIGURATION
@@ -159,7 +179,7 @@ def save_meeting_config(config):
         with open(MEETING_CONFIG_FILE, 'w') as f:
             json.dump(save_config, f, indent=2)
         
-        return {'success': True, 'message': 'Meeting configuration saved'}
+        return {'success': True, 'message': _t('ui.meeting.config_saved')}
     
     except Exception as e:
         return {'success': False, 'message': str(e)}
@@ -377,10 +397,10 @@ def send_heartbeat():
         config = load_meeting_config()
         
         if not config.get('enabled'):
-            return {'success': False, 'message': 'Meeting API not enabled'}
+            return {'success': False, 'message': _t('ui.meeting.api_not_enabled')}
         
         if not config.get('device_key'):
-            return {'success': False, 'message': 'Device key not configured'}
+            return {'success': False, 'message': _t('ui.meeting.device_key_missing')}
         
         # Get system info for heartbeat payload with error handling
         try:
@@ -732,7 +752,7 @@ def validate_credentials(api_url, device_key, token_code):
         return {
             'success': False,
             'valid': False,
-            'message': 'All fields are required'
+            'message': _t('ui.errors.all_fields_required')
         }
     
     url = _build_api_url(api_url, f"/api/devices/{device_key}")
@@ -762,14 +782,14 @@ def validate_credentials(api_url, device_key, token_code):
                         'online': data.get('online', False),
                         'provisioned': data.get('provisioned', False)
                     },
-                    'message': 'Credentials are valid'
+                    'message': _t('ui.meeting.credentials_valid')
                 }
             else:
                 return {
                     'success': True,
                     'valid': True,
                     'device': data,
-                    'message': 'Credentials are valid'
+                    'message': _t('ui.meeting.credentials_valid')
                 }
     
     except urllib.error.HTTPError as e:
@@ -777,13 +797,13 @@ def validate_credentials(api_url, device_key, token_code):
             return {
                 'success': True,
                 'valid': False,
-                'message': 'Invalid token code'
+                'message': _t('ui.meeting.token_invalid')
             }
         elif e.code == 404:
             return {
                 'success': True,
                 'valid': False,
-                'message': 'Device key not found'
+                'message': _t('ui.meeting.device_key_not_found')
             }
         else:
             return {
@@ -822,7 +842,7 @@ def provision_device(api_url, device_key, token_code):
     if not api_url or not device_key or not token_code:
         return {
             'success': False,
-            'message': 'All fields are required'
+            'message': _t('ui.errors.all_fields_required')
         }
     
     # First validate credentials
@@ -839,7 +859,7 @@ def provision_device(api_url, device_key, token_code):
     if not device.get('authorized', True):
         return {
             'success': False,
-            'message': 'Device non autorisé. Contactez l\'administrateur Meeting.'
+            'message': _t('ui.meeting.device_not_authorized')
         }
     
     # Check token count
@@ -847,7 +867,7 @@ def provision_device(api_url, device_key, token_code):
     if token_count <= 0:
         return {
             'success': False,
-            'message': 'Aucun token disponible. Contactez l\'administrateur Meeting.'
+            'message': _t('ui.meeting.token_unavailable')
         }
     
     # Call flash-request endpoint to consume a token
@@ -903,7 +923,7 @@ def provision_device(api_url, device_key, token_code):
                 'hostname': device_key,
                 'hostname_changed': hostname_changed,
                 'tokens_left': tokens_left,
-                'message': f'Device provisionné avec succès ! Token consommé, {tokens_left} restant(s).'
+                'message': _t('ui.meeting.provision_success', tokens_left=tokens_left)
             }
     
     except urllib.error.HTTPError as e:
@@ -997,7 +1017,7 @@ def init_meeting_service():
         result = send_heartbeat()
         return result
     
-    return {'success': True, 'message': 'Meeting service initialized'}
+    return {'success': True, 'message': _t('ui.meeting.service_initialized')}
 
 def enable_meeting_service(api_url, device_key, token_code, heartbeat_interval=30):
     """
@@ -1071,7 +1091,7 @@ def master_reset(master_code):
     if master_code != MASTER_CODE:
         return {
             'success': False,
-            'message': 'Code Master incorrect'
+            'message': _t('ui.meeting.master_code_invalid')
         }
     
     try:
@@ -1121,13 +1141,13 @@ def master_reset(master_code):
         
         return {
             'success': True,
-            'message': 'Configuration Meeting réinitialisée. Le hostname reste inchangé.'
+            'message': _t('ui.meeting.reset_done_hostname_preserved')
         }
     
     except Exception as e:
         return {
             'success': False,
-            'message': f'Erreur lors de la réinitialisation: {str(e)}'
+            'message': _t('ui.meeting.reset_failed', error=str(e))
         }
 
 # ============================================================================

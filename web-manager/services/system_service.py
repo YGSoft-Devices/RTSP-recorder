@@ -16,8 +16,11 @@ import hashlib
 import threading
 from datetime import datetime
 
+from flask import has_request_context, request
+
 from .platform_service import run_command, is_raspberry_pi, PLATFORM
 from .config_service import load_config, save_config
+from .i18n_service import t as i18n_t, resolve_request_lang
 from config import (
     GITHUB_REPO, APP_VERSION, SERVICE_NAME, SCRIPT_PATH,
     LOG_FILES, CONFIG_FILE, BOOT_CONFIG_FILE
@@ -45,6 +48,23 @@ RTC_OVERLAY_LINE = 'dtoverlay=i2c-rtc,ds3231'
 RTC_I2C_DEVICE = '/dev/i2c-1'
 RTC_DETECT_KEYWORDS = ['ds3231', 'ds3232']
 RTC_I2C_MODULE_FILE = '/etc/modules-load.d/rpi-cam-i2c.conf'
+
+# ---------------------------------------------------------------------------
+# I18n helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_lang(config=None):
+    if config is None:
+        try:
+            config = load_config()
+        except Exception:
+            config = {}
+    req = request if has_request_context() else None
+    return resolve_request_lang(req, config)
+
+
+def _t(key, config=None, **params):
+    return i18n_t(key, lang=_resolve_lang(config), params=params)
 
 # ============================================================================
 # DIAGNOSTIC INFORMATION (Legacy format for frontend compatibility)
@@ -93,7 +113,7 @@ def get_legacy_diagnostic_info():
             diag['gstreamer']['version'] = result.stdout.split('\n')[0]
     except FileNotFoundError:
         diag['gstreamer']['installed'] = False
-        diag['errors'].append("GStreamer non installé (gst-launch-1.0 introuvable)")
+        diag['errors'].append(_t('ui.system.diag.gstreamer_missing'))
     except Exception as e:
         diag['errors'].append(f"GStreamer check: {e}")
     
@@ -105,7 +125,7 @@ def get_legacy_diagnostic_info():
         )
         diag['gstreamer']['rtsp_plugin'] = result.returncode == 0
         if result.returncode != 0:
-            diag['errors'].append("Plugin RTSP non trouvé (gst-rtsp-server)")
+            diag['errors'].append(_t('ui.system.diag.rtsp_plugin_missing'))
     except Exception as e:
         diag['gstreamer']['rtsp_plugin'] = False
     
@@ -188,8 +208,8 @@ def get_legacy_diagnostic_info():
         diag['camera']['v4l2_output'] = result.stdout if result.returncode == 0 else result.stderr
         diag['camera']['devices_found'] = '/dev/video' in result.stdout
     except FileNotFoundError:
-        diag['camera']['v4l2_output'] = "v4l2-ctl non installé"
-        diag['errors'].append("v4l2-utils non installé")
+        diag['camera']['v4l2_output'] = _t('ui.system.diag.v4l2ctl_missing')
+        diag['errors'].append(_t('ui.system.diag.v4l2_utils_missing'))
     except Exception as e:
         diag['errors'].append(f"Camera check: {e}")
     
@@ -214,7 +234,7 @@ def get_legacy_diagnostic_info():
         diag['audio']['arecord_output'] = result.stdout if result.returncode == 0 else result.stderr
         diag['audio']['devices_found'] = 'card' in result.stdout.lower()
     except FileNotFoundError:
-        diag['audio']['arecord_output'] = "alsa-utils non installé"
+        diag['audio']['arecord_output'] = _t('ui.system.diag.alsa_utils_missing')
     except Exception as e:
         diag['errors'].append(f"Audio check: {e}")
     
@@ -475,7 +495,7 @@ def _read_update_status():
     if not os.path.exists(UPDATE_STATUS_FILE):
         return {
             'state': 'idle',
-            'message': 'No update running',
+            'message': _t('ui.system.update.none_running'),
             'progress': 0,
             'log': []
         }
@@ -485,7 +505,7 @@ def _read_update_status():
     except Exception:
         return {
             'state': 'error',
-            'message': 'Failed to read update status',
+            'message': _t('ui.system.update.status_read_failed'),
             'progress': 0,
             'log': []
         }
@@ -555,7 +575,7 @@ def _get_missing_packages(packages: list) -> list:
 
 def _install_packages(packages: list) -> dict:
     if not packages:
-        return {'success': True, 'message': 'No packages to install'}
+        return {'success': True, 'message': _t('ui.system.updates.no_packages')}
     run_command("sudo apt-get update -qq", timeout=120)
     pkg_list = ' '.join(packages)
     result = run_command(f"sudo apt-get install -y --no-install-recommends {pkg_list}", timeout=600)
@@ -568,7 +588,7 @@ def _reset_config_directory() -> dict:
     config_dir = os.path.dirname(CONFIG_FILE)
     if not os.path.isdir(config_dir):
         os.makedirs(config_dir, exist_ok=True)
-        return {'success': True, 'message': 'Config directory created'}
+        return {'success': True, 'message': _t('ui.system.config_dir_created')}
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     backup_dir = f"{config_dir}.backup_update_{timestamp}"
@@ -716,7 +736,7 @@ def _get_missing_python_packages(packages: list) -> list:
 
 def _install_python_requirements(requirements_path: str) -> dict:
     if not requirements_path or not os.path.exists(requirements_path):
-        return {'success': False, 'message': 'requirements.txt not found'}
+        return {'success': False, 'message': _t('ui.system.update.requirements_missing')}
     pip_cmd = _get_pip_command()
     result = run_command(f"{pip_cmd} install -q -r {requirements_path}", timeout=600)
     return {
@@ -726,10 +746,10 @@ def _install_python_requirements(requirements_path: str) -> dict:
 
 def inspect_update_package(archive_path, allow_same_version=False):
     if not os.path.exists(archive_path):
-        return {'success': False, 'message': 'Update file not found'}
+        return {'success': False, 'message': _t('ui.system.update.file_not_found')}
 
     if not tarfile.is_tarfile(archive_path):
-        return {'success': False, 'message': 'Update file is not a valid tar archive'}
+        return {'success': False, 'message': _t('ui.system.update.invalid_archive')}
 
     errors = []
     warnings = []
@@ -905,7 +925,7 @@ def _apply_update_package(archive_path, allow_same_version=False, install_deps=F
 
             payload_root = os.path.join(temp_dir, 'payload')
             if not os.path.isdir(payload_root):
-                return {'success': False, 'message': 'Payload directory missing'}
+                return {'success': False, 'message': _t('ui.system.update.payload_missing')}
 
             updated = 0
             for root, _, filenames in os.walk(payload_root):
@@ -939,7 +959,7 @@ def _apply_update_package(archive_path, allow_same_version=False, install_deps=F
 
         return {
             'success': True,
-            'message': 'Update applied',
+            'message': _t('ui.system.update.applied'),
             'updated_files': updated,
             'restart_services': services,
             'version': inspect_result.get('version'),
@@ -954,11 +974,11 @@ def _apply_update_package(archive_path, allow_same_version=False, install_deps=F
 def start_update_from_file(archive_path, allow_same_version=False, install_deps=False, reset_settings=False):
     status = _read_update_status()
     if status.get('state') in ['validating', 'applying', 'restarting']:
-        return {'success': False, 'message': 'Update already in progress'}
+        return {'success': False, 'message': _t('ui.system.update.already_in_progress')}
 
     _write_update_status({
         'state': 'starting',
-        'message': 'Starting update',
+        'message': _t('ui.system.update.starting'),
         'progress': 5,
         'log': ['Starting update']
     })
@@ -1018,7 +1038,7 @@ def start_update_from_file(archive_path, allow_same_version=False, install_deps=
 
     thread = threading.Thread(target=worker, daemon=True)
     thread.start()
-    return {'success': True, 'message': 'Update started'}
+    return {'success': True, 'message': _t('ui.system.update.started')}
 
 # ============================================================================
 # BACKUP MANAGEMENT
@@ -1120,13 +1140,13 @@ def inspect_config_backup(archive_path):
     if not os.path.exists(archive_path):
         return {
             'success': False,
-            'message': 'Backup file not found'
+            'message': _t('ui.system.backup.file_not_found')
         }
 
     if not tarfile.is_tarfile(archive_path):
         return {
             'success': False,
-            'message': 'Backup file is not a valid tar archive'
+            'message': _t('ui.system.backup.invalid_archive')
         }
 
     config_dir = os.path.dirname(CONFIG_FILE)
@@ -1230,7 +1250,7 @@ def restore_config_backup(archive_path):
 
         return {
             'success': True,
-            'message': 'Backup restored successfully',
+            'message': _t('ui.system.backup.restored'),
             'version': inspect_result.get('version'),
             'restored_files': restored_files
         }
@@ -1264,13 +1284,13 @@ def set_snmp_config(enabled: bool, host: str, port: int) -> dict:
     try:
         port_int = int(port)
     except Exception:
-        return {'success': False, 'message': 'Port SNMP invalide'}
+        return {'success': False, 'message': _t('ui.system.snmp.port_invalid')}
 
     if port_int < 1 or port_int > 65535:
-        return {'success': False, 'message': 'Port SNMP hors limites (1-65535)'}
+        return {'success': False, 'message': _t('ui.system.snmp.port_out_of_range')}
 
     if enabled and not host:
-        return {'success': False, 'message': 'Host SNMP requis quand SNMP est activé'}
+        return {'success': False, 'message': _t('ui.system.snmp.host_required')}
 
     update = {
         'SNMP_ENABLED': 'yes' if enabled else 'no',
@@ -1281,23 +1301,23 @@ def set_snmp_config(enabled: bool, host: str, port: int) -> dict:
     if not result.get('success'):
         return result
 
-    return {'success': True, 'message': 'Configuration SNMP sauvegardée', **update}
+    return {'success': True, 'message': _t('ui.system.snmp.config_saved'), **update}
 
 def test_snmp_config(enabled: bool, host: str, port: int) -> dict:
     if not enabled:
-        return {'success': False, 'message': 'SNMP est désactivé'}
+        return {'success': False, 'message': _t('ui.system.snmp.disabled')}
 
     host = (host or '').strip()
     if not host:
-        return {'success': False, 'message': 'Host SNMP manquant'}
+        return {'success': False, 'message': _t('ui.system.snmp.host_missing')}
 
     try:
         port_int = int(port)
     except Exception:
-        return {'success': False, 'message': 'Port SNMP invalide'}
+        return {'success': False, 'message': _t('ui.system.snmp.port_invalid')}
 
     if port_int < 1 or port_int > 65535:
-        return {'success': False, 'message': 'Port SNMP hors limites (1-65535)'}
+        return {'success': False, 'message': _t('ui.system.snmp.port_out_of_range')}
 
     try:
         import socket
@@ -1320,9 +1340,9 @@ def test_snmp_config(enabled: bool, host: str, port: int) -> dict:
 
     resolved = sorted(set(resolved))
     if not resolved:
-        return {'success': False, 'message': 'Résolution OK mais envoi UDP impossible'}
+        return {'success': False, 'message': _t('ui.system.snmp.udp_send_failed')}
 
-    return {'success': True, 'message': f"SNMP OK (résolu: {', '.join(resolved)})"}
+    return {'success': True, 'message': _t('ui.system.snmp.ok_resolved', hosts=', '.join(resolved))}
 
 # ============================================================================
 # RTC DS3231 CONFIGURATION
@@ -1458,7 +1478,7 @@ def _ensure_i2c_module_autoload() -> dict:
 
 def _set_fake_hwclock(enabled: bool) -> dict:
     if not shutil.which('systemctl'):
-        return {'success': False, 'message': 'systemctl introuvable'}
+        return {'success': False, 'message': _t('ui.system.systemctl_missing')}
 
     if enabled:
         cmd = 'sudo systemctl enable --now fake-hwclock'
@@ -1518,11 +1538,11 @@ def get_rtc_status() -> dict:
 def set_rtc_config(mode: str) -> dict:
     mode = str(mode or '').lower().strip()
     if mode not in ['auto', 'enabled', 'disabled']:
-        return {'success': False, 'message': 'Mode RTC invalide'}
+        return {'success': False, 'message': _t('ui.system.rtc.mode_invalid')}
 
     config_path, lines = _read_boot_config_lines()
     if not config_path:
-        return {'success': False, 'message': 'Fichier boot config introuvable'}
+        return {'success': False, 'message': _t('ui.system.boot_config_missing')}
 
     detection = _detect_rtc_devices()
     overlay_configured = False
@@ -1577,7 +1597,7 @@ def set_rtc_config(mode: str) -> dict:
 
     return {
         'success': True,
-        'message': 'Configuration RTC mise à jour',
+        'message': _t('ui.system.rtc.config_updated'),
         'mode': mode,
         'detected': detection['detected'],
         'effective_enabled': desired_overlay,
@@ -2055,7 +2075,7 @@ def restart_all_services():
     # Note: This might interrupt the current request
     results['rpi-cam-webmanager'] = {
         'success': True,
-        'message': 'Will restart after response'
+        'message': _t('ui.system.reboot_after_response')
     }
     
     return results
@@ -2082,14 +2102,19 @@ def reboot_system(delay=0):
         result = run_command(cmd, timeout=5)
         
         if result['success']:
+            message_key = 'ui.system.reboot_in_progress'
+            params = {}
+            if delay > 0:
+                message_key = 'ui.system.reboot_in_progress_delay'
+                params = {'seconds': delay}
             return {
                 'success': True,
-                'message': f'Redémarrage en cours{" dans " + str(delay) + "s" if delay > 0 else ""}'
+                'message': _t(message_key, **params)
             }
         else:
             return {
                 'success': False,
-                'message': result.get('stderr', 'Erreur lors du redémarrage')
+                'message': result.get('stderr', _t('ui.system.reboot_failed'))
             }
     except Exception as e:
         return {
@@ -2161,13 +2186,13 @@ def set_reboot_schedule(enabled: bool, hour: int, minute: int, days: list) -> di
         hour = int(hour)
         minute = int(minute)
     except Exception:
-        return {'success': False, 'message': 'Heure/minute invalides'}
+        return {'success': False, 'message': _t('ui.system.schedule.time_invalid')}
 
     if hour < 0 or hour > 23 or minute < 0 or minute > 59:
-        return {'success': False, 'message': 'Heure/minute hors limites'}
+        return {'success': False, 'message': _t('ui.system.schedule.time_out_of_range')}
 
     if not isinstance(days, list) or not days:
-        return {'success': False, 'message': 'Jours invalides'}
+        return {'success': False, 'message': _t('ui.system.schedule.days_invalid')}
 
     normalized_days = []
     for day in days:
@@ -2177,9 +2202,9 @@ def set_reboot_schedule(enabled: bool, hour: int, minute: int, days: list) -> di
         try:
             day_int = int(day)
         except Exception:
-            return {'success': False, 'message': 'Jours invalides'}
+            return {'success': False, 'message': _t('ui.system.schedule.days_invalid')}
         if day_int < 0 or day_int > 6:
-            return {'success': False, 'message': 'Jour hors limites (0-6)'}
+            return {'success': False, 'message': _t('ui.system.schedule.day_out_of_range')}
         normalized_days.append(str(day_int))
 
     state = {
@@ -2203,4 +2228,4 @@ def set_reboot_schedule(enabled: bool, hour: int, minute: int, days: list) -> di
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
-    return {'success': True, 'message': 'Schedule saved', **state}
+    return {'success': True, 'message': _t('ui.system.schedule.saved'), **state}

@@ -16,8 +16,13 @@ from services.power_service import (
     get_full_power_status, get_boot_power_config, get_all_services_status,
     set_service_state, configure_boot_power_settings
 )
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 power_bp = Blueprint('power', __name__, url_prefix='/api')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # LED ROUTES
@@ -43,7 +48,7 @@ def set_led():
         persist = data.get('persist', True)  # Default to True for persistence
         
         if led not in ['pwr', 'act']:
-            return jsonify({'success': False, 'message': 'Invalid LED'}), 400
+            return jsonify({'success': False, 'message': _t('ui.power.invalid_led')}), 400
         
         # Set immediate state
         success, message = set_led_state(led, enabled, trigger)
@@ -56,9 +61,9 @@ def set_led():
             
             boot_success, boot_msg = configure_leds_boot(pwr_enabled, act_enabled)
             if boot_success:
-                message += " - Configuration persistante au redémarrage activée"
+                message += _t('ui.power.persist_enabled')
             else:
-                message += f" - Attention: persistance échouée ({boot_msg})"
+                message += _t('ui.power.persist_failed', message=boot_msg)
         
         return jsonify({
             'success': success, 
@@ -102,7 +107,7 @@ def set_gpu():
     if not data or 'memory' not in data:
         return jsonify({
             'success': False,
-            'error': 'memory value required (16, 32, 64, 128, 256, or 512)'
+            'error': _t('ui.power.gpu_memory_required')
         }), 400
     
     result = set_gpu_mem(data['memory'])
@@ -132,7 +137,7 @@ def set_hdmi():
     if not data or 'enabled' not in data:
         return jsonify({
             'success': False,
-            'error': 'enabled (true/false) required'
+            'error': _t('ui.errors.enabled_required')
         }), 400
     
     result = configure_hdmi(data['enabled'])
@@ -162,7 +167,7 @@ def power_config():
     if not data:
         return jsonify({
             'success': False,
-            'error': 'Power configuration required'
+            'error': _t('ui.power.config_required')
         }), 400
     
     result = configure_power_boot(data)
@@ -291,7 +296,7 @@ def api_power_apply_all():
         )
         
         if not success:
-            errors.append(f"Boot config: {message}")
+            errors.append(_t('ui.power.boot_config_error', message=message))
         
         # Apply service settings
         service_settings = [
@@ -306,7 +311,7 @@ def api_power_apply_all():
         for service_key, enabled in service_settings:
             svc_success, svc_message = set_service_state(service_key, enabled)
             if not svc_success:
-                errors.append(f"{service_key}: {svc_message}")
+                errors.append(_t('ui.power.service_error', service=service_key, message=svc_message))
         
         # Calculate estimated savings
         savings = 0
@@ -339,14 +344,14 @@ def api_power_apply_all():
         if errors:
             return jsonify({
                 'success': False,
-                'message': 'Certains paramètres ont échoué: ' + '; '.join(errors),
+                'message': _t('ui.power.settings_failed', errors='; '.join(errors)),
                 'partial_errors': errors,
                 'estimated_savings_ma': savings
             }), 500
         
         return jsonify({
             'success': True,
-            'message': 'Tous les paramètres ont été enregistrés. Redémarrage requis pour les changements hardware.',
+            'message': _t('ui.power.settings_saved_reboot'),
             'estimated_savings_ma': savings,
             'reboot_required': True
         })

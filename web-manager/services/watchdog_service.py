@@ -14,6 +14,8 @@ import time
 import threading
 from datetime import datetime, timedelta
 
+from flask import has_request_context, request
+
 from .platform_service import run_command, is_raspberry_pi
 from .camera_service import find_camera_device
 from .network_service import (
@@ -21,6 +23,7 @@ from .network_service import (
     get_wifi_failover_config, manage_network_failover
 )
 from .config_service import load_config
+from .i18n_service import t as i18n_t, resolve_request_lang
 from config import (
     SERVICE_NAME, WATCHDOG_STATE_FILE,
     WIFI_FAILOVER_CONFIG_FILE
@@ -51,6 +54,23 @@ watchdog_state = {
     'lock': threading.Lock()
 }
 
+# ---------------------------------------------------------------------------
+# I18n helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_lang(config=None):
+    if config is None:
+        try:
+            config = load_config()
+        except Exception:
+            config = {}
+    req = request if has_request_context() else None
+    return resolve_request_lang(req, config)
+
+
+def _t(key, config=None, **params):
+    return i18n_t(key, lang=_resolve_lang(config), params=params)
+
 # ============================================================================
 # RTSP SERVICE HEALTH CHECK
 # ============================================================================
@@ -74,7 +94,7 @@ def check_camera_available():
         return {
             'available': False,
             'device': None,
-            'message': 'No camera device found'
+            'message': _t('ui.watchdog.camera_not_found')
         }
 
 def check_rtsp_service_status():
@@ -148,7 +168,7 @@ def check_rtsp_service_health():
         'overall': 'unknown',
         'camera': check_camera_available(),
         'service': check_rtsp_service_status(),
-        'stream': {'healthy': False, 'message': 'Not checked'}
+        'stream': {'healthy': False, 'message': _t('ui.watchdog.stream_not_checked')}
     }
     
     # Check stream only if service is running
@@ -251,7 +271,7 @@ def recover_camera():
     else:
         return {
             'success': False,
-            'message': 'Camera recovery failed'
+            'message': _t('ui.watchdog.camera_recovery_failed')
         }
 
 # ============================================================================
@@ -341,14 +361,14 @@ def enable_rtsp_watchdog():
     global watchdog_state
     with watchdog_state['lock']:
         watchdog_state['rtsp']['enabled'] = True
-    return {'success': True, 'message': 'RTSP watchdog enabled'}
+    return {'success': True, 'message': _t('ui.watchdog.rtsp.enabled')}
 
 def disable_rtsp_watchdog():
     """Disable the RTSP watchdog."""
     global watchdog_state
     with watchdog_state['lock']:
         watchdog_state['rtsp']['enabled'] = False
-    return {'success': True, 'message': 'RTSP watchdog disabled'}
+    return {'success': True, 'message': _t('ui.watchdog.rtsp.disabled')}
 
 # ============================================================================
 # WIFI FAILOVER
@@ -455,13 +475,13 @@ def perform_wifi_failback(primary_interface='eth0'):
         
         return {
             'success': True,
-            'message': 'Switched back to primary network',
+            'message': _t('ui.watchdog.failover.primary_restored'),
             'latency': connectivity['latency']
         }
     
     return {
         'success': False,
-        'message': 'Primary network not available'
+        'message': _t('ui.watchdog.failover.primary_unavailable')
     }
 
 def wifi_failover_watchdog_loop(stop_event=None):

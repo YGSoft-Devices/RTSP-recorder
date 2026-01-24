@@ -31,8 +31,13 @@ from services.csi_camera_service import (
     load_csi_tuning_from_config
 )
 from services.config_service import load_config
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 camera_bp = Blueprint('camera', __name__, url_prefix='/api/camera')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # CAMERA DEVICE ROUTES
@@ -55,7 +60,7 @@ def get_camera_status():
         return jsonify({
             'success': True,
             'available': False,
-            'message': 'No camera found'
+            'message': _t('ui.camera.no_camera_found')
         })
 
 @camera_bp.route('/info', methods=['GET'])
@@ -123,7 +128,7 @@ def get_control(control_name):
     else:
         return jsonify({
             'success': False,
-            'error': f'Control {control_name} not found'
+            'error': _t('ui.camera.control_not_found', name=control_name)
         }), 404
 
 @camera_bp.route('/control', methods=['POST'])
@@ -136,7 +141,7 @@ def set_control_generic():
         value = data.get('value', 0)
         
         if not control:
-            return jsonify({'success': False, 'message': 'Control name required'}), 400
+            return jsonify({'success': False, 'message': _t('ui.camera.control_name_required')}), 400
         
         result = set_camera_control(control, value, device)
         return jsonify({
@@ -156,7 +161,7 @@ def set_control(control_name):
     if not data or 'value' not in data:
         return jsonify({
             'success': False,
-            'error': 'value required'
+            'error': _t('ui.camera.value_required')
         }), 400
     
     device = data.get('device')
@@ -318,7 +323,7 @@ def get_profile(name):
     else:
         return jsonify({
             'success': False,
-            'error': f'Profile "{name}" not found'
+            'error': _t('ui.camera.profile.not_found_named', profile=name)
         }), 404
 
 @camera_bp.route('/profiles/<name>', methods=['PUT', 'POST'])
@@ -329,7 +334,7 @@ def create_or_update_profile(name):
     if not data:
         return jsonify({
             'success': False,
-            'error': 'Profile data required'
+            'error': _t('ui.camera.profile.data_required')
         }), 400
     
     # Extract all profile fields
@@ -368,11 +373,11 @@ def apply_profile(name):
         profiles_data = get_camera_profiles()
         profile = profiles_data.get('profiles', {}).get(name)
         if not profile:
-            return jsonify({'success': False, 'message': f'Profil "{name}" non trouvé'}), 400
+            return jsonify({'success': False, 'message': _t('ui.camera.profile.not_found_named', profile=name)}), 400
         
         controls = profile.get('controls', {})
         if not controls:
-            return jsonify({'success': False, 'message': 'Le profil ne contient pas de contrôles'}), 400
+            return jsonify({'success': False, 'message': _t('ui.camera.profile.controls_missing')}), 400
         
         # Apply each control via the IPC API
         applied = 0
@@ -400,12 +405,12 @@ def apply_profile(name):
                 applied += 1
             else:
                 failed += 1
-                errors.append(f"{ctrl_name}: {result.get('message', 'Unknown error')}")
+                errors.append(f"{ctrl_name}: {result.get('message', _t('ui.errors.unknown_error'))}")
         
         if failed > 0:
             message = f"Applied {applied} controls, {failed} failed, {skipped} skipped"
         else:
-            message = f'Profile "{name}" applied ({applied} controls, {skipped} skipped)'
+            message = _t('ui.camera.profile.applied_status', profile=name, applied=applied, skipped=skipped)
 
         if failed == 0:
             set_current_profile(name)
@@ -436,11 +441,11 @@ def capture_profile(name):
         # Use CSI camera controls
         csi_response = get_csi_camera_controls()
         if not csi_response or not csi_response.get('success'):
-            return jsonify({'success': False, 'message': f"Impossible de lire les contrôles CSI: {csi_response.get('error', 'Unknown error')}"}), 400
+            return jsonify({'success': False, 'message': _t('ui.camera.csi_controls_read_error', error=csi_response.get('error', _t('ui.status.unknown')))}), 400
         
         controls_dict = csi_response.get('controls', {})
         if not controls_dict:
-            return jsonify({'success': False, 'message': 'Aucun contrôle CSI trouvé'}), 400
+            return jsonify({'success': False, 'message': _t('ui.camera.csi_controls_none')}), 400
         
         profile_controls = {}
         for ctrl_name, ctrl_data in controls_dict.items():
@@ -459,7 +464,7 @@ def capture_profile(name):
         if result['success']:
             return jsonify({
                 'success': True,
-                'message': f'Profil "{name}" capturé ({len(profile_controls)} contrôles)',
+                'message': _t('ui.camera.profile.captured_status', profile=name, count=len(profile_controls)),
                 'profile': {
                     'name': name,
                     'controls': profile_controls,
@@ -480,15 +485,15 @@ def ghost_fix_profile(name):
     profiles_data = get_camera_profiles()
     profile = profiles_data.get('profiles', {}).get(name)
     if not profile:
-        return jsonify({'success': False, 'message': f'Profil "{name}" introuvable'}), 404
+        return jsonify({'success': False, 'message': _t('ui.camera.profile.not_found_named', profile=name)}), 404
 
     cam_type = detect_camera_type()
     if cam_type['type'] != 'libcamera':
-        return jsonify({'success': False, 'message': 'Ghost-fix disponible uniquement pour CSI (libcamera)'}), 400
+        return jsonify({'success': False, 'message': _t('ui.camera.ghost_fix.csi_only')}), 400
 
     csi_response = get_csi_camera_controls()
     if not csi_response or not csi_response.get('success'):
-        return jsonify({'success': False, 'message': 'Impossible de lire les controles CSI'}), 400
+        return jsonify({'success': False, 'message': _t('ui.camera.csi_controls_read_error_generic')}), 400
 
     controls_meta = csi_response.get('controls', {})
     current_controls = profile.get('controls', {}) or {}
@@ -514,7 +519,7 @@ def ghost_fix_profile(name):
     updated_controls.update(ghost_fix_controls)
     result = create_camera_profile(name, {'controls': updated_controls})
     if not result.get('success'):
-        return jsonify({'success': False, 'message': result.get('message', 'Erreur sauvegarde profil')}), 500
+        return jsonify({'success': False, 'message': result.get('message', _t('ui.camera.profile.save_error'))}), 500
 
     applied = 0
     failed = 0
@@ -527,11 +532,11 @@ def ghost_fix_profile(name):
             applied += 1
         else:
             failed += 1
-            errors.append(f"{ctrl_name}: {res.get('message', 'Unknown error')}")
+            errors.append(f"{ctrl_name}: {res.get('message', _t('ui.errors.unknown_error'))}")
 
     return jsonify({
         'success': failed == 0,
-        'message': f'Ghost-fix applique ({applied} controles, {failed} erreurs)',
+        'message': _t('ui.camera.ghost_fix.applied_status', applied=applied, failed=failed),
         'applied': applied,
         'failed': failed,
         'controls': ghost_fix_controls,
@@ -599,7 +604,7 @@ def add_scheduler_schedule():
     if not data or 'profile' not in data or 'time_start' not in data:
         return jsonify({
             'success': False,
-            'error': 'profile and time_start required'
+            'error': _t('ui.camera.profile.schedule_required')
         }), 400
     
     result = add_schedule(
@@ -673,7 +678,7 @@ def csi_available():
             'success': True,
             'available': True,
             'mode': 'ipc',
-            'message': 'CSI server running - controls via IPC'
+            'message': _t('ui.camera.csi.server_running')
         })
     
     # Check Picamera2 availability for offline mode
@@ -682,7 +687,7 @@ def csi_available():
         'success': True,
         'available': picam_available,
         'mode': 'offline' if picam_available else None,
-        'message': 'Picamera2 available' if picam_available else 'Picamera2 non installé'
+        'message': _t('ui.camera.csi.picamera2_available') if picam_available else _t('ui.camera.csi.picamera2_missing')
     })
 
 @camera_bp.route('/csi/info', methods=['GET'])
@@ -716,10 +721,10 @@ def csi_set_control():
         save = data.get('save', True)  # Save to config by default
         
         if not control:
-            return jsonify({'success': False, 'message': 'Control name required'}), 400
+            return jsonify({'success': False, 'message': _t('ui.camera.control_name_required')}), 400
         
         if value is None:
-            return jsonify({'success': False, 'message': 'Value required'}), 400
+            return jsonify({'success': False, 'message': _t('ui.camera.value_required')}), 400
         
         # Apply the control (temporary, for preview)
         result = set_csi_camera_control(control, value)
@@ -742,7 +747,7 @@ def csi_set_multiple_controls():
         save = data.get('save', True)
         
         if not controls:
-            return jsonify({'success': False, 'message': 'Controls required'}), 400
+            return jsonify({'success': False, 'message': _t('ui.camera.controls_required')}), 400
         
         results = []
         for name, value in controls.items():
@@ -798,7 +803,7 @@ def csi_reset_tuning():
             os.remove(config_path)
         return jsonify({
             'success': True,
-            'message': 'Configuration CSI réinitialisée'
+            'message': _t('ui.camera.csi_config_reset')
         })
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500

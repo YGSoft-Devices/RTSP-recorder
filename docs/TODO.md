@@ -36,6 +36,12 @@
 - Valider l'export logs et les nouveaux indicateurs stockage dans l'onglet fichiers
 - Tester la génération thumbnails v2.32.50 (charge CPU) + vérifier qu'un refresh affiche les miniatures sans tempête `ffmpeg`
 
+## Web manager / i18n
+
+- Finir extraction i18n pour services backend (messages/API) + templates restants
+- Ajouter test statique "strings non i18n" avec allowlist
+- Valider le switching de langue (cookie/config) sur les 2 devices
+
 
 
 ## A corriger.idées diverses : 

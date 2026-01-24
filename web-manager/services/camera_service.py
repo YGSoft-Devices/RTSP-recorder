@@ -20,7 +20,10 @@ import threading
 import subprocess
 from datetime import datetime
 
+from flask import has_request_context, request
+
 from .platform_service import run_command, is_raspberry_pi
+from .i18n_service import t as i18n_t, resolve_request_lang
 from config import (
     CAMERA_PROFILES_FILE, SCHEDULER_STATE_FILE,
     DEFAULT_CAMERA_PROFILES
@@ -46,6 +49,24 @@ scheduler_state = {
 }
 
 _scheduler_lock = threading.Lock()
+
+# ---------------------------------------------------------------------------
+# I18n helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_lang(config=None):
+    if config is None:
+        try:
+            from .config_service import load_config
+            config = load_config()
+        except Exception:
+            config = {}
+    req = request if has_request_context() else None
+    return resolve_request_lang(req, config)
+
+
+def _t(key, config=None, **params):
+    return i18n_t(key, lang=_resolve_lang(config), params=params)
 
 # ============================================================================
 # CAMERA DEVICE DETECTION
@@ -492,7 +513,7 @@ def set_camera_control(control_name, value, device=None):
         device = find_camera_device()
     
     if not device:
-        return {'success': False, 'message': 'No camera found'}
+        return {'success': False, 'message': _t('ui.camera.no_camera_found')}
     
     # Set the control
     result = run_command(
@@ -520,7 +541,7 @@ def reset_camera_control(control_name, device=None):
         device = find_camera_device()
     
     if not device:
-        return {'success': False, 'message': 'No camera found'}
+        return {'success': False, 'message': _t('ui.camera.no_camera_found')}
     
     # Get the control's default value
     controls = get_camera_controls(device)
@@ -530,7 +551,7 @@ def reset_camera_control(control_name, device=None):
         return {'success': False, 'message': f'Control {control_name} not found'}
     
     if control['default'] is None:
-        return {'success': False, 'message': 'No default value available'}
+        return {'success': False, 'message': _t('ui.camera.default_value_unavailable')}
     
     # Set to default
     result = set_camera_control(control_name, control['default'], device)
@@ -552,7 +573,7 @@ def auto_camera_controls(device=None):
         device = find_camera_device()
     
     if not device:
-        return {'success': False, 'message': 'No camera found', 'controls_set': []}
+        return {'success': False, 'message': _t('ui.camera.no_camera_found'), 'controls_set': []}
     
     auto_controls = {
         'focus_auto': 1,
@@ -580,7 +601,7 @@ def auto_camera_controls(device=None):
     else:
         return {
             'success': False,
-            'message': 'No auto controls could be set',
+            'message': _t('ui.camera.auto_controls_none'),
             'controls_set': []
         }
 
@@ -599,7 +620,7 @@ def focus_oneshot(device=None):
         device = find_camera_device()
     
     if not device:
-        return {'success': False, 'message': 'No camera found'}
+        return {'success': False, 'message': _t('ui.camera.no_camera_found')}
     
     try:
         # Enable autofocus
@@ -615,7 +636,7 @@ def focus_oneshot(device=None):
         if not success:
             return {'success': False, 'message': f'Failed to lock focus: {msg}'}
         
-        return {'success': True, 'message': 'Focus triggered and locked'}
+        return {'success': True, 'message': _t('ui.camera.focus_locked')}
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
@@ -817,7 +838,7 @@ def save_camera_profiles():
             with open(CAMERA_PROFILES_FILE, 'w') as f:
                 json.dump(data, f, indent=2)
         
-        return {'success': True, 'message': 'Profiles saved'}
+        return {'success': True, 'message': _t('ui.camera.profiles_saved')}
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
@@ -918,7 +939,7 @@ def apply_camera_profile(name, device=None):
         device = find_camera_device()
     
     if not device:
-        return {'success': False, 'message': 'No camera found', 'controls_applied': []}
+        return {'success': False, 'message': _t('ui.camera.no_camera_found'), 'controls_applied': []}
     
     with camera_profiles_state['lock']:
         if name not in camera_profiles_state['profiles']:
@@ -970,7 +991,7 @@ def apply_csi_camera_profile(name):
 
     controls = profile.get('controls', {})
     if not controls:
-        return {'success': False, 'message': 'Profile has no controls', 'controls_applied': []}
+        return {'success': False, 'message': _t('ui.camera.profile.controls_missing'), 'controls_applied': []}
 
     # If AE/AWB are enabled, avoid forcing manual values
     ae_enabled = controls.get('AeEnable') is True
@@ -1064,13 +1085,13 @@ def capture_camera_profile(name, description='', device=None):
         device = find_camera_device()
     
     if not device:
-        return {'success': False, 'message': 'No camera found'}
+        return {'success': False, 'message': _t('ui.camera.no_camera_found')}
     
     # Get current control values
     controls = get_camera_controls(device)
     
     if not controls:
-        return {'success': False, 'message': 'Could not read camera controls'}
+        return {'success': False, 'message': _t('ui.camera.controls_read_failed')}
     
     # Build profile from current values
     profile_controls = {}

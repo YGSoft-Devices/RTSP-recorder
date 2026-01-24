@@ -14,8 +14,13 @@ from services.meeting_service import (
     validate_credentials, provision_device, master_reset,
     init_meeting_service
 )
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 meeting_bp = Blueprint('meeting', __name__, url_prefix='/api/meeting')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # CONFIGURATION ROUTES
@@ -50,7 +55,7 @@ def set_config():
     if not data:
         return jsonify({
             'success': False,
-            'error': 'Configuration data required'
+            'error': _t('ui.meeting.config_required')
         }), 400
     
     # Load existing and merge
@@ -110,7 +115,7 @@ def enable():
     if not data:
         return jsonify({
             'success': False,
-            'error': 'Configuration required'
+            'error': _t('ui.meeting.config_required')
         }), 400
     
     required = ['api_url', 'device_key', 'token_code']
@@ -118,7 +123,7 @@ def enable():
         if field not in data:
             return jsonify({
                 'success': False,
-                'error': f'{field} required'
+                'error': _t('ui.meeting.field_required', field=field)
             }), 400
     
     result = enable_meeting_service(
@@ -181,7 +186,7 @@ def get_provision():
     
     return jsonify({
         'success': False,
-        'error': result.get('error', 'Could not get provision data')
+        'error': result.get('error', _t('ui.meeting.provision_data_unavailable'))
     }), 400
 
 @meeting_bp.route('/provision', methods=['POST', 'PUT'])
@@ -192,7 +197,7 @@ def do_provision():
     if not data:
         return jsonify({
             'success': False,
-            'message': 'Provision data required'
+            'message': _t('ui.meeting.provision_data_required')
         }), 400
     
     api_url = data.get('api_url')
@@ -202,7 +207,7 @@ def do_provision():
     if not api_url or not device_key or not token_code:
         return jsonify({
             'success': False,
-            'message': 'api_url, device_key and token_code are required'
+            'message': _t('ui.meeting.credentials_required')
         }), 400
     
     result = provision_device(api_url, device_key, token_code)
@@ -219,7 +224,7 @@ def validate():
         return jsonify({
             'success': False,
             'valid': False,
-            'message': 'Credentials required'
+            'message': _t('ui.meeting.credentials_required')
         }), 400
     
     api_url = data.get('api_url')
@@ -230,7 +235,7 @@ def validate():
         return jsonify({
             'success': False,
             'valid': False,
-            'message': 'api_url, device_key and token_code are required'
+            'message': _t('ui.meeting.credentials_required')
         }), 400
     
     result = validate_credentials(api_url, device_key, token_code)

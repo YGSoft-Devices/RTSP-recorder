@@ -19,10 +19,14 @@ from services.network_service import (
 from services.watchdog_service import (
     get_wifi_failover_status, check_network_connectivity
 )
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 logger = logging.getLogger(__name__)
 
 network_bp = Blueprint('network', __name__, url_prefix='/api/network')
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # INTERFACE ROUTES
@@ -71,7 +75,7 @@ def interface_details(interface_name):
     if not details['exists']:
         return jsonify({
             'success': False,
-            'error': f'Interface {interface_name} not found'
+            'error': _t('ui.network.interface_not_found', interface=interface_name)
         }), 404
     
     return jsonify({
@@ -107,7 +111,7 @@ def set_static_ip():
         if field not in data:
             return jsonify({
                 'success': False,
-                'error': f'{field} required'
+                'error': _t('ui.errors.field_required', field=field)
             }), 400
     
     result = configure_static_ip(
@@ -148,7 +152,7 @@ def set_dhcp():
     if not data or 'interface' not in data:
         return jsonify({
             'success': False,
-            'error': 'interface required'
+            'error': _t('ui.errors.field_required', field='interface')
         }), 400
     
     result = configure_dhcp(data['interface'])
@@ -174,7 +178,7 @@ def set_priority():
     if not data or 'interfaces' not in data:
         return jsonify({
             'success': False,
-            'error': 'interfaces array required'
+            'error': _t('ui.errors.array_required', field='interfaces')
         }), 400
     
     result = set_interface_priority(data['interfaces'])
@@ -223,7 +227,7 @@ def wifi_connect():
     if not data or 'ssid' not in data:
         return jsonify({
             'success': False,
-            'error': 'ssid required'
+            'error': _t('ui.errors.field_required', field='ssid')
         }), 400
     
     result = connect_wifi(
@@ -349,7 +353,7 @@ def ap_start():
     if not data:
         return jsonify({
             'success': False,
-            'error': 'ssid and password required'
+            'error': _t('ui.errors.ssid_password_required')
         }), 400
     
     required = ['ssid', 'password']
@@ -357,7 +361,7 @@ def ap_start():
         if field not in data:
             return jsonify({
                 'success': False,
-                'error': f'{field} required'
+                'error': _t('ui.errors.field_required', field=field)
             }), 400
     
     result = create_access_point(
@@ -402,7 +406,7 @@ def set_failover_config():
     if not data:
         return jsonify({
             'success': False,
-            'error': 'Configuration data required'
+            'error': _t('ui.errors.configuration_required')
         }), 400
     
     # Merge with existing config
@@ -492,7 +496,7 @@ def set_wifi_override():
     if enable is None:
         return jsonify({
             'success': False,
-            'error': 'enable parameter required (true/false)'
+            'error': _t('ui.errors.enable_required')
         }), 400
     
     result = set_wifi_manual_override(enable)

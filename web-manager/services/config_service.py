@@ -11,13 +11,33 @@ import time
 import logging
 from datetime import datetime, timedelta
 
+from flask import has_request_context, request
+
 from .platform_service import run_command, is_raspberry_pi, PLATFORM
+from .i18n_service import t as i18n_t, resolve_request_lang
 from config import (
     CONFIG_FILE, SERVICE_NAME, DEFAULT_CONFIG, SYSTEM_DEFAULTS,
     CONFIG_METADATA, OPTIONAL_SERVICES
 )
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# I18n helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_lang(config=None):
+    if config is None:
+        try:
+            config = load_config()
+        except Exception:
+            config = {}
+    req = request if has_request_context() else None
+    return resolve_request_lang(req, config)
+
+
+def _t(key, config=None, **params):
+    return i18n_t(key, lang=_resolve_lang(config), params=params)
 
 # ============================================================================
 # CONFIGURATION FILE MANAGEMENT
@@ -108,7 +128,7 @@ def save_config(config):
         
         os.rename(temp_file, CONFIG_FILE)
         
-        return {'success': True, 'message': 'Configuration saved'}
+        return {'success': True, 'message': _t('ui.config.saved')}
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
@@ -516,7 +536,7 @@ def set_hostname(new_hostname):
     
     # Validate hostname (RFC 1123)
     if not new_hostname or not re.match(r'^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$', new_hostname):
-        return {'success': False, 'message': 'Invalid hostname format'}
+        return {'success': False, 'message': _t('ui.system.hostname_invalid')}
     
     errors = []
     

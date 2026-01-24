@@ -14,13 +14,33 @@ import subprocess
 import fcntl
 from datetime import datetime
 
+from flask import has_request_context, request
+
 from .platform_service import run_command, is_raspberry_pi
 from .config_service import load_config
+from .i18n_service import t as i18n_t, resolve_request_lang
 from config import (
     WIFI_FAILOVER_CONFIG_FILE, AP_CONFIG_FILE
 )
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# I18n helpers
+# ---------------------------------------------------------------------------
+
+def _resolve_lang(config=None):
+    if config is None:
+        try:
+            config = load_config()
+        except Exception:
+            config = {}
+    req = request if has_request_context() else None
+    return resolve_request_lang(req, config)
+
+
+def _t(key, config=None, **params):
+    return i18n_t(key, lang=_resolve_lang(config), params=params)
 
 # Lock file for failover operations (prevents race conditions between Gunicorn workers)
 FAILOVER_LOCK_FILE = '/tmp/network_failover.lock'
@@ -282,7 +302,7 @@ def configure_static_ip(interface, ip_address, netmask='24', gateway=None, dns=N
     """
     # Validate IP
     if not re.match(r'^\d+\.\d+\.\d+\.\d+$', ip_address):
-        return {'success': False, 'message': 'Invalid IP address format'}
+        return {'success': False, 'message': _t('ui.network.ip.invalid_format')}
     
     try:
         # Get active connection name for this interface
@@ -290,7 +310,7 @@ def configure_static_ip(interface, ip_address, netmask='24', gateway=None, dns=N
         conn_name = result['stdout'].strip() if result['success'] else None
         
         if not conn_name:
-            return {'success': False, 'message': f'No active connection found for {interface}'}
+            return {'success': False, 'message': _t('ui.network.ip.no_active_connection', interface=interface)}
         
         # Build nmcli command for static IP
         addr = f"{ip_address}/{netmask}"
@@ -306,14 +326,14 @@ def configure_static_ip(interface, ip_address, netmask='24', gateway=None, dns=N
         # Apply changes
         result = run_command(cmd, timeout=10)
         if not result['success']:
-            return {'success': False, 'message': f"Failed to configure: {result['stderr']}"}
+            return {'success': False, 'message': _t('ui.network.ip.configure_failed', error=result['stderr'])}
         
         # Reapply connection
         result = run_command(f"sudo nmcli device reapply {interface}", timeout=15)
         if result['success']:
-            return {'success': True, 'message': f'Static IP {addr} configured on {interface}'}
+            return {'success': True, 'message': _t('ui.network.ip.static_configured', address=addr, interface=interface)}
         else:
-            return {'success': False, 'message': result['stderr'] or 'Failed to reapply connection'}
+            return {'success': False, 'message': result['stderr'] or _t('ui.network.ip.reapply_failed')}
     
     except Exception as e:
         return {'success': False, 'message': str(e)}
@@ -339,16 +359,16 @@ def configure_dhcp(interface):
             # Reapply connection to get new DHCP lease
             result = run_command(f"sudo nmcli device reapply {interface}", timeout=15)
             if result['success']:
-                return {'success': True, 'message': f'DHCP configured on {interface} via NetworkManager'}
+                return {'success': True, 'message': _t('ui.network.ip.dhcp_configured', interface=interface)}
             else:
-                return {'success': False, 'message': result['stderr'] or 'Failed to reapply connection'}
+                return {'success': False, 'message': result['stderr'] or _t('ui.network.ip.reapply_failed')}
         else:
             # No active connection, try to reconnect
             result = run_command(f"sudo nmcli device connect {interface}", timeout=15)
             if result['success']:
-                return {'success': True, 'message': f'DHCP reconnected on {interface}'}
+                return {'success': True, 'message': _t('ui.network.ip.dhcp_reconnected', interface=interface)}
             else:
-                return {'success': False, 'message': result['stderr'] or 'Failed to connect interface'}
+                return {'success': False, 'message': result['stderr'] or _t('ui.network.interface.connect_failed')}
     
     except Exception as e:
         return {'success': False, 'message': str(e)}
@@ -375,7 +395,7 @@ def set_interface_priority(interfaces_priority):
         logger.info(f"Saved interface priority to config: {priority_str}")
     except Exception as e:
         logger.error(f"Failed to save interface priority: {e}")
-        return {'success': False, 'message': f'Failed to save config: {e}'}
+        return {'success': False, 'message': _t('ui.network.priority.save_failed', error=str(e))}
     
     # 2. Apply routing metrics for immediate effect
     # Lower metric = higher priority
@@ -409,7 +429,7 @@ def set_interface_priority(interfaces_priority):
     
     return {
         'success': True, 
-        'message': f'Interface priorities updated ({applied_count} routes applied)',
+        'message': _t('ui.network.priority.updated', count=applied_count),
         'priority': interfaces_priority
     }
 
@@ -578,9 +598,9 @@ def connect_wifi(ssid, password=None, interface='wlan0'):
             result = run_command(cmd, timeout=60)
             
             if result['success']:
-                return {'success': True, 'message': f'Connected to {ssid}'}
+                return {'success': True, 'message': _t('ui.network.wifi.connected_to', ssid=ssid)}
             else:
-                return {'success': False, 'message': result['stderr'] or 'Connection failed'}
+                return {'success': False, 'message': result['stderr'] or _t('ui.network.wifi.connection_failed')}
         
         else:
             # Use wpa_supplicant directly
@@ -617,9 +637,9 @@ network={{
                 # Request DHCP
                 time.sleep(2)
                 run_command(f"sudo dhclient {interface}", timeout=30)
-                return {'success': True, 'message': f'Connected to {ssid}'}
+                return {'success': True, 'message': _t('ui.network.wifi.connected_to', ssid=ssid)}
             else:
-                return {'success': False, 'message': result['stderr'] or 'Connection failed'}
+                return {'success': False, 'message': result['stderr'] or _t('ui.network.wifi.connection_failed')}
     
     except Exception as e:
         return {'success': False, 'message': str(e)}
@@ -643,7 +663,7 @@ def disconnect_wifi(interface='wlan0'):
     
     return {
         'success': True,
-        'message': f'Disconnected from WiFi on {interface}'
+        'message': _t('ui.network.wifi.disconnected_iface', interface=interface)
     }
 
 
@@ -669,7 +689,7 @@ def clone_wifi_config(source_interface='wlan0', target_interface='wlan1'):
         if not conn_result['success'] or not conn_result['stdout'].strip():
             return {
                 'success': False,
-                'message': f'No active WiFi connection on {source_interface}',
+                'message': _t('ui.network.wifi.no_active_connection', interface=source_interface),
                 'cloned_ssid': None
             }
         
@@ -717,7 +737,7 @@ def clone_wifi_config(source_interface='wlan0', target_interface='wlan1'):
             if not result['success']:
                 return {
                     'success': False,
-                    'message': f'Failed to clone connection: {result["stderr"]}',
+                    'message': _t('ui.network.wifi.clone_failed', error=result["stderr"]),
                     'cloned_ssid': None
                 }
             
@@ -730,7 +750,7 @@ def clone_wifi_config(source_interface='wlan0', target_interface='wlan1'):
         logger.info(f"Successfully cloned WiFi config to {target_interface}")
         return {
             'success': True,
-            'message': f'WiFi configuration cloned from {source_interface} to {target_interface}',
+            'message': _t('ui.network.wifi.clone_success', source=source_interface, target=target_interface),
             'cloned_ssid': ssid,
             'connection_name': target_conn_name
         }
@@ -765,7 +785,7 @@ def auto_configure_wifi_interface(interface='wlan1'):
         if conn_result['success'] and conn_result['stdout'].strip():
             return {
                 'success': True,
-                'message': f'{interface} already connected',
+                'message': _t('ui.network.wifi.already_connected', interface=interface),
                 'action': 'already_configured'
             }
         
@@ -793,14 +813,14 @@ def auto_configure_wifi_interface(interface='wlan1'):
                     if connect_result['success']:
                         return {
                             'success': True,
-                            'message': f'Cloned WiFi config from {source} and connected {interface}',
+                            'message': _t('ui.network.wifi.cloned_and_connected', source=source, interface=interface),
                             'action': 'cloned_and_connected',
                             'ssid': clone_result['cloned_ssid']
                         }
                     else:
                         return {
                             'success': True,
-                            'message': f'Cloned WiFi config from {source}, connection pending',
+                            'message': _t('ui.network.wifi.cloned_pending', source=source),
                             'action': 'cloned',
                             'ssid': clone_result['cloned_ssid']
                         }
@@ -809,7 +829,7 @@ def auto_configure_wifi_interface(interface='wlan1'):
         
         return {
             'success': False,
-            'message': 'No connected WiFi interface found to clone from',
+            'message': _t('ui.network.wifi.no_connected_interface'),
             'action': 'no_source'
         }
         
@@ -924,7 +944,7 @@ def create_access_point(ssid, password, channel=11, interface='wlan0'):
         dict: {success: bool, message: str}
     """
     if len(password) < 8:
-        return {'success': False, 'message': 'Password must be at least 8 characters'}
+        return {'success': False, 'message': _t('ui.network.ap.password_length')}
     
     try:
         # Install required packages if needed
@@ -1003,9 +1023,9 @@ log-dhcp
             with open(AP_CONFIG_FILE, 'w') as f:
                 json.dump(ap_config, f)
             
-            return {'success': True, 'message': f'Access Point "{ssid}" started on 192.168.4.1'}
+            return {'success': True, 'message': _t('ui.network.ap.started', ssid=ssid)}
         else:
-            return {'success': False, 'message': result['stderr'] or 'Failed to start AP'}
+            return {'success': False, 'message': result['stderr'] or _t('ui.network.ap.start_failed')}
     
     except Exception as e:
         return {'success': False, 'message': str(e)}
@@ -1041,7 +1061,7 @@ def stop_access_point(interface='wlan0'):
         # Re-apply WiFi/Ethernet priority policy
         manage_wifi_based_on_ethernet()
         
-        return {'success': True, 'message': 'Access Point stopped'}
+        return {'success': True, 'message': _t('ui.network.ap.stopped')}
     
     except Exception as e:
         return {'success': False, 'message': str(e)}
@@ -1111,7 +1131,7 @@ def save_wifi_failover_config(config):
         os.makedirs(os.path.dirname(WIFI_FAILOVER_CONFIG_FILE), exist_ok=True)
         with open(WIFI_FAILOVER_CONFIG_FILE, 'w') as f:
             json.dump(config, f, indent=2)
-        return {'success': True, 'message': 'Failover configuration saved'}
+        return {'success': True, 'message': _t('ui.network.failover.config_saved')}
     except Exception as e:
         return {'success': False, 'message': str(e)}
 
@@ -1464,7 +1484,7 @@ def manage_network_failover():
             return {
                 'active_interface': None,
                 'action': 'locked',
-                'message': 'Failover already in progress by another worker'
+                'message': _t('ui.network.failover.already_in_progress')
             }
     except Exception as e:
         logger.warning(f"[Failover] Could not acquire lock: {e}")
@@ -1491,7 +1511,7 @@ def _manage_network_failover_internal():
         return {
             'active_interface': 'wlan0',
             'action': 'ap_mode',
-            'message': 'AP mode active'
+            'message': _t('ui.network.failover.ap_mode_active')
         }
     
     # Check manual override
@@ -1501,7 +1521,7 @@ def _manage_network_failover_internal():
         return {
             'active_interface': None,
             'action': 'manual_override',
-            'message': 'Manual override enabled - all interfaces managed manually'
+            'message': _t('ui.network.failover.manual_override')
         }
     
     # Get status of all interfaces
@@ -1535,7 +1555,7 @@ def _manage_network_failover_internal():
         return {
             'active_interface': 'eth0',
             'action': action,
-            'message': f'Ethernet active ({eth0_status["ip"]}), WiFi disabled'
+            'message': _t('ui.network.failover.ethernet_active', ip=eth0_status["ip"])
         }
     
     elif wlan1_status['present']:
@@ -1552,7 +1572,7 @@ def _manage_network_failover_internal():
             return {
                 'active_interface': 'wlan1',
                 'action': 'wlan1_active',
-                'message': f'wlan1 active ({wlan1_status["ip"]})'
+                'message': _t('ui.network.failover.wlan1_active', ip=wlan1_status["ip"])
             }
         else:
             # Try to connect wlan1
@@ -1567,7 +1587,7 @@ def _manage_network_failover_internal():
                     return {
                         'active_interface': 'wlan1',
                         'action': action,
-                        'message': f'Failover to wlan1 ({wlan1_status["ip"]})'
+                        'message': _t('ui.network.failover.wlan1_failover', ip=wlan1_status["ip"])
                     }
             
             # wlan1 failed, fall through to wlan0
@@ -1580,7 +1600,7 @@ def _manage_network_failover_internal():
             return {
                 'active_interface': 'wlan0',
                 'action': 'wlan0_active',
-                'message': f'wlan0 active ({wlan0_status["ip"]})'
+                'message': _t('ui.network.failover.wlan0_active', ip=wlan0_status["ip"])
             }
         else:
             # Try to connect wlan0
@@ -1594,7 +1614,7 @@ def _manage_network_failover_internal():
                     return {
                         'active_interface': 'wlan0',
                         'action': action,
-                        'message': f'Failover to wlan0 ({wlan0_status["ip"]})'
+                        'message': _t('ui.network.failover.wlan0_failover', ip=wlan0_status["ip"])
                     }
     
     # No interface available
@@ -1602,7 +1622,7 @@ def _manage_network_failover_internal():
     return {
         'active_interface': None,
         'action': 'no_network',
-        'message': 'No network interface available'
+        'message': _t('ui.network.failover.no_interface')
     }
 
 def manage_wifi_based_on_ethernet():

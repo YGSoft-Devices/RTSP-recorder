@@ -19,8 +19,13 @@ from services.watchdog_service import (
     check_network_connectivity
 )
 from services.camera_service import find_camera_device
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 watchdog_bp = Blueprint('watchdog', __name__, url_prefix='/api')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # RTSP WATCHDOG ROUTES
@@ -61,24 +66,24 @@ def rtsp_watchdog_control():
             result = enable_rtsp_watchdog()
             return jsonify({
                 'success': True,
-                'message': 'RTSP Watchdog started'
+                'message': _t('ui.watchdog.rtsp.started')
             })
         elif action == 'stop':
             result = disable_rtsp_watchdog()
             return jsonify({
                 'success': True,
-                'message': 'RTSP Watchdog stopped'
+                'message': _t('ui.watchdog.rtsp.stopped')
             })
         elif action == 'restart_service':
             result = restart_rtsp_service("Manual restart requested")
             return jsonify({
                 'success': result.get('success', False),
-                'message': result.get('message', 'RTSP service restarted')
+                'message': result.get('message', _t('ui.watchdog.rtsp.service_restarted'))
             })
         else:
             return jsonify({
                 'success': False,
-                'message': 'Invalid action. Use start, stop, or restart_service'
+                'message': _t('ui.watchdog.rtsp.invalid_action')
             }), 400
     except Exception as e:
         return jsonify({
@@ -123,7 +128,7 @@ def wifi_failover_watchdog_control():
                 watchdog_state['wifi_failover']['running'] = True
             return jsonify({
                 'success': True,
-                'message': 'WiFi failover watchdog started'
+                'message': _t('ui.watchdog.wifi.started')
             })
         elif action == 'stop':
             with watchdog_state['lock']:
@@ -131,12 +136,12 @@ def wifi_failover_watchdog_control():
                 watchdog_state['wifi_failover']['running'] = False
             return jsonify({
                 'success': True,
-                'message': 'WiFi failover watchdog stopped'
+                'message': _t('ui.watchdog.wifi.stopped')
             })
         else:
             return jsonify({
                 'success': False,
-                'message': 'Invalid action. Use start or stop'
+                'message': _t('ui.watchdog.wifi.invalid_action')
             }), 400
     except Exception as e:
         return jsonify({

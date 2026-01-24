@@ -23,8 +23,13 @@ from services.network_service import (
     clone_wifi_config,
     auto_configure_wifi_interface
 )
+from services.i18n_service import t as i18n_t, resolve_request_lang
 
 wifi_bp = Blueprint('wifi', __name__, url_prefix='/api/wifi')
+
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # Simple WiFi config file
 WIFI_SIMPLE_CONFIG_FILE = '/var/lib/rpi-cam/wifi_simple.json'
@@ -65,7 +70,7 @@ def wifi_connect():
         if not ssid:
             return jsonify({
                 'success': False,
-                'message': 'SSID required'
+                'message': _t('ui.network.wifi.ssid_required')
             }), 400
         
         # Fallback network gets lower priority
@@ -101,7 +106,7 @@ def wifi_disconnect():
         
         return jsonify({
             'success': True,
-            'message': 'Disconnected'
+            'message': _t('ui.network.wifi.disconnected')
         })
     except Exception as e:
         return jsonify({
@@ -231,7 +236,7 @@ def wifi_simple_config_set():
         
         return jsonify({
             'success': True,
-            'message': 'Configuration WiFi enregistrée'
+            'message': _t('ui.network.wifi.saved')
         })
     except Exception as e:
         return jsonify({
@@ -257,7 +262,7 @@ def wifi_simple_connect():
         if not ssid:
             return jsonify({
                 'success': False,
-                'message': 'SSID requis'
+                'message': _t('ui.network.wifi.ssid_required')
             }), 400
         
         # Save config if password provided
@@ -421,12 +426,12 @@ def failover_config_set():
         if result.get('success'):
             return jsonify({
                 'success': True,
-                'message': 'Configuration saved'
+                'message': _t('ui.config.saved')
             })
         else:
             return jsonify({
                 'success': False,
-                'message': result.get('message', 'Failed to save configuration')
+                'message': result.get('message', _t('ui.config.save_failed'))
             }), 500
     except Exception as e:
         return jsonify({
@@ -479,7 +484,7 @@ def failover_disconnect():
         if not interface:
             return jsonify({
                 'success': False,
-                'message': 'Interface required'
+                'message': _t('ui.network.interface_required')
             }), 400
         
         result = disconnect_wifi(interface)
@@ -559,13 +564,13 @@ def apply_hardware_failover():
             
             return jsonify({
                 'success': True,
-                'message': 'Hardware failover settings applied',
+                'message': _t('ui.network.failover.hardware_applied'),
                 'auto_config': auto_result
             })
         
         return jsonify({
             'success': True,
-            'message': 'Hardware failover settings saved'
+            'message': _t('ui.network.failover.hardware_saved')
         })
     except Exception as e:
         return jsonify({
@@ -609,13 +614,13 @@ def apply_network_failover():
             
             return jsonify({
                 'success': True,
-                'message': 'Network failover settings applied',
+                'message': _t('ui.network.failover.network_applied'),
                 'connection': connect_result
             })
         
         return jsonify({
             'success': True,
-            'message': 'Network failover settings saved'
+            'message': _t('ui.network.failover.network_saved')
         })
     except Exception as e:
         return jsonify({
@@ -685,14 +690,14 @@ def apply_ip_config():
             
             return jsonify({
                 'success': True,
-                'message': f'Static IP applied to {len(interfaces_configured)} interface(s)',
+                'message': _t('ui.network.ip.applied_count', count=len(interfaces_configured)),
                 'interfaces': interfaces_configured
             })
         else:
             # DHCP mode - just save config, NetworkManager handles the rest
             return jsonify({
                 'success': True,
-                'message': 'DHCP mode saved. NetworkManager manages IP automatically.',
+                'message': _t('ui.network.ip.dhcp_saved'),
                 'interfaces': []
             })
     except Exception as e:

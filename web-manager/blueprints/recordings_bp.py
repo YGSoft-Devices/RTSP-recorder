@@ -15,9 +15,13 @@ from services.recording_service import (
 )
 from services.config_service import load_config
 from services import media_cache_service
+from services.i18n_service import t as i18n_t, resolve_request_lang
 from config import THUMBNAIL_CACHE_DIR
 
 recordings_bp = Blueprint('recordings', __name__, url_prefix='/api/recordings')
+
+def _t(key, **params):
+    return i18n_t(key, lang=resolve_request_lang(request), params=params)
 
 # ============================================================================
 # RECORDING LIST ROUTES
@@ -92,9 +96,10 @@ def list_recordings_paginated():
     page_recordings = all_recordings[start_idx:end_idx]
     
     # Transform recordings to add frontend-expected fields
+    not_available = _t('ui.value.na')
     for rec in page_recordings:
-        rec['size_display'] = rec.get('size_human', 'N/A')
-        rec['duration_display'] = rec.get('duration_human', 'N/A')
+        rec['size_display'] = rec.get('size_human', not_available)
+        rec['duration_display'] = rec.get('duration_human', not_available)
         rec['modified_display'] = rec.get('modified', '')[:10] if rec.get('modified') else ''
         rec['modified_iso'] = rec.get('modified', '')
         rec['locked'] = False  # TODO: implement file locking
@@ -157,7 +162,7 @@ def list_recordings_paginated():
             'min_free_bytes': min_free_bytes,
             'min_free_display': format_size(min_free_bytes),
             'max_disk_bytes': max_disk_bytes,
-            'max_disk_display': format_size(max_disk_bytes) if max_disk_bytes > 0 else 'Illimité',
+            'max_disk_display': format_size(max_disk_bytes) if max_disk_bytes > 0 else _t('ui.value.unlimited'),
             'max_disk_enabled': max_disk_bytes > 0,
             'recordings_size_bytes': total_size,
             'recordings_size_display': format_size(total_size),
@@ -268,13 +273,13 @@ def _serve_recording_file(filename, as_attachment=False):
     if not real_path.startswith(real_record_dir):
         return jsonify({
             'success': False,
-            'error': 'Access denied'
+            'error': _t('ui.errors.access_denied')
         }), 403
     
     if not os.path.exists(filepath):
         return jsonify({
             'success': False,
-            'error': 'File not found'
+            'error': _t('ui.errors.file_not_found')
         }), 404
     
     # Determine mime type
@@ -310,7 +315,7 @@ def delete_multiple_recordings():
     if not data or 'files' not in data:
         return jsonify({
             'success': False,
-            'error': 'files array required'
+            'error': _t('ui.errors.files_array_required')
         }), 400
     
     config = load_config()
@@ -359,7 +364,7 @@ def cleanup_by_size():
     if not max_size_gb and not max_count:
         return jsonify({
             'success': False,
-            'error': 'max_size_gb or max_count required'
+            'error': _t('ui.errors.max_size_or_count_required')
         }), 400
     
     config = load_config()
@@ -434,14 +439,14 @@ def get_thumbnail(filename):
     try:
         # Security: validate filename
         if not is_valid_recording_filename(filename):
-            return jsonify({'success': False, 'message': 'Invalid filename'}), 400
+            return jsonify({'success': False, 'message': _t('ui.errors.invalid_filename')}), 400
         
         config = load_config()
         record_dir = get_recording_dir(config)
         video_path = os.path.join(record_dir, filename)
         
         if not os.path.exists(video_path):
-            return jsonify({'success': False, 'message': 'File not found'}), 404
+            return jsonify({'success': False, 'message': _t('ui.errors.file_not_found')}), 404
         
         try:
             thumb_path = media_cache_service.get_thumbnail_path(filename)
@@ -471,7 +476,7 @@ def get_thumbnail(filename):
         
         except Exception as e:
             print(f"[Recordings] Error in get_thumbnail: {str(e)}")
-            return jsonify({'success': False, 'message': f'Thumbnail error: {str(e)}'}), 400
+            return jsonify({'success': False, 'message': _t('ui.recordings.thumbnail_error', error=str(e))}), 400
         
     except Exception as e:
         print(f"[Recordings] Error in get_thumbnail outer: {str(e)}")
