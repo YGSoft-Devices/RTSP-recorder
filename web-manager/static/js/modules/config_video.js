@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.33.06
+ * Version: 2.34.00
  */
 
 (function () {
@@ -523,7 +523,14 @@ async function applyVideoSettings() {
             H264_BITRATE_KBPS: document.getElementById('H264_BITRATE_KBPS').value,
             H264_KEYINT: document.getElementById('H264_KEYINT').value,
             H264_PROFILE: document.getElementById('H264_PROFILE').value,
-            H264_QP: document.getElementById('H264_QP').value
+            H264_QP: document.getElementById('H264_QP').value,
+            STREAM_SOURCE_MODE: document.getElementById('STREAM_SOURCE_MODE')?.value || 'camera',
+            STREAM_SOURCE_URL: document.getElementById('STREAM_SOURCE_URL')?.value || '',
+            RTSP_PROXY_TRANSPORT: document.getElementById('RTSP_PROXY_TRANSPORT')?.value || 'auto',
+            RTSP_PROXY_AUDIO: document.getElementById('RTSP_PROXY_AUDIO')?.value || 'auto',
+            RTSP_PROXY_LATENCY_MS: document.getElementById('RTSP_PROXY_LATENCY_MS')?.value || '100',
+            SCREEN_DISPLAY: document.getElementById('SCREEN_DISPLAY')?.value || ':0.0',
+            RTSP_PROTOCOLS: document.getElementById('RTSP_PROTOCOLS')?.value || 'udp,tcp'
         };
         
         // Save config

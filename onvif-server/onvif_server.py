@@ -3,10 +3,14 @@
 Simple ONVIF Server for RTSP Cameras
 Provides ONVIF device discovery and media service for RTSP streams
 
-Version: 1.5.7
+Version: 1.6.0
 Target: Raspberry Pi OS Trixie (64-bit)
 
 Changelog:
+  1.6.0 - ONVIF camera control + Imaging + Relay support
+        - Apply SetVideoEncoderConfiguration to config.env + restart RTSP
+        - Add Imaging service (Brightness/Focus) and DeviceIO relay outputs
+        - Add RTSP transport/multicast capability advertising
   1.5.7 - All Set* operations allowed without auth (read-only camera)
         - SetVideoEncoderConfiguration, DeleteProfile, etc. now allowed
         - Fixes Synology Surveillance Station configuration phase errors
@@ -54,6 +58,7 @@ import hashlib
 import base64
 import secrets
 import ssl
+import subprocess
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
@@ -71,11 +76,163 @@ NAMESPACES = {
     'wsnt': 'http://docs.oasis-open.org/wsn/b-2',
     'wsse': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd',
     'wsu': 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd',
+    'timg': 'http://www.onvif.org/ver20/imaging/wsdl',
+    'tio': 'http://www.onvif.org/ver10/deviceIO/wsdl',
 }
 
 # Register namespaces for XML generation
 for prefix, uri in NAMESPACES.items():
     ET.register_namespace(prefix, uri)
+
+def _get_localname(tag):
+    if not tag:
+        return ''
+    return tag.split('}')[-1] if '}' in tag else tag
+
+def _get_namespace(tag):
+    if not tag or '}' not in tag:
+        return ''
+    return tag.split('}')[0].lstrip('{')
+
+def _find_text_any_ns(elem, suffix, default=None):
+    if elem is None:
+        return default
+    for child in elem.iter():
+        if _get_localname(child.tag) == suffix:
+            text = child.text.strip() if child.text else ''
+            return text if text != '' else default
+    return default
+
+def _parse_int(value, default=None):
+    if value is None or value == '':
+        return default
+    try:
+        return int(float(value))
+    except Exception:
+        return default
+
+def _parse_float(value, default=None):
+    if value is None or value == '':
+        return default
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+def _format_env_value(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return str(value)
+    value_str = str(value)
+    if ' ' in value_str or '"' in value_str or "'" in value_str:
+        return f"\"{value_str}\""
+    return value_str
+
+def _read_config_env(path):
+    data = {}
+    if not os.path.exists(path):
+        return data
+    try:
+        with open(path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or '=' not in line:
+                    continue
+                key, value = line.split('=', 1)
+                data[key.strip()] = value.strip().strip('"').strip("'")
+    except Exception:
+        return data
+    return data
+
+def _update_config_env(path, updates):
+    lines = []
+    existing_keys = set()
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            for line in f:
+                raw = line.rstrip('\n')
+                stripped = raw.strip()
+                if stripped and not stripped.startswith('#') and '=' in stripped:
+                    key = stripped.split('=', 1)[0].strip()
+                    if key in updates:
+                        value = _format_env_value(updates[key])
+                        lines.append(f"{key}={value}")
+                        existing_keys.add(key)
+                        continue
+                lines.append(raw)
+    else:
+        lines.append("# RTSP Camera Configuration")
+    for key, value in updates.items():
+        if key not in existing_keys:
+            lines.append(f"{key}={_format_env_value(value)}")
+    temp_path = f"{path}.tmp"
+    with open(temp_path, 'w') as f:
+        f.write('\n'.join(lines) + '\n')
+    os.replace(temp_path, path)
+    return True
+
+def _run_cmd(cmd, timeout=5):
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return result.returncode == 0, result.stdout.strip(), result.stderr.strip()
+    except Exception as e:
+        return False, '', str(e)
+
+def _detect_camera_type_from_config(config_path):
+    data = _read_config_env(config_path)
+    cam_type = (data.get('CAMERA_TYPE') or '').lower()
+    if cam_type in ('usb', 'csi'):
+        return cam_type
+    if (data.get('CSI_ENABLE') or '').lower() == 'yes':
+        return 'csi'
+    if (data.get('USB_ENABLE') or '').lower() == 'yes':
+        return 'usb'
+    return 'auto'
+
+def _v4l2_get_ctrl(device, name):
+    ok, out, _ = _run_cmd(['v4l2-ctl', '-d', device, '--get-ctrl', name], timeout=3)
+    if not ok or '=' not in out:
+        return None
+    try:
+        return int(out.split('=', 1)[1].strip())
+    except Exception:
+        return None
+
+def _v4l2_set_ctrl(device, name, value):
+    ok, _, err = _run_cmd(['v4l2-ctl', '-d', device, '--set-ctrl', f'{name}={value}'], timeout=3)
+    return ok, err
+
+def _v4l2_has_ctrl(device, name):
+    ok, out, _ = _run_cmd(['v4l2-ctl', '-d', device, '--list-ctrls'], timeout=3)
+    if not ok:
+        return False
+    return name in out
+
+def _csi_get_controls():
+    try:
+        req = urllib.request.Request('http://127.0.0.1:8085/controls', method='GET')
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode('utf-8'))
+                return data.get('controls') or {}
+    except Exception:
+        return {}
+    return {}
+
+def _csi_set_controls(controls):
+    try:
+        payload = json.dumps(controls).encode('utf-8')
+        req = urllib.request.Request(
+            'http://127.0.0.1:8085/set_controls',
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
 
 
 class ONVIFConfig:
@@ -90,11 +247,21 @@ class ONVIFConfig:
         self.password = ''
         self.rtsp_port = 8554
         self.rtsp_path = '/stream'
+        self.rtsp_protocols = 'udp,tcp'
         # Video settings (read from main config)
         self.video_width = 640
         self.video_height = 480
         self.video_fps = 15
         self.video_bitrate = 2000
+        self.video_device = '/dev/video0'
+        self.camera_type = 'auto'
+        # Relay settings
+        self.relay_enabled = False
+        self.relay_gpio_pin = None
+        self.relay_gpio_chip = 'gpiochip0'
+        self.relay_active_high = True
+        self.relay_name = 'RelayOutput'
+        self.relay_token = 'RelayOutput1'
         # Meeting API settings
         self.meeting_api_url = ''
         self.meeting_device_key = ''
@@ -118,6 +285,7 @@ class ONVIFConfig:
         
         # Load video settings and Meeting API settings from RTSP config
         self.load_video_settings()
+        self.load_relay_settings()
         
         # Fetch device name from Meeting API
         self.fetch_device_name_from_meeting()
@@ -143,10 +311,22 @@ class ONVIFConfig:
                             self.video_fps = int(value)
                         elif key == 'H264_BITRATE_KBPS' and value:
                             self.video_bitrate = int(value)
+                        elif key == 'VIDEO_DEVICE' and value:
+                            self.video_device = value
                         elif key == 'RTSP_PORT' and value:
                             self.rtsp_port = int(value)
                         elif key == 'RTSP_PATH' and value:
                             self.rtsp_path = '/' + value.lstrip('/')
+                        elif key == 'RTSP_PROTOCOLS' and value:
+                            self.rtsp_protocols = value.lower()
+                        elif key == 'CAMERA_TYPE' and value:
+                            self.camera_type = value.lower()
+                        elif key == 'CSI_ENABLE' and value and self.camera_type == 'auto':
+                            if value.lower() == 'yes':
+                                self.camera_type = 'csi'
+                        elif key == 'USB_ENABLE' and value and self.camera_type == 'auto':
+                            if value.lower() == 'yes':
+                                self.camera_type = 'usb'
                         # RTSP authentication credentials - sync with RTSP server
                         # If set, these will be used for ONVIF authentication
                         elif key == 'RTSP_USER' and value:
@@ -167,6 +347,18 @@ class ONVIFConfig:
                     print(f"[ONVIF] RTSP authentication: user={self.username}")
         except Exception as e:
             print(f"[ONVIF] Error loading video settings: {e}")
+
+    def load_relay_settings(self):
+        """Load relay configuration from main config file."""
+        data = _read_config_env(self.rtsp_config_file)
+        self.relay_enabled = (data.get('RELAY_ENABLE', 'false').lower() == 'yes')
+        pin_val = data.get('RELAY_GPIO_PIN', '')
+        self.relay_gpio_pin = _parse_int(pin_val, None)
+        self.relay_gpio_chip = data.get('RELAY_GPIO_CHIP', self.relay_gpio_chip) or self.relay_gpio_chip
+        active_high = data.get('RELAY_ACTIVE_HIGH', 'true').lower()
+        self.relay_active_high = active_high in ('true', '1', 'yes', 'on')
+        self.relay_name = data.get('RELAY_OUTPUT_NAME', self.relay_name) or self.relay_name
+        self.relay_token = data.get('RELAY_OUTPUT_TOKEN', self.relay_token) or self.relay_token
     
     def fetch_device_name_from_meeting(self):
         """Fetch device name from Meeting API.
@@ -404,6 +596,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                 'GetNetworkInterfaces',  # Basic network info
                 'GetNTP',                # Time config
                 'GetRelayOutputs',       # Relay info
+                'GetRelayOutputOptions',
                 
                 # Media Service - Read operations (needed by Synology)
                 'GetProfiles',           # Profile list
@@ -427,7 +620,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                 'GetCompatibleAudioEncoderConfigurations',
                 
                 # Write actions - allowed without auth for Synology compatibility
-                # These return our existing profile/config, they don't actually modify anything
+                # Some actions apply to config.env (encoder/source) for real changes
                 'CreateProfile',         # Returns existing profile (read-only camera)
                 'DeleteProfile',         # Accepted but ignored (we keep MainProfile)
                 'SetNTP',                # Accepted but ignored (NTP managed by OS)
@@ -439,6 +632,12 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                 'SetVideoSourceConfiguration',   # Accepted but ignored (read-only camera)
                 'SetAudioEncoderConfiguration',  # Accepted but ignored (read-only camera)
                 'SetAudioSourceConfiguration',   # Accepted but ignored (read-only camera)
+                # Imaging service
+                'GetImagingSettings',
+                'SetImagingSettings',
+                'GetImagingOptions',
+                # Relay write
+                'SetRelayOutputState',
             }
             
             # Check authentication if required (skip for public actions)
@@ -526,6 +725,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
             'GetVideoEncoderConfigurations': self.get_video_encoder_configurations,
             'GetVideoEncoderConfiguration': self.get_video_encoder_configuration,
             'SetVideoEncoderConfiguration': self.set_video_encoder_configuration,
+            'SetVideoSourceConfiguration': self.set_video_source_configuration,
             'GetVideoEncoderConfigurationOptions': self.get_video_encoder_configuration_options,
             'GetGuaranteedNumberOfVideoEncoderInstances': self.get_guaranteed_encoder_instances,
             'GetSnapshotUri': self.get_snapshot_uri,
@@ -536,6 +736,8 @@ class ONVIFHandler(BaseHTTPRequestHandler):
             'GetVideoSourceConfigurationOptions': self.get_video_source_configuration_options,
             'GetServiceCapabilities': self.get_service_capabilities,
             'GetRelayOutputs': self.get_relay_outputs,
+            'GetRelayOutputOptions': self.get_relay_output_options,
+            'SetRelayOutputState': self.set_relay_output_state,
             'GetNTP': self.get_ntp,
             'SetNTP': self.set_ntp,
             'CreateProfile': self.create_profile,
@@ -548,6 +750,10 @@ class ONVIFHandler(BaseHTTPRequestHandler):
             'GetCompatibleVideoSourceConfigurations': self.get_compatible_video_source_configurations,
             'GetCompatibleVideoEncoderConfigurations': self.get_compatible_video_encoder_configurations,
             'GetCompatibleAudioEncoderConfigurations': self.get_compatible_audio_encoder_configurations,
+            # Imaging Service
+            'GetImagingSettings': self.get_imaging_settings,
+            'SetImagingSettings': self.set_imaging_settings,
+            'GetImagingOptions': self.get_imaging_options,
         }
         
         handler = handlers.get(action)
@@ -563,7 +769,9 @@ class ONVIFHandler(BaseHTTPRequestHandler):
 <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" 
                xmlns:tds="http://www.onvif.org/ver10/device/wsdl"
                xmlns:trt="http://www.onvif.org/ver10/media/wsdl"
-               xmlns:tt="http://www.onvif.org/ver10/schema">
+               xmlns:tt="http://www.onvif.org/ver10/schema"
+               xmlns:timg="http://www.onvif.org/ver20/imaging/wsdl"
+               xmlns:tio="http://www.onvif.org/ver10/deviceIO/wsdl">
     <soap:Body>
         {content}
     </soap:Body>
@@ -635,6 +843,8 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         """Handle GetCapabilities request."""
         ip = self.config.get_local_ip()
         port = self.config.port
+        protocols = (self.config.rtsp_protocols or '').lower()
+        multicast_enabled = 'udp-mcast' in protocols or 'mcast' in protocols or 'multicast' in protocols
         
         content = f'''<tds:GetCapabilitiesResponse>
             <tds:Capabilities>
@@ -644,11 +854,17 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                 <tt:Media>
                     <tt:XAddr>http://{ip}:{port}/onvif/media_service</tt:XAddr>
                     <tt:StreamingCapabilities>
-                        <tt:RTPMulticast>false</tt:RTPMulticast>
+                        <tt:RTPMulticast>{str(multicast_enabled).lower()}</tt:RTPMulticast>
                         <tt:RTP_TCP>true</tt:RTP_TCP>
                         <tt:RTP_RTSP_TCP>true</tt:RTP_RTSP_TCP>
                     </tt:StreamingCapabilities>
                 </tt:Media>
+                <tt:Imaging>
+                    <tt:XAddr>http://{ip}:{port}/onvif/imaging_service</tt:XAddr>
+                </tt:Imaging>
+                <tt:DeviceIO>
+                    <tt:XAddr>http://{ip}:{port}/onvif/deviceio_service</tt:XAddr>
+                </tt:DeviceIO>
             </tds:Capabilities>
         </tds:GetCapabilitiesResponse>'''
         return self.wrap_soap_response(content)
@@ -672,6 +888,22 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                 <tds:XAddr>http://{ip}:{port}/onvif/media_service</tds:XAddr>
                 <tds:Version>
                     <tt:Major>2</tt:Major>
+                    <tt:Minor>0</tt:Minor>
+                </tds:Version>
+            </tds:Service>
+            <tds:Service>
+                <tds:Namespace>http://www.onvif.org/ver20/imaging/wsdl</tds:Namespace>
+                <tds:XAddr>http://{ip}:{port}/onvif/imaging_service</tds:XAddr>
+                <tds:Version>
+                    <tt:Major>2</tt:Major>
+                    <tt:Minor>0</tt:Minor>
+                </tds:Version>
+            </tds:Service>
+            <tds:Service>
+                <tds:Namespace>http://www.onvif.org/ver10/deviceIO/wsdl</tds:Namespace>
+                <tds:XAddr>http://{ip}:{port}/onvif/deviceio_service</tds:XAddr>
+                <tds:Version>
+                    <tt:Major>1</tt:Major>
                     <tt:Minor>0</tt:Minor>
                 </tds:Version>
             </tds:Service>
@@ -949,9 +1181,62 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         return self.wrap_soap_response(content)
     
     def set_video_encoder_configuration(self, request):
-        """Handle SetVideoEncoderConfiguration request - acknowledge."""
-        content = '''<trt:SetVideoEncoderConfigurationResponse>
-        </trt:SetVideoEncoderConfigurationResponse>'''
+        """Handle SetVideoEncoderConfiguration request - apply to config.env."""
+        width = _parse_int(_find_text_any_ns(request, 'Width'), None)
+        height = _parse_int(_find_text_any_ns(request, 'Height'), None)
+        fps = _parse_int(_find_text_any_ns(request, 'FrameRateLimit'), None)
+        bitrate = _parse_int(_find_text_any_ns(request, 'BitrateLimit'), None)
+        gov_length = _parse_int(_find_text_any_ns(request, 'GovLength'), None)
+        profile = _find_text_any_ns(request, 'H264Profile')
+
+        updates = {}
+        if width and width > 0:
+            updates['VIDEO_WIDTH'] = width
+        if height and height > 0:
+            updates['VIDEO_HEIGHT'] = height
+        if fps and fps > 0:
+            updates['VIDEO_FPS'] = fps
+        if bitrate and bitrate > 0:
+            updates['H264_BITRATE_KBPS'] = bitrate
+        if gov_length and gov_length > 0:
+            updates['H264_KEYINT'] = gov_length
+        if profile:
+            profile_lower = profile.strip().lower()
+            if 'baseline' in profile_lower:
+                updates['H264_PROFILE'] = 'baseline'
+            elif 'high' in profile_lower:
+                updates['H264_PROFILE'] = 'high'
+            elif 'main' in profile_lower:
+                updates['H264_PROFILE'] = 'main'
+
+        if updates:
+            try:
+                _update_config_env(self.config.rtsp_config_file, updates)
+                self.config.load_video_settings()
+                _run_cmd(['systemctl', 'restart', 'rpi-av-rtsp-recorder'], timeout=10)
+            except Exception as e:
+                print(f"[ONVIF] Failed to apply encoder config: {e}")
+
+        content = '''<trt:SetVideoEncoderConfigurationResponse></trt:SetVideoEncoderConfigurationResponse>'''
+        return self.wrap_soap_response(content)
+
+    def set_video_source_configuration(self, request):
+        """Handle SetVideoSourceConfiguration request - apply bounds to config.env."""
+        width = _parse_int(_find_text_any_ns(request, 'Width'), None)
+        height = _parse_int(_find_text_any_ns(request, 'Height'), None)
+        updates = {}
+        if width and width > 0:
+            updates['VIDEO_WIDTH'] = width
+        if height and height > 0:
+            updates['VIDEO_HEIGHT'] = height
+        if updates:
+            try:
+                _update_config_env(self.config.rtsp_config_file, updates)
+                self.config.load_video_settings()
+                _run_cmd(['systemctl', 'restart', 'rpi-av-rtsp-recorder'], timeout=10)
+            except Exception as e:
+                print(f"[ONVIF] Failed to apply source config: {e}")
+        content = '''<trt:SetVideoSourceConfigurationResponse></trt:SetVideoSourceConfigurationResponse>'''
         return self.wrap_soap_response(content)
     
     def get_snapshot_uri(self, request):
@@ -1128,21 +1413,238 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         return self.wrap_soap_response(content)
     
     def get_service_capabilities(self, request):
-        """Handle GetServiceCapabilities request (Media Service)."""
-        content = '''<trt:GetServiceCapabilitiesResponse>
+        """Handle GetServiceCapabilities request (Media/Imaging/DeviceIO)."""
+        namespace = _get_namespace(request.tag)
+        if namespace == NAMESPACES.get('timg'):
+            content = '''<timg:GetServiceCapabilitiesResponse>
+                <timg:Capabilities>
+                    <timg:ImageStabilization>false</timg:ImageStabilization>
+                </timg:Capabilities>
+            </timg:GetServiceCapabilitiesResponse>'''
+            return self.wrap_soap_response(content)
+        if namespace == NAMESPACES.get('tio'):
+            content = '''<tio:GetServiceCapabilitiesResponse>
+                <tio:Capabilities>
+                    <tio:VideoSources>true</tio:VideoSources>
+                    <tio:VideoOutputs>false</tio:VideoOutputs>
+                    <tio:RelayOutputs>true</tio:RelayOutputs>
+                </tio:Capabilities>
+            </tio:GetServiceCapabilitiesResponse>'''
+            return self.wrap_soap_response(content)
+
+        protocols = (self.config.rtsp_protocols or '').lower()
+        multicast_enabled = 'udp-mcast' in protocols or 'mcast' in protocols or 'multicast' in protocols
+        content = f'''<trt:GetServiceCapabilitiesResponse>
             <trt:Capabilities>
                 <trt:ProfileCapabilities MaximumNumberOfProfiles="2"/>
-                <trt:StreamingCapabilities RTPMulticast="false" RTP_TCP="true" RTP_RTSP_TCP="true"/>
+                <trt:StreamingCapabilities RTPMulticast="{str(multicast_enabled).lower()}" RTP_TCP="true" RTP_RTSP_TCP="true"/>
                 <trt:SnapshotUri>true</trt:SnapshotUri>
             </trt:Capabilities>
         </trt:GetServiceCapabilitiesResponse>'''
         return self.wrap_soap_response(content)
     
     def get_relay_outputs(self, request):
-        """Handle GetRelayOutputs request - no relay outputs."""
-        content = '''<tds:GetRelayOutputsResponse>
-        </tds:GetRelayOutputsResponse>'''
+        """Handle GetRelayOutputs request."""
+        self.config.load_relay_settings()
+        if not self._relay_available():
+            content = '''<tio:GetRelayOutputsResponse></tio:GetRelayOutputsResponse>'''
+            return self.wrap_soap_response(content)
+
+        logical_state = 'inactive'
+        state = self._relay_get_state()
+        if state is True:
+            logical_state = 'active'
+
+        content = f'''<tio:GetRelayOutputsResponse>
+            <tio:RelayOutputs token="{self.config.relay_token}">
+                <tt:Token>{self.config.relay_token}</tt:Token>
+                <tt:Properties>
+                    <tt:Mode>Bistable</tt:Mode>
+                    <tt:DelayTime>PT0S</tt:DelayTime>
+                    <tt:IdleState>inactive</tt:IdleState>
+                </tt:Properties>
+                <tt:LogicalState>{logical_state}</tt:LogicalState>
+            </tio:RelayOutputs>
+        </tio:GetRelayOutputsResponse>'''
         return self.wrap_soap_response(content)
+
+    def get_relay_output_options(self, request):
+        """Handle GetRelayOutputOptions request."""
+        self.config.load_relay_settings()
+        if not self._relay_available():
+            content = '''<tio:GetRelayOutputOptionsResponse></tio:GetRelayOutputOptionsResponse>'''
+            return self.wrap_soap_response(content)
+        content = f'''<tio:GetRelayOutputOptionsResponse>
+            <tio:RelayOutputOptions>
+                <tt:RelayOutputOptions>
+                    <tt:Token>{self.config.relay_token}</tt:Token>
+                    <tt:Mode>Bistable</tt:Mode>
+                    <tt:DelayTime>PT0S</tt:DelayTime>
+                </tt:RelayOutputOptions>
+            </tio:RelayOutputOptions>
+        </tio:GetRelayOutputOptionsResponse>'''
+        return self.wrap_soap_response(content)
+
+    def set_relay_output_state(self, request):
+        """Handle SetRelayOutputState request."""
+        self.config.load_relay_settings()
+        if not self._relay_available():
+            content = '''<tio:SetRelayOutputStateResponse></tio:SetRelayOutputStateResponse>'''
+            return self.wrap_soap_response(content)
+        token = _find_text_any_ns(request, 'RelayOutputToken', self.config.relay_token)
+        state = _find_text_any_ns(request, 'LogicalState', '').lower()
+        if token != self.config.relay_token:
+            self.send_soap_fault("Invalid RelayOutputToken")
+            return None
+        logical_active = state == 'active'
+        self._relay_set_state(logical_active)
+        content = '''<tio:SetRelayOutputStateResponse></tio:SetRelayOutputStateResponse>'''
+        return self.wrap_soap_response(content)
+
+    def _relay_available(self):
+        return self.config.relay_enabled and self.config.relay_gpio_pin is not None
+
+    def _relay_get_state(self):
+        """Return logical relay state (True=active)."""
+        if not self._relay_available():
+            return None
+        pin = self.config.relay_gpio_pin
+        chip = self.config.relay_gpio_chip
+        # Try gpiod first
+        ok, out, _ = _run_cmd(['gpioget', chip, str(pin)], timeout=2)
+        if ok and out.strip() in ('0', '1'):
+            physical = out.strip() == '1'
+            return physical if self.config.relay_active_high else not physical
+        # Fallback to sysfs gpio
+        gpio_path = f"/sys/class/gpio/gpio{pin}/value"
+        if os.path.exists(gpio_path):
+            try:
+                with open(gpio_path, 'r') as f:
+                    val = f.read().strip()
+                physical = val == '1'
+                return physical if self.config.relay_active_high else not physical
+            except Exception:
+                return None
+        return None
+
+    def _relay_set_state(self, logical_active):
+        """Set relay logical state (True=active)."""
+        pin = self.config.relay_gpio_pin
+        chip = self.config.relay_gpio_chip
+        physical = logical_active if self.config.relay_active_high else not logical_active
+        value = '1' if physical else '0'
+        # Try gpiod
+        ok, _, _ = _run_cmd(['gpioset', '-m', 'exit', chip, f'{pin}={value}'], timeout=2)
+        if ok:
+            return True
+        # Fallback to sysfs gpio
+        gpio_dir = f"/sys/class/gpio/gpio{pin}"
+        try:
+            if not os.path.exists(gpio_dir):
+                with open('/sys/class/gpio/export', 'w') as f:
+                    f.write(str(pin))
+            with open(f"{gpio_dir}/direction", 'w') as f:
+                f.write('out')
+            with open(f"{gpio_dir}/value", 'w') as f:
+                f.write(value)
+            return True
+        except Exception:
+            return False
+
+    def _get_camera_type(self):
+        cam_type = (self.config.camera_type or 'auto').lower()
+        if cam_type in ('usb', 'csi'):
+            return cam_type
+        # Auto detect based on device availability
+        if os.path.exists(self.config.video_device):
+            return 'usb'
+        ok, out, _ = _run_cmd(['rpicam-hello', '--list-cameras'], timeout=3)
+        if ok and 'Available cameras' in out:
+            return 'csi'
+        return 'usb'
+
+    def _get_brightness(self):
+        cam_type = self._get_camera_type()
+        if cam_type == 'csi':
+            controls = _csi_get_controls()
+            brightness = controls.get('Brightness', {}).get('value')
+            if brightness is None:
+                brightness = controls.get('Brightness', {}).get('default')
+            return _parse_float(brightness, None)
+        if os.path.exists(self.config.video_device):
+            return _v4l2_get_ctrl(self.config.video_device, 'brightness')
+        return None
+
+    def _set_brightness(self, value):
+        cam_type = self._get_camera_type()
+        if cam_type == 'csi':
+            brightness_val = _parse_float(value, None)
+            if brightness_val is None:
+                return False
+            return _csi_set_controls({'Brightness': brightness_val})
+        if os.path.exists(self.config.video_device):
+            brightness_val = _parse_int(value, None)
+            if brightness_val is None:
+                return False
+            return _v4l2_set_ctrl(self.config.video_device, 'brightness', brightness_val)[0]
+        return False
+
+    def _get_focus_mode(self):
+        cam_type = self._get_camera_type()
+        if cam_type == 'csi':
+            controls = _csi_get_controls()
+            af_mode = controls.get('AfMode', {}).get('value')
+            if af_mode is None:
+                return None
+            return 'AUTO' if str(af_mode).lower() not in ('0', 'manual') else 'MANUAL'
+        if os.path.exists(self.config.video_device):
+            if _v4l2_has_ctrl(self.config.video_device, 'focus_automatic_continuous'):
+                val = _v4l2_get_ctrl(self.config.video_device, 'focus_automatic_continuous')
+                return 'AUTO' if val == 1 else 'MANUAL'
+            if _v4l2_has_ctrl(self.config.video_device, 'focus_auto'):
+                val = _v4l2_get_ctrl(self.config.video_device, 'focus_auto')
+                return 'AUTO' if val == 1 else 'MANUAL'
+        return None
+
+    def _set_focus_mode(self, mode):
+        mode = (mode or '').upper()
+        cam_type = self._get_camera_type()
+        if cam_type == 'csi':
+            if mode in ('AUTO', 'MANUAL'):
+                return _csi_set_controls({'AfMode': 1 if mode == 'AUTO' else 0})
+            return False
+        if os.path.exists(self.config.video_device):
+            if _v4l2_has_ctrl(self.config.video_device, 'focus_automatic_continuous'):
+                return _v4l2_set_ctrl(self.config.video_device, 'focus_automatic_continuous', 1 if mode == 'AUTO' else 0)[0]
+            if _v4l2_has_ctrl(self.config.video_device, 'focus_auto'):
+                return _v4l2_set_ctrl(self.config.video_device, 'focus_auto', 1 if mode == 'AUTO' else 0)[0]
+        return False
+
+    def _get_focus_position(self):
+        cam_type = self._get_camera_type()
+        if cam_type == 'csi':
+            controls = _csi_get_controls()
+            lens_pos = controls.get('LensPosition', {}).get('value')
+            if lens_pos is None:
+                lens_pos = controls.get('LensPosition', {}).get('default')
+            return _parse_float(lens_pos, None)
+        if os.path.exists(self.config.video_device) and _v4l2_has_ctrl(self.config.video_device, 'focus_absolute'):
+            return _v4l2_get_ctrl(self.config.video_device, 'focus_absolute')
+        return None
+
+    def _set_focus_position(self, value):
+        cam_type = self._get_camera_type()
+        if cam_type == 'csi':
+            lens_pos = _parse_float(value, None)
+            if lens_pos is None:
+                return False
+            return _csi_set_controls({'LensPosition': lens_pos})
+        if os.path.exists(self.config.video_device) and _v4l2_has_ctrl(self.config.video_device, 'focus_absolute'):
+            focus_val = _parse_int(value, None)
+            if focus_val is None:
+                return False
+            return _v4l2_set_ctrl(self.config.video_device, 'focus_absolute', focus_val)[0]
+        return False
     
     def get_ntp(self, request):
         """Handle GetNTP request."""
@@ -1151,6 +1653,67 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                 <tt:FromDHCP>true</tt:FromDHCP>
             </tds:NTPInformation>
         </tds:GetNTPResponse>'''
+        return self.wrap_soap_response(content)
+
+    # ========================================================================
+    # Imaging Service Handlers
+    # ========================================================================
+
+    def get_imaging_settings(self, request):
+        """Handle GetImagingSettings request."""
+        brightness = self._get_brightness()
+        focus_mode = self._get_focus_mode()
+        focus_pos = self._get_focus_position()
+
+        brightness_val = brightness if brightness is not None else 0
+        focus_mode_val = focus_mode or 'AUTO'
+        focus_pos_val = focus_pos if focus_pos is not None else 0
+
+        content = f'''<timg:GetImagingSettingsResponse>
+            <timg:ImagingSettings>
+                <tt:Brightness>{brightness_val}</tt:Brightness>
+                <tt:Focus>
+                    <tt:AutoFocusMode>{focus_mode_val}</tt:AutoFocusMode>
+                    <tt:DefaultSpeed>1</tt:DefaultSpeed>
+                    <tt:NearLimit>0</tt:NearLimit>
+                    <tt:FarLimit>{focus_pos_val}</tt:FarLimit>
+                </tt:Focus>
+            </timg:ImagingSettings>
+        </timg:GetImagingSettingsResponse>'''
+        return self.wrap_soap_response(content)
+
+    def set_imaging_settings(self, request):
+        """Handle SetImagingSettings request."""
+        brightness_text = _find_text_any_ns(request, 'Brightness')
+        autofocus_mode = _find_text_any_ns(request, 'AutoFocusMode')
+        focus_value_text = _find_text_any_ns(request, 'FarLimit')
+
+        if brightness_text is not None:
+            self._set_brightness(brightness_text)
+
+        if autofocus_mode:
+            self._set_focus_mode(autofocus_mode)
+
+        if focus_value_text is not None:
+            self._set_focus_position(focus_value_text)
+
+        content = '''<timg:SetImagingSettingsResponse></timg:SetImagingSettingsResponse>'''
+        return self.wrap_soap_response(content)
+
+    def get_imaging_options(self, request):
+        """Handle GetImagingOptions request."""
+        content = '''<timg:GetImagingOptionsResponse>
+            <timg:ImagingOptions>
+                <tt:Brightness>
+                    <tt:Min>-100</tt:Min>
+                    <tt:Max>100</tt:Max>
+                </tt:Brightness>
+                <tt:Focus>
+                    <tt:AutoFocusModes>MANUAL</tt:AutoFocusModes>
+                    <tt:AutoFocusModes>AUTO</tt:AutoFocusModes>
+                </tt:Focus>
+            </timg:ImagingOptions>
+        </timg:GetImagingOptionsResponse>'''
         return self.wrap_soap_response(content)
     
     def create_profile(self, request):

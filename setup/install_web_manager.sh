@@ -3,7 +3,7 @@
 # File: install_web_manager.sh
 # Purpose: Install RTSP Recorder Web Management Interface
 # Target: Raspberry Pi OS Trixie (64-bit) - basé sur Debian 13
-# Version: 2.4.1
+# Version: 2.4.2
 #
 # NOTE: Ce script installe UNIQUEMENT l'interface web (Flask/Gunicorn)
 #       Les autres composants (RTSP, recorder, watchdog) sont installés
@@ -191,6 +191,7 @@ if [[ ! -f "$CONFIG_DIR/config.env" ]]; then
 # RTSP Settings
 RTSP_PORT="8554"
 RTSP_PATH="stream"
+RTSP_PROTOCOLS="udp,tcp"
 
 # Video Settings
 VIDEO_WIDTH="1280"
@@ -198,6 +199,12 @@ VIDEO_HEIGHT="960"
 VIDEO_FPS="20"
 VIDEO_DEVICE="/dev/video0"
 VIDEO_FORMAT="auto"
+STREAM_SOURCE_MODE="camera"
+STREAM_SOURCE_URL=""
+RTSP_PROXY_TRANSPORT="auto"
+RTSP_PROXY_AUDIO="auto"
+RTSP_PROXY_LATENCY_MS="100"
+SCREEN_DISPLAY=":0.0"
 VIDEO_OVERLAY_ENABLE="no"
 VIDEO_OVERLAY_TEXT=""
 VIDEO_OVERLAY_POSITION="top-left"
@@ -207,6 +214,14 @@ VIDEO_OVERLAY_CLOCK_POSITION="bottom-right"
 VIDEO_OVERLAY_FONT_SIZE="24"
 CSI_ENABLE="auto"
 USB_ENABLE="auto"
+
+# Relay (GPIO) Settings
+RELAY_ENABLE="no"
+RELAY_GPIO_PIN="0"
+RELAY_GPIO_CHIP="gpiochip0"
+RELAY_ACTIVE_HIGH="true"
+RELAY_OUTPUT_NAME="RelayOutput"
+RELAY_OUTPUT_TOKEN="RelayOutput1"
 
 # Recording Settings
 RECORD_ENABLE="yes"

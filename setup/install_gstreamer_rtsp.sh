@@ -9,8 +9,9 @@
 #   - Create folders for recordings/logs
 #   - Provide quick post-install checks (non-destructive)
 #
-# Version: 2.2.4
+# Version: 2.2.5
 # Changelog:
+#   - 2.2.5: RTSP transport protocols + multicast options for test-launch
 #   - 2.2.4: rpicam opencv postprocess plugin (CSI overlay annotate)
 #   - 2.2.1: Headless RTSP defaults
 #            - Do not install PipeWire/WirePlumber by default (RTSP-Full uses ALSA direct under systemd/root)
@@ -174,6 +175,7 @@ apt_install \
   i2c-tools \
   util-linux \
   util-linux-extra \
+  gpiod \
   usbutils \
   pciutils \
   build-essential \
@@ -305,7 +307,7 @@ build_test_launch() {
   cat > "$build_dir/test-launch.c" << 'EOFCODE'
 /* 
  * test-launch - GStreamer RTSP Server with Basic/Digest Authentication
- * Version: 2.1.0
+ * Version: 2.2.0
  * 
  * Environment variables:
  *   RTSP_PORT     - Port to listen on (default: 8554)
@@ -314,6 +316,10 @@ build_test_launch() {
  *   RTSP_PASSWORD - Password for authentication (optional)
  *   RTSP_REALM    - Authentication realm (default: "RPi Camera")
  *   RTSP_AUTH_METHOD - "basic", "digest", or "both" (default: "both")
+ *   RTSP_PROTOCOLS - Comma list: udp,tcp,udp-mcast (default: udp,tcp)
+ *   RTSP_MULTICAST_BASE - Multicast base IP (optional)
+ *   RTSP_MULTICAST_PORT_MIN - Multicast port range start (optional)
+ *   RTSP_MULTICAST_PORT_MAX - Multicast port range end (optional)
  *
  * If RTSP_USER and RTSP_PASSWORD are both set, authentication is required.
  * If either is empty/unset, the stream is accessible without authentication.
@@ -322,6 +328,7 @@ build_test_launch() {
  */
 #include <gst/gst.h>
 #include <gst/rtsp-server/rtsp-server.h>
+#include <gst/rtsp-server/rtsp-address-pool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -354,12 +361,17 @@ main (int argc, char *argv[])
   const gchar *password = g_getenv ("RTSP_PASSWORD");
   const gchar *realm = g_getenv ("RTSP_REALM");
   const gchar *auth_method = g_getenv ("RTSP_AUTH_METHOD");
+  const gchar *protocols_env = g_getenv ("RTSP_PROTOCOLS");
+  const gchar *mcast_base = g_getenv ("RTSP_MULTICAST_BASE");
+  const gchar *mcast_port_min = g_getenv ("RTSP_MULTICAST_PORT_MIN");
+  const gchar *mcast_port_max = g_getenv ("RTSP_MULTICAST_PORT_MAX");
   
   /* Defaults */
   if (!port || strlen(port) == 0) port = "8554";
   if (!path || strlen(path) == 0) path = "/stream";
   if (!realm || strlen(realm) == 0) realm = "RPi Camera";
   if (!auth_method || strlen(auth_method) == 0) auth_method = "both";
+  if (!protocols_env || strlen(protocols_env) == 0) protocols_env = "udp,tcp";
 
   gst_init (&argc, &argv);
 
@@ -372,6 +384,10 @@ main (int argc, char *argv[])
     g_print ("  RTSP_PASSWORD   - Password for authentication (optional)\n");
     g_print ("  RTSP_REALM      - Authentication realm (default: \"RPi Camera\")\n");
     g_print ("  RTSP_AUTH_METHOD- basic, digest, or both (default: both)\n");
+    g_print ("  RTSP_PROTOCOLS  - udp,tcp,udp-mcast (default: udp,tcp)\n");
+    g_print ("  RTSP_MULTICAST_BASE - Multicast base IP (optional)\n");
+    g_print ("  RTSP_MULTICAST_PORT_MIN - Multicast port min (optional)\n");
+    g_print ("  RTSP_MULTICAST_PORT_MAX - Multicast port max (optional)\n");
     return -1;
   }
 
@@ -388,6 +404,35 @@ main (int argc, char *argv[])
   gst_rtsp_media_factory_set_launch (factory, str);
   gst_rtsp_media_factory_set_shared (factory, TRUE);
   g_free (str);
+
+  /* Parse RTSP protocols */
+  GstRTSPLowerTrans protocols = 0;
+  gchar **tokens = g_strsplit (protocols_env, ",", -1);
+  for (gint i = 0; tokens && tokens[i]; i++) {
+    gchar *tok = g_strstrip (tokens[i]);
+    if (g_strcmp0 (tok, "udp") == 0) {
+      protocols |= GST_RTSP_LOWER_TRANS_UDP;
+    } else if (g_strcmp0 (tok, "tcp") == 0) {
+      protocols |= GST_RTSP_LOWER_TRANS_TCP;
+    } else if (g_strcmp0 (tok, "udp-mcast") == 0 || g_strcmp0 (tok, "mcast") == 0 || g_strcmp0 (tok, "multicast") == 0) {
+      protocols |= GST_RTSP_LOWER_TRANS_UDP_MCAST;
+    }
+  }
+  g_strfreev (tokens);
+  if (protocols == 0) {
+    protocols = GST_RTSP_LOWER_TRANS_UDP | GST_RTSP_LOWER_TRANS_TCP;
+  }
+  gst_rtsp_media_factory_set_protocols (factory, protocols);
+
+  /* Optional multicast address pool */
+  if (mcast_base && mcast_port_min && mcast_port_max) {
+    GstRTSPAddressPool *pool = gst_rtsp_address_pool_new ();
+    guint16 port_min = (guint16) atoi (mcast_port_min);
+    guint16 port_max = (guint16) atoi (mcast_port_max);
+    gst_rtsp_address_pool_add_range (pool, mcast_base, mcast_base, port_min, port_max, 1);
+    gst_rtsp_media_factory_set_address_pool (factory, pool);
+    g_object_unref (pool);
+  }
 
   /* Setup authentication if username and password are provided */
   if (user && password && strlen(user) > 0 && strlen(password) > 0) {

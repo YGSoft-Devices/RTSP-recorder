@@ -18,6 +18,11 @@
 
 
 - Identifier des valeurs fiables pour `AwbEnable` et `AeFlickerPeriod` (Picamera2 retourne `null` dans `/controls`)
+- Tester le mode source `STREAM_SOURCE_MODE=rtsp` (proxy H264/AAC) + compatibilitÃ© clients
+- Tester `STREAM_SOURCE_MODE=mjpeg` et `STREAM_SOURCE_MODE=screen` (encodage H264)
+- Valider `RTSP_PROTOCOLS` (udp/tcp/udp-mcast) et multicast avec test-launch v2.2.0
+- Tester ONVIF Imaging (Brightness/Focus) via ODM/ODT
+- Tester relais GPIO ONVIF (DeviceIO) avec `gpiod` (gpioset/gpioget)
 - Valider visuellement le bouton ghost-fix sur le flux CSI (effet ghost disparu)
 - Tester la persistance `VIDEO_FORMAT` (choix MJPG/YUYV) apres sauvegarde + reboot
 - Tester l'overlay RTSP (texte + date/heure) sur USB, et valider l'absence sur CSI Picamera2

@@ -2,7 +2,7 @@
 set -e
 export PATH=/usr/bin:/bin:/usr/local/bin:/sbin:/usr/sbin:$PATH
 
-echo "[BUILD] Compilation de test-launch v2.1.0 avec support Digest+Basic auth..."
+echo "[BUILD] Compilation de test-launch v2.2.0 avec support Digest+Basic auth + protocols..."
 
 cd /tmp/rtsp-server-build
 
@@ -20,7 +20,7 @@ echo "[BUILD] Copie vers /usr/local/bin..."
 sudo cp test-launch /usr/local/bin/test-launch
 sudo chmod +x /usr/local/bin/test-launch
 
-echo "[BUILD] test-launch v2.1.0 avec Digest+Basic auth installé!"
+echo "[BUILD] test-launch v2.2.0 avec Digest+Basic auth installé!"
 
 # Test
 /usr/local/bin/test-launch 2>&1 | head -10 || true

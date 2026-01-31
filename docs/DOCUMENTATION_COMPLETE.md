@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.33.06
+Version: 2.34.00
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -31,6 +31,7 @@ Le projet supporte **3 sources essentielles** :
 - CSI : `rpicam-apps`, `gstreamer1.0-libcamera`
 - Audio : `alsa-utils`, `gstreamer1.0-alsa`
 - CSI overlay (libcamera) : `rpicam-apps-opencv-postprocess`
+- Relay GPIO (ONVIF DeviceIO) : `gpiod`
 
 Composants (source → cible sur le device):
 
@@ -323,7 +324,43 @@ RTSP_AUTH_METHOD="both"
 sudo ./setup/install_gstreamer_rtsp.sh
 ```
 
-### 5.7 Serveur RTSP CSI natif (Python) - v1.4.14
+### 5.7 Modes source (caméra / proxy RTSP / MJPEG / écran) (v2.13.0+)
+
+Le serveur RTSP peut diffuser autre chose qu'une caméra locale grâce au mode source.
+
+**Variables clés (config.env):**
+- `STREAM_SOURCE_MODE` : `camera` (défaut) | `rtsp` | `mjpeg` | `screen`
+- `STREAM_SOURCE_URL` : URL de la source (obligatoire pour `rtsp` / `mjpeg`)
+- `RTSP_PROXY_TRANSPORT` : `auto` | `tcp` | `udp` (transport côté source RTSP)
+- `RTSP_PROXY_AUDIO` : `auto` | `yes` | `no` (relai audio source RTSP)
+- `RTSP_PROXY_LATENCY_MS` : buffer rtspsrc (ms)
+- `SCREEN_DISPLAY` : display X11 (ex: `:0.0`) pour `screen`
+
+**Comportements:**
+- `camera` : pipeline local (USB/CSI) inchangé.
+- `rtsp` : proxy RTSP (H264 + AAC pass-through si disponibles).
+- `mjpeg` : récupère un MJPEG HTTP et ré-encode en H264.
+- `screen` : capture d'écran X11 et ré-encode en H264.
+
+**Limites:**
+- `rtsp` : nécessite un flux H264 (et AAC pour audio), pas de transcodage.
+- `screen` : nécessite un environnement X11 actif.
+
+### 5.8 Transports RTSP (UDP/TCP/Multicast) (v2.13.0+)
+
+Le serveur RTSP GStreamer peut forcer les transports côté client :
+- `RTSP_PROTOCOLS=udp,tcp` (défaut)
+- `RTSP_PROTOCOLS=tcp` (TCP uniquement)
+- `RTSP_PROTOCOLS=udp` (UDP uniquement)
+- `RTSP_PROTOCOLS=udp-mcast` (multicast)
+
+**Option multicast avancée:**
+- `RTSP_MULTICAST_BASE` (ex: `239.255.12.1`)
+- `RTSP_MULTICAST_PORT_MIN` / `RTSP_MULTICAST_PORT_MAX`
+
+Ces variables sont lues par `test-launch` (v2.2.0+) si recompilé via `install_gstreamer_rtsp.sh`.
+
+### 5.9 Serveur RTSP CSI natif (Python) - v1.4.14
 
 Pour les caméras CSI (PiCam), un serveur RTSP dédié en Python utilise **Picamera2** au lieu de `test-launch`.
 
@@ -475,7 +512,7 @@ Udev (réaction immédiate sur replug USB):
 ### 8.1 Service
 - Nom: `rpi-cam-onvif`
 - Script: `/opt/rpi-cam-webmanager/onvif-server/onvif_server.py`
-- Version: 1.5.0
+- Version: 1.6.0
 
 ### 8.2 Configuration
 
@@ -496,6 +533,36 @@ Champs principaux:
 **Note:** Le champ `name` dans `onvif.conf` est ignoré depuis la v1.5.0. Le nom est récupéré depuis l'API Meeting (voir section 8.4).
 
 Le serveur lit aussi `VIDEO_WIDTH/HEIGHT/FPS` et `H264_BITRATE_KBPS` depuis `/etc/rpi-cam/config.env` pour annoncer des settings cohérents.
+
+#### 8.2.1 Contrôle caméra via ONVIF (SetVideoEncoderConfiguration)
+
+Depuis v1.6.0, les modifications ONVIF des paramètres vidéo sont appliquées **réellement** :
+- `SetVideoEncoderConfiguration` met à jour `VIDEO_WIDTH/HEIGHT/FPS` et `H264_BITRATE_KBPS`
+- `H264_KEYINT` est mis à jour via `GovLength`
+- Le service RTSP est redémarré pour appliquer les changements
+
+#### 8.2.2 Imaging (Brightness / Focus)
+
+Le service Imaging est exposé (Profile T minimal) :
+- `GetImagingSettings`, `SetImagingSettings`, `GetImagingOptions`
+- Brightness via V4L2 (USB) ou IPC Picamera2 (CSI)
+- Focus auto/manual si disponible (USB V4L2)
+
+#### 8.2.3 Relay Outputs (DeviceIO)
+
+Le service DeviceIO expose un relais ONVIF (digital output) si configuré.
+
+Configuration dans `/etc/rpi-cam/config.env` :
+```
+RELAY_ENABLE=yes
+RELAY_GPIO_PIN=17
+RELAY_GPIO_CHIP=gpiochip0
+RELAY_ACTIVE_HIGH=true
+RELAY_OUTPUT_NAME=RelayOutput
+RELAY_OUTPUT_TOKEN=RelayOutput1
+```
+
+Si `RELAY_ENABLE=no`, aucun relais n'est annoncé.
 
 ### 8.3 Nom du device (intégration Meeting API)
 
@@ -1537,9 +1604,16 @@ Format `KEY="VALUE"` ou `KEY=VALUE`.
 
 RTSP / vidéo:
 - `RTSP_PORT`, `RTSP_PATH`
+- `RTSP_PROTOCOLS` (`udp,tcp,udp-mcast`) - transports RTSP côté client
 - `RTSP_USER`, `RTSP_PASSWORD` (authentification, optionnel - les deux requis pour activer)
 - `VIDEO_WIDTH`, `VIDEO_HEIGHT`, `VIDEO_FPS`, `VIDEO_DEVICE`
 - `VIDEO_FORMAT` (`auto|MJPG|YUYV|H264`) - format USB préféré
+- `STREAM_SOURCE_MODE` (`camera|rtsp|mjpeg|screen`)
+- `STREAM_SOURCE_URL` (URL source RTSP/MJPEG)
+- `RTSP_PROXY_TRANSPORT` (`auto|tcp|udp`)
+- `RTSP_PROXY_AUDIO` (`auto|yes|no`)
+- `RTSP_PROXY_LATENCY_MS` (ms)
+- `SCREEN_DISPLAY` (ex: `:0.0`)
 - `CAMERA_TYPE` (`auto|usb|csi`)
 - `CAMERA_DEVICE` (legacy, fallback du périphérique caméra)
 - `CSI_ENABLE` (`auto|yes|no`), `USB_ENABLE` (`auto|yes|no`)
@@ -1589,6 +1663,14 @@ Profils caméra:
 - `CAMERA_AUTOFOCUS` (`yes|no|auto`)
 - `CAMERA_PROFILES_ENABLED` (`yes|no`)
 - `CAMERA_PROFILES_FILE` (par défaut `/etc/rpi-cam/camera_profiles.json`)
+
+Relais ONVIF (DeviceIO):
+- `RELAY_ENABLE` (`yes|no`)
+- `RELAY_GPIO_PIN` (GPIO BCM)
+- `RELAY_GPIO_CHIP` (ex: `gpiochip0`)
+- `RELAY_ACTIVE_HIGH` (`true|false`)
+- `RELAY_OUTPUT_NAME`
+- `RELAY_OUTPUT_TOKEN`
 
 ---
 

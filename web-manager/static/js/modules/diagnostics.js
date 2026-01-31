@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Diagnostic functions
- * Version: 2.33.06
+ * Version: 2.34.00
  */
 
 (function () {

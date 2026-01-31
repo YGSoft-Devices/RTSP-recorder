@@ -65,7 +65,7 @@ RTSP-Full/
 ├── CHANGELOG.md                      # Historique des modifications
 ├── AGENTS.md                         # Ce fichier (instructions IA)
 ├── VERSION                           # Fichier de version centralisé (source unique)
-├── rpi_av_rtsp_recorder.sh           # Script RTSP principal (v2.12.9) - Dispatcheur USB/CSI
+├── rpi_av_rtsp_recorder.sh           # Script RTSP principal (v2.13.0) - Dispatcheur USB/CSI
 ├── rpi_csi_rtsp_server.py            # Serveur RTSP CSI natif (v1.4.14) - Picamera2 + GStreamer
 ├── rtsp_recorder.sh                  # Service d'enregistrement ffmpeg (v1.6.0)
 ├── rtsp_watchdog.sh                  # Watchdog haute disponibilité (v1.0.0)
@@ -116,7 +116,7 @@ RTSP-Full/
 │   ├── install_rtsp_recorder.sh
 │   ├── install_web_manager.sh
 │   ├── install_rtsp_watchdog.sh      # Installation watchdog (v1.0.0)
-│   ├── install_onvif_server.sh       # Installation ONVIF (v1.0.0)
+│   ├── install_onvif_server.sh       # Installation ONVIF (v1.0.1)
 │   ├── rtsp-watchdog.service         # Service systemd watchdog
 │   ├── rtsp-camera-recovery.service  # Service récupération caméra
 │   ├── rpi-cam-onvif.service         # Service systemd ONVIF
@@ -592,14 +592,14 @@ RTSP-Full/
 
 | Fichier | Version Actuelle |
 |---------|------------------|
-| VERSION | 2.32.72 (source unique) |
-| rpi_av_rtsp_recorder.sh | 2.12.9 |
+| VERSION | 2.34.00 (source unique) |
+| rpi_av_rtsp_recorder.sh | 2.13.0 |
 | rtsp_recorder.sh | 1.6.0 |
 | rtsp_watchdog.sh | 1.2.0 |
-| onvif-server/onvif_server.py | 1.5.7 |
+| onvif-server/onvif_server.py | 1.6.0 |
 | rpi_csi_rtsp_server.py | 1.4.14 |
 | web-manager/app.py | 2.30.16 |
-| web-manager/config.py | 1.1.2 |
+| web-manager/config.py | 1.1.6 |
 | esp32/firmware (PlatformIO) | 0.1.2 |
 | web-manager/services/camera_service.py | 2.30.9 |
 | web-manager/services/csi_camera_service.py | 1.2.0 |
@@ -626,16 +626,16 @@ RTSP-Full/
 | web-manager/blueprints/debug_bp.py | 2.30.8 |
 | web-manager/blueprints/legacy_bp.py | 2.30.2 |
 | web-manager/blueprints/*.py (autres) | 2.30.5 |
-| web-manager/templates/index.html | 2.32.67 |
-| web-manager/static/js/app.js | 2.32.66 |
-| web-manager/static/css/style.css | 2.32.67 |
+| web-manager/templates/index.html | 2.34.00 |
+| web-manager/static/js/app.js | 2.34.00 |
+| web-manager/static/css/style.css | 2.34.00 |
 | setup/install.sh | 1.3.0 |
-| setup/install_gstreamer_rtsp.sh | 2.2.3 |
-| setup/test-launch.c | 2.1.0 |
-| setup/install_rpi_av_rtsp_recorder.sh | 2.0.1 |
+| setup/install_gstreamer_rtsp.sh | 2.2.5 |
+| setup/test-launch.c | 2.2.0 |
+| setup/install_rpi_av_rtsp_recorder.sh | 2.0.2 |
 | setup/install_rtsp_recorder.sh | 1.0.0 |
-| setup/install_web_manager.sh | 2.4.1 |
-| setup/install_onvif_server.sh | 1.0.0 |
+| setup/install_web_manager.sh | 2.4.2 |
+| setup/install_onvif_server.sh | 1.0.1 |
 | setup/install_rtsp_watchdog.sh | 1.0.0 |
 | debug_tools/install_device.ps1 | 1.4.2 |
 | debug_tools/install_device_gui.ps1 | 1.4.0 |
@@ -645,7 +645,7 @@ RTSP-Full/
 | debug_tools/deploy_scp.ps1 | 1.4.2 |
 | debug_tools/Get-DeviceIP.ps1 | 1.0.0 |
 | debug_tools/stop_services.sh | 1.0.0 |
-| docs/DOCUMENTATION_COMPLETE.md | 2.32.72 |
+| docs/DOCUMENTATION_COMPLETE.md | 2.34.00 |
 | debug_tools/package_update.ps1 | 1.0.1 |
 
 

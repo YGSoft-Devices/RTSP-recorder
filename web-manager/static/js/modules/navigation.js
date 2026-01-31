@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Navigation and tab helpers
- * Version: 2.33.06
+ * Version: 2.34.00
  */
 (function () {
     // Valid tab IDs for URL navigation (debug is optional, checked dynamically)

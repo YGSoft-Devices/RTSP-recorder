@@ -7,6 +7,33 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.34.00] - ONVIF Imaging/Relay + RTSP Proxy/Transport
+
+### Ajouts
+- **onvif-server/onvif_server.py** (v1.6.0)
+  - Imaging service (Brightness/Focus), DeviceIO RelayOutputs, SetVideoEncoderConfiguration appliqué à config.env.
+- **rpi_av_rtsp_recorder.sh** (v2.13.0)
+  - `STREAM_SOURCE_MODE` (camera/rtsp/mjpeg/screen), proxy RTSP, MJPEG/screen re-encode, `RTSP_PROTOCOLS`.
+- **setup/install_gstreamer_rtsp.sh** (v2.2.5)
+  - test-launch v2.2.0 avec protocoles RTSP (udp/tcp/udp-mcast) + multicast optionnel.
+- **web-manager/templates/index.html**, **web-manager/static/js/modules/config_video.js**
+  - UI pour `STREAM_SOURCE_MODE`, `STREAM_SOURCE_URL`, `RTSP_PROTOCOLS` et proxy RTSP.
+- **web-manager/templates/index.html**
+  - UI relais GPIO ONVIF (`RELAY_*`).
+- **web-manager/DEPENDENCIES.json**
+  - Ajout de `gpiod`.
+
+### Modifications
+- **setup/install_rpi_av_rtsp_recorder.sh** (v2.0.2)
+  - Defaults `STREAM_SOURCE_MODE`/proxy + `RTSP_PROTOCOLS`.
+- **setup/install_web_manager.sh** (v2.4.2)
+  - Defaults config.env pour RTSP proxy + relay GPIO.
+- **docs/DOCUMENTATION_COMPLETE.md**, **docs/comparatif_features_code_only.md**
+  - Documentation RTSP proxy, transports, Imaging/Relay ONVIF.
+- **VERSION**: 2.33.06 → 2.34.00
+
+---
+
 ## [2.33.06] - CSI Profiles + Overlay
 
 ### Corrections

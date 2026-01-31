@@ -7,8 +7,9 @@
 #   - Create config file in /etc/rpi-cam
 #   - Setup basic logrotate for the service log
 #
-# Version: 2.0.1
+# Version: 2.0.2
 # Changelog:
+#   - 2.0.2: Added stream source/proxy defaults + RTSP_PROTOCOLS
 #   - 2.0.0: Updated for v2 recorder with better USB camera support
 #   - 1.0.0: Initial release
 #===============================================================================
@@ -113,6 +114,7 @@ if [[ ! -f "${CONFIG_FILE}" ]]; then
 # RTSP Server
 RTSP_PORT=8554
 RTSP_PATH=stream
+RTSP_PROTOCOLS=udp,tcp
 
 # Video settings
 # Avec l'encodeur HARDWARE (v4l2h264enc), on peut utiliser une bonne résolution
@@ -124,6 +126,15 @@ VIDEO_WIDTH=640
 VIDEO_HEIGHT=480
 VIDEO_FPS=15
 VIDEO_DEVICE=/dev/video0
+VIDEO_FORMAT=auto
+
+# Stream source mode: camera|rtsp|mjpeg|screen
+STREAM_SOURCE_MODE=camera
+STREAM_SOURCE_URL=
+RTSP_PROXY_TRANSPORT=auto
+RTSP_PROXY_AUDIO=auto
+RTSP_PROXY_LATENCY_MS=100
+SCREEN_DISPLAY=:0.0
 
 # Camera mode: auto, yes, no
 CSI_ENABLE=auto

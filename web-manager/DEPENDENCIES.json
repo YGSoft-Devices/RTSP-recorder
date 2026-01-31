@@ -19,6 +19,7 @@
     "gstreamer1.0-v4l2",
     "gstreamer1.0-x",
     "gstreamer1.0-x264",
+    "gpiod",
     "hostapd",
     "libcamera-apps",
     "rpicam-apps-opencv-postprocess",

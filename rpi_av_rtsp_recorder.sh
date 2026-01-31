@@ -11,8 +11,13 @@
 #   - Serve RTSP stream (H264 video + optional AAC audio)
 #   - Record locally in segments (robust against power loss)
 #
-# Version: 2.12.9
+# Version: 2.13.0
 # Changelog:
+#   - 2.13.0: Stream source proxy modes + RTSP protocol controls
+#            - New STREAM_SOURCE_MODE: camera|rtsp|mjpeg|screen
+#            - RTSP proxy pipeline (rtspsrc) with optional audio passthrough
+#            - MJPEG/Screen sources with H264 re-encode
+#            - RTSP_PROTOCOLS exported for TCP/UDP/Multicast selection
 #   - 2.12.9: Export CSI_OVERLAY_MODE for CSI overlay selection
 #   - 2.12.8: Export overlay config to CSI RTSP server
 #   - 2.12.7: Disable overlay gracefully when textoverlay/clockoverlay missing
@@ -96,6 +101,17 @@ set -euo pipefail
 : "${VIDEO_DEVICE:=/dev/video0}"
 # Preferred USB format: auto, MJPG, YUYV, H264 (optional)
 : "${VIDEO_FORMAT:=auto}"
+
+# Source mode: camera (default), rtsp, mjpeg, screen
+: "${STREAM_SOURCE_MODE:=camera}"
+: "${STREAM_SOURCE_URL:=}"
+: "${RTSP_PROXY_TRANSPORT:=auto}"  # auto|tcp|udp
+: "${RTSP_PROXY_AUDIO:=auto}"      # auto|yes|no
+: "${RTSP_PROXY_LATENCY_MS:=100}"
+: "${SCREEN_DISPLAY:=:0.0}"
+
+# RTSP server protocols: udp,tcp,udp-mcast
+: "${RTSP_PROTOCOLS:=udp,tcp}"
 
 # Overlay settings (USB/legacy CSI only)
 : "${VIDEO_OVERLAY_ENABLE:=no}"
@@ -683,6 +699,28 @@ build_video_encoder() {
   fi
 }
 
+build_generic_h264_encoder() {
+  local use_hw_encoder=0
+  if gst-inspect-1.0 v4l2h264enc >/dev/null 2>&1; then
+    if test_hw_encoder_works; then
+      use_hw_encoder=1
+    else
+      log "WARNING: v4l2h264enc exists but doesn't work - falling back to software" >&2
+    fi
+  fi
+
+  if [[ $use_hw_encoder -eq 1 ]]; then
+    local bitrate_bps=$((H264_BITRATE_KBPS * 1000))
+    echo "video/x-raw,format=I420 ! v4l2h264enc extra-controls=\"controls,repeat_sequence_header=1,video_bitrate=${bitrate_bps}\" ! video/x-h264,level=(string)4 ! h264parse config-interval=1"
+  elif gst-inspect-1.0 x264enc >/dev/null 2>&1; then
+    echo "x264enc tune=zerolatency speed-preset=ultrafast bitrate=${H264_BITRATE_KBPS} key-int-max=${H264_KEYINT} bframes=0 threads=2 ! h264parse config-interval=1"
+  elif gst-inspect-1.0 openh264enc >/dev/null 2>&1; then
+    echo "openh264enc bitrate=$((H264_BITRATE_KBPS * 1000)) ! h264parse config-interval=1"
+  else
+    die "No H264 encoder available. Need x264enc or openh264enc."
+  fi
+}
+
 build_audio_source() {
   local audio_dev="$1"
   
@@ -724,6 +762,37 @@ build_audio_encoder() {
     log "No AAC encoder available - audio disabled" >&2
     echo ""
   fi
+}
+
+build_proxy_pipeline() {
+  local url="$1"
+  local transport="$2"
+  local latency_ms="$3"
+  local audio_mode="$4"
+  local protocols=""
+  if [[ "$transport" == "tcp" || "$transport" == "udp" ]]; then
+    protocols="protocols=${transport}"
+  fi
+  local audio_branch=""
+  if [[ "$audio_mode" != "no" ]]; then
+    audio_branch="src. ! queue ! rtpmp4gdepay ! aacparse ! rtpmp4gpay name=pay1 pt=97"
+  fi
+  echo "rtspsrc location=${url} latency=${latency_ms} ${protocols} name=src \
+    src. ! queue ! rtph264depay ! h264parse ! rtph264pay name=pay0 pt=96 config-interval=1 \
+    ${audio_branch}"
+}
+
+build_mjpeg_pipeline() {
+  local url="$1"
+  local encoder
+  encoder="$(build_generic_h264_encoder)"
+  echo "souphttpsrc location=${url} ! multipartdemux ! jpegdec ! videoconvert ! videoscale ! video/x-raw,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! ${encoder} ! rtph264pay name=pay0 pt=96 config-interval=1"
+}
+
+build_screen_pipeline() {
+  local encoder
+  encoder="$(build_generic_h264_encoder)"
+  echo "ximagesrc display-name=${SCREEN_DISPLAY} use-damage=0 ! videoconvert ! videoscale ! video/x-raw,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! ${encoder} ! rtph264pay name=pay0 pt=96 config-interval=1"
 }
 
 #---------------------------
@@ -789,9 +858,10 @@ setup_fs
 setup_logging
 
 log "=========================================="
-log "Starting rpi_av_rtsp_recorder v2.12.8"
+log "Starting rpi_av_rtsp_recorder v2.13.0"
 log "=========================================="
 log "Config: RTSP=:${RTSP_PORT}/${RTSP_PATH} Video=${VIDEO_WIDTH}x${VIDEO_HEIGHT}@${VIDEO_FPS}fps"
+log "Source mode: ${STREAM_SOURCE_MODE}"
 log "Recording: ${RECORD_ENABLE} -> ${RECORD_DIR} (${SEGMENT_SECONDS}s segments)"
 log "Audio: ${AUDIO_ENABLE} device=${AUDIO_DEVICE} gain=${AUDIO_GAIN}"
 if [[ -n "$RTSP_USER" && -n "$RTSP_PASSWORD" ]]; then
@@ -811,139 +881,173 @@ if [[ -z "$TEST_LAUNCH" ]]; then
 fi
 log "Using RTSP server: $TEST_LAUNCH"
 
-# Detect camera
-CAM_MODE="$(select_camera_mode)"
-log "Camera mode: $CAM_MODE"
-[[ "$CAM_MODE" != "none" ]] || die "No camera detected. Check USB connection or CSI ribbon."
+SOURCE_MODE="$(echo "${STREAM_SOURCE_MODE}" | tr '[:upper:]' '[:lower:]')"
+PIPELINE=""
 
-# ---------------------------------------------------------
-# CSI Mode Delegation (Picamera2 / Python Implementation)
-# ---------------------------------------------------------
-if [[ "$CAM_MODE" == "csi" ]]; then
-  log "CSI Camera Mode selected. Delegating to rpi_csi_rtsp_server.py (Picamera2 Native)..."
-  if [[ "${VIDEO_OVERLAY_ENABLE}" == "yes" ]]; then
-    if [[ "${CSI_OVERLAY_MODE}" == "libcamera" ]]; then
-      log "Overlay enabled for CSI (libcamera annotate via rpicam-vid)." >&2
+if [[ "$SOURCE_MODE" == "camera" ]]; then
+  # Detect camera
+  CAM_MODE="$(select_camera_mode)"
+  log "Camera mode: $CAM_MODE"
+  [[ "$CAM_MODE" != "none" ]] || die "No camera detected. Check USB connection or CSI ribbon."
+
+  # ---------------------------------------------------------
+  # CSI Mode Delegation (Picamera2 / Python Implementation)
+  # ---------------------------------------------------------
+  if [[ "$CAM_MODE" == "csi" ]]; then
+    log "CSI Camera Mode selected. Delegating to rpi_csi_rtsp_server.py (Picamera2 Native)..."
+    if [[ "${VIDEO_OVERLAY_ENABLE}" == "yes" ]]; then
+      if [[ "${CSI_OVERLAY_MODE}" == "libcamera" ]]; then
+        log "Overlay enabled for CSI (libcamera annotate via rpicam-vid)." >&2
+      else
+        log "Overlay enabled for CSI (software re-encode in RTSP server)." >&2
+      fi
+    fi
+    
+    # Define path to Python server
+    # Check local div (dev mode) then install path
+    CSI_SERVER_SCRIPT="./rpi_csi_rtsp_server.py"
+    if [[ ! -f "$CSI_SERVER_SCRIPT" ]]; then
+      CSI_SERVER_SCRIPT="/usr/local/bin/rpi_csi_rtsp_server.py"
+    fi
+    
+    if [[ ! -f "$CSI_SERVER_SCRIPT" ]]; then
+       # Fallback to old behavior if script missing, but warn
+       log_err "rpi_csi_rtsp_server.py not found at $CSI_SERVER_SCRIPT. Falling back to legacy gst-launch (may be unstable/limited)."
     else
-      log "Overlay enabled for CSI (software re-encode in RTSP server)." >&2
+       # Export environment variables for the Python script
+       export RTSP_PORT
+       export RTSP_PATH
+       export VIDEO_WIDTH
+       export VIDEO_HEIGHT
+       export VIDEO_FPS
+       export H264_BITRATE_KBPS="$((H264_BITRATE_KBPS))"
+       export H264_KEYINT
+       export H264_PROFILE
+       export H264_QP
+      export VIDEO_OVERLAY_ENABLE
+      export VIDEO_OVERLAY_TEXT
+      export VIDEO_OVERLAY_POSITION
+      export VIDEO_OVERLAY_SHOW_DATETIME
+      export VIDEO_OVERLAY_DATETIME_FORMAT
+      export VIDEO_OVERLAY_CLOCK_POSITION
+      export VIDEO_OVERLAY_FONT_SIZE
+      export CSI_OVERLAY_MODE
+       export AUDIO_ENABLE
+       # Detect audio info for Python script if specific device wasn't set
+       if [[ "$AUDIO_ENABLE" != "no" ]]; then
+          AUDIO_DEV="$(detect_audio_dev || true)"
+          export AUDIO_DEVICE="${AUDIO_DEVICE:-$AUDIO_DEV}"
+       else
+          export AUDIO_DEVICE
+       fi
+       export AUDIO_RATE
+       
+       # Execute the Python server (replaces this process)
+       exec python3 "$CSI_SERVER_SCRIPT"
     fi
   fi
-  
-  # Define path to Python server
-  # Check local div (dev mode) then install path
-  CSI_SERVER_SCRIPT="./rpi_csi_rtsp_server.py"
-  if [[ ! -f "$CSI_SERVER_SCRIPT" ]]; then
-    CSI_SERVER_SCRIPT="/usr/local/bin/rpi_csi_rtsp_server.py"
+
+  # Show camera info
+  if [[ "$CAM_MODE" == "usb" ]]; then
+    log "Camera device: $VIDEO_DEVICE"
+    v4l2-ctl -d "$VIDEO_DEVICE" --info 2>/dev/null | grep -E "Driver|Card|Bus" || true
   fi
-  
-  if [[ ! -f "$CSI_SERVER_SCRIPT" ]]; then
-     # Fallback to old behavior if script missing, but warn
-     log_err "rpi_csi_rtsp_server.py not found at $CSI_SERVER_SCRIPT. Falling back to legacy gst-launch (may be unstable/limited)."
+
+  # Detect audio (camera mode only)
+  AUDIO_DEV=""
+  AUDIO_OK=0
+  if [[ "$AUDIO_ENABLE" != "no" ]]; then
+    AUDIO_DEV="$(detect_audio_dev || true)"
+    if [[ -n "$AUDIO_DEV" ]]; then
+      AUDIO_OK=1
+      log "Audio device detected: $AUDIO_DEV"
+    else
+      [[ "$AUDIO_ENABLE" == "yes" ]] && die "AUDIO_ENABLE=yes but no audio device found"
+      log "No audio device found - audio disabled"
+    fi
   else
-     # Export environment variables for the Python script
-     export RTSP_PORT
-     export RTSP_PATH
-     export VIDEO_WIDTH
-     export VIDEO_HEIGHT
-     export VIDEO_FPS
-     export H264_BITRATE_KBPS="$((H264_BITRATE_KBPS))"
-     export H264_KEYINT
-     export H264_PROFILE
-     export H264_QP
-    export VIDEO_OVERLAY_ENABLE
-    export VIDEO_OVERLAY_TEXT
-    export VIDEO_OVERLAY_POSITION
-    export VIDEO_OVERLAY_SHOW_DATETIME
-    export VIDEO_OVERLAY_DATETIME_FORMAT
-    export VIDEO_OVERLAY_CLOCK_POSITION
-    export VIDEO_OVERLAY_FONT_SIZE
-    export CSI_OVERLAY_MODE
-     export AUDIO_ENABLE
-     # Detect audio info for Python script if specific device wasn't set
-     if [[ "$AUDIO_ENABLE" != "no" ]]; then
-        AUDIO_DEV="$(detect_audio_dev || true)"
-        export AUDIO_DEVICE="${AUDIO_DEVICE:-$AUDIO_DEV}"
-     else
-        export AUDIO_DEVICE
-     fi
-     export AUDIO_RATE
-     
-     # Execute the Python server (replaces this process)
-     exec python3 "$CSI_SERVER_SCRIPT"
+    log "Audio disabled by configuration"
   fi
-fi
 
-# Show camera info
-if [[ "$CAM_MODE" == "usb" ]]; then
-  log "Camera device: $VIDEO_DEVICE"
-  v4l2-ctl -d "$VIDEO_DEVICE" --info 2>/dev/null | grep -E "Driver|Card|Bus" || true
-fi
+  # Build pipeline components
+  log "Building video source for mode: $CAM_MODE"
+  VIDEO_SRC="$(build_video_source "$CAM_MODE")"
+  if [[ -z "$VIDEO_SRC" ]]; then
+    die "Failed to build video source"
+  fi
+  VIDEO_OVERLAY="$(build_video_overlay)"
+  if [[ -n "$VIDEO_OVERLAY" ]]; then
+    log "Overlay enabled: ${VIDEO_OVERLAY}" >&2
+    VIDEO_SRC="${VIDEO_SRC} ! ${VIDEO_OVERLAY}"
+  fi
+  log "Building video encoder for mode: $CAM_MODE"
+  VIDEO_ENC="$(build_video_encoder "$CAM_MODE")"
+  if [[ -z "$VIDEO_ENC" ]]; then
+    die "Failed to build video encoder"
+  fi
 
-# Detect audio
-AUDIO_DEV=""
-AUDIO_OK=0
-if [[ "$AUDIO_ENABLE" != "no" ]]; then
-  # detect_audio_dev returns 1 if no device found, which is not an error
-  AUDIO_DEV="$(detect_audio_dev || true)"
-  if [[ -n "$AUDIO_DEV" ]]; then
-    AUDIO_OK=1
-    log "Audio device detected: $AUDIO_DEV"
+  log "Video source: $VIDEO_SRC"
+  log "Video encoder: $VIDEO_ENC"
+
+  AUDIO_SRC=""
+  AUDIO_ENC=""
+  if [[ $AUDIO_OK -eq 1 ]]; then
+    AUDIO_SRC="$(build_audio_source "$AUDIO_DEV")"
+    AUDIO_ENC="$(build_audio_encoder)"
+    if [[ -z "$AUDIO_ENC" ]]; then
+      AUDIO_OK=0
+      log "Audio encoding not available - audio disabled"
+    fi
+  fi
+
+  # Build pipeline - video + audio if available
+  if [[ $AUDIO_OK -eq 1 ]]; then
+    PIPELINE="${VIDEO_SRC} ! queue max-size-buffers=3 max-size-time=0 max-size-bytes=0 leaky=downstream ! ${VIDEO_ENC} ! rtph264pay name=pay0 pt=96 config-interval=1"
+    PIPELINE="${PIPELINE} ${AUDIO_SRC} ! ${AUDIO_ENC} ! rtpmp4gpay name=pay1 pt=97"
+    log "Audio enabled: ${AUDIO_DEV}"
   else
-    [[ "$AUDIO_ENABLE" == "yes" ]] && die "AUDIO_ENABLE=yes but no audio device found"
-    log "No audio device found - audio disabled"
+    PIPELINE="${VIDEO_SRC} ! queue max-size-buffers=3 max-size-time=0 max-size-bytes=0 leaky=downstream ! ${VIDEO_ENC} ! rtph264pay name=pay0 pt=96 config-interval=1"
+    log "Audio disabled"
   fi
-else
-  log "Audio disabled by configuration"
-fi
 
-# Build pipeline components
-log "Building video source for mode: $CAM_MODE"
-VIDEO_SRC="$(build_video_source "$CAM_MODE")"
-if [[ -z "$VIDEO_SRC" ]]; then
-  die "Failed to build video source"
-fi
-VIDEO_OVERLAY="$(build_video_overlay)"
-if [[ -n "$VIDEO_OVERLAY" ]]; then
-  log "Overlay enabled: ${VIDEO_OVERLAY}" >&2
-  VIDEO_SRC="${VIDEO_SRC} ! ${VIDEO_OVERLAY}"
-fi
-log "Building video encoder for mode: $CAM_MODE"
-VIDEO_ENC="$(build_video_encoder "$CAM_MODE")"
-if [[ -z "$VIDEO_ENC" ]]; then
-  die "Failed to build video encoder"
-fi
+elif [[ "$SOURCE_MODE" == "rtsp" ]]; then
+  [[ -n "$STREAM_SOURCE_URL" ]] || die "STREAM_SOURCE_URL is required for STREAM_SOURCE_MODE=rtsp"
+  log "RTSP proxy mode enabled: ${STREAM_SOURCE_URL}"
+  PIPELINE="$(build_proxy_pipeline "$STREAM_SOURCE_URL" "$RTSP_PROXY_TRANSPORT" "$RTSP_PROXY_LATENCY_MS" "$RTSP_PROXY_AUDIO")"
 
-log "Video source: $VIDEO_SRC"
-log "Video encoder: $VIDEO_ENC"
-
-AUDIO_SRC=""
-AUDIO_ENC=""
-if [[ $AUDIO_OK -eq 1 ]]; then
-  AUDIO_SRC="$(build_audio_source "$AUDIO_DEV")"
-  AUDIO_ENC="$(build_audio_encoder)"
-  if [[ -z "$AUDIO_ENC" ]]; then
-    AUDIO_OK=0
-    log "Audio encoding not available - audio disabled"
+elif [[ "$SOURCE_MODE" == "mjpeg" ]]; then
+  [[ -n "$STREAM_SOURCE_URL" ]] || die "STREAM_SOURCE_URL is required for STREAM_SOURCE_MODE=mjpeg"
+  log "MJPEG proxy mode enabled: ${STREAM_SOURCE_URL}"
+  VIDEO_SRC="$(build_mjpeg_pipeline "$STREAM_SOURCE_URL")"
+  PIPELINE="$VIDEO_SRC"
+  if [[ "$AUDIO_ENABLE" != "no" ]]; then
+    AUDIO_DEV="$(detect_audio_dev || true)"
+    if [[ -n "$AUDIO_DEV" ]]; then
+      AUDIO_SRC="$(build_audio_source "$AUDIO_DEV")"
+      AUDIO_ENC="$(build_audio_encoder)"
+      if [[ -n "$AUDIO_ENC" ]]; then
+        PIPELINE="${PIPELINE} ${AUDIO_SRC} ! ${AUDIO_ENC} ! rtpmp4gpay name=pay1 pt=97"
+      fi
+    fi
   fi
-fi
 
-# Build complete pipeline for RTSP streaming
-# Note: test-launch works best with simple pipelines
-# Recording with splitmuxsink inside RTSP pipeline causes issues
-# For now: RTSP streaming only. Recording can be done externally via VLC/ffmpeg
+elif [[ "$SOURCE_MODE" == "screen" ]]; then
+  log "Screen capture mode enabled (display: ${SCREEN_DISPLAY})"
+  VIDEO_SRC="$(build_screen_pipeline)"
+  PIPELINE="$VIDEO_SRC"
+  if [[ "$AUDIO_ENABLE" != "no" ]]; then
+    AUDIO_DEV="$(detect_audio_dev || true)"
+    if [[ -n "$AUDIO_DEV" ]]; then
+      AUDIO_SRC="$(build_audio_source "$AUDIO_DEV")"
+      AUDIO_ENC="$(build_audio_encoder)"
+      if [[ -n "$AUDIO_ENC" ]]; then
+        PIPELINE="${PIPELINE} ${AUDIO_SRC} ! ${AUDIO_ENC} ! rtpmp4gpay name=pay1 pt=97"
+      fi
+    fi
+  fi
 
-# Simple video-only pipeline for RTSP
-# Build pipeline - video + audio if available
-# queue elements help absorb USB bandwidth variations on Pi 3B+
-if [[ $AUDIO_OK -eq 1 ]]; then
-  # Video + Audio pipeline with queues for USB stability
-  PIPELINE="${VIDEO_SRC} ! queue max-size-buffers=3 max-size-time=0 max-size-bytes=0 leaky=downstream ! ${VIDEO_ENC} ! rtph264pay name=pay0 pt=96 config-interval=1"
-  PIPELINE="${PIPELINE} ${AUDIO_SRC} ! ${AUDIO_ENC} ! rtpmp4gpay name=pay1 pt=97"
-  log "Audio enabled: ${AUDIO_DEV}"
 else
-  # Video only with queue
-  PIPELINE="${VIDEO_SRC} ! queue max-size-buffers=3 max-size-time=0 max-size-bytes=0 leaky=downstream ! ${VIDEO_ENC} ! rtph264pay name=pay0 pt=96 config-interval=1"
-  log "Audio disabled"
+  die "Invalid STREAM_SOURCE_MODE: $STREAM_SOURCE_MODE (use camera|rtsp|mjpeg|screen)"
 fi
 
 # Wrap for test-launch
@@ -979,6 +1083,7 @@ export RTSP_PATH="/${RTSP_PATH}"
 export RTSP_USER
 export RTSP_PASSWORD
 export RTSP_REALM="RPi Camera"
+export RTSP_PROTOCOLS
 
 # Launch RTSP server directly
 log "Launching test-launch..."

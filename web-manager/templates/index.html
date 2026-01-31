@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.33.06 -->
+<!-- RTSP Recorder Web Interface - Version 2.34.00 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -401,10 +401,20 @@
                                     </label>
                                     <input type="text" id="RTSP_PATH" name="RTSP_PATH" 
                                            value="{{ config.RTSP_PATH }}">
-                                    <small>Chemin du flux (ex: stream → rtsp://IP:port/stream)</small>
-                                </div>
-                            </div>
-                        </div>
+                                  <small>Chemin du flux (ex: stream → rtsp://IP:port/stream)</small>
+                              </div>
+                          </div>
+                          <div class="form-row">
+                              <div class="form-group">
+                                  <label for="RTSP_PROTOCOLS">
+                                      <i class="fas fa-project-diagram"></i> Protocoles RTSP
+                                  </label>
+                                  <input type="text" id="RTSP_PROTOCOLS" name="RTSP_PROTOCOLS" 
+                                         value="{{ config.RTSP_PROTOCOLS }}">
+                                  <small>Liste séparée par virgules (udp,tcp,udp-mcast)</small>
+                              </div>
+                          </div>
+                      </div>
                         
                         <div class="form-section">
                             <h4><i class="fas fa-lock"></i> Authentification RTSP / ONVIF (partagée)</h4>
@@ -460,6 +470,73 @@
                             <h4><i class="fas fa-broadcast-tower"></i> Paramètres RTSP</h4>
                             <small class="section-help">Contrôlez le flux vidéo RTSP transmis et l'enregistrement, indépendamment de la caméra</small>
                             
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="STREAM_SOURCE_MODE">
+                                        <i class="fas fa-stream"></i> Mode source
+                                    </label>
+                                    <select id="STREAM_SOURCE_MODE" name="STREAM_SOURCE_MODE">
+                                        <option value="camera" {% if config.STREAM_SOURCE_MODE == 'camera' %}selected{% endif %}>Caméra locale</option>
+                                        <option value="rtsp" {% if config.STREAM_SOURCE_MODE == 'rtsp' %}selected{% endif %}>Proxy RTSP</option>
+                                        <option value="mjpeg" {% if config.STREAM_SOURCE_MODE == 'mjpeg' %}selected{% endif %}>Proxy MJPEG</option>
+                                        <option value="screen" {% if config.STREAM_SOURCE_MODE == 'screen' %}selected{% endif %}>Capture écran</option>
+                                    </select>
+                                    <small>Source vidéo utilisée par le serveur RTSP</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="STREAM_SOURCE_URL">
+                                        <i class="fas fa-link"></i> URL source
+                                    </label>
+                                    <input type="text" id="STREAM_SOURCE_URL" name="STREAM_SOURCE_URL"
+                                           value="{{ config.STREAM_SOURCE_URL }}" placeholder="rtsp://... ou http://...">
+                                    <small>Obligatoire en mode proxy RTSP/MJPEG</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="RTSP_PROXY_TRANSPORT">
+                                        <i class="fas fa-exchange-alt"></i> Transport RTSP source
+                                    </label>
+                                    <select id="RTSP_PROXY_TRANSPORT" name="RTSP_PROXY_TRANSPORT">
+                                        <option value="auto" {% if config.RTSP_PROXY_TRANSPORT == 'auto' %}selected{% endif %}>Auto</option>
+                                        <option value="tcp" {% if config.RTSP_PROXY_TRANSPORT == 'tcp' %}selected{% endif %}>TCP</option>
+                                        <option value="udp" {% if config.RTSP_PROXY_TRANSPORT == 'udp' %}selected{% endif %}>UDP</option>
+                                    </select>
+                                    <small>Transport utilisé par rtspsrc (proxy)</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="RTSP_PROXY_AUDIO">
+                                        <i class="fas fa-volume-up"></i> Audio proxy RTSP
+                                    </label>
+                                    <select id="RTSP_PROXY_AUDIO" name="RTSP_PROXY_AUDIO">
+                                        <option value="auto" {% if config.RTSP_PROXY_AUDIO == 'auto' %}selected{% endif %}>Auto</option>
+                                        <option value="yes" {% if config.RTSP_PROXY_AUDIO == 'yes' %}selected{% endif %}>Oui</option>
+                                        <option value="no" {% if config.RTSP_PROXY_AUDIO == 'no' %}selected{% endif %}>Non</option>
+                                    </select>
+                                    <small>Relayer l'audio du flux RTSP source</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="RTSP_PROXY_LATENCY_MS">
+                                        <i class="fas fa-hourglass-half"></i> Latence RTSP source (ms)
+                                    </label>
+                                    <input type="number" id="RTSP_PROXY_LATENCY_MS" name="RTSP_PROXY_LATENCY_MS"
+                                           value="{{ config.RTSP_PROXY_LATENCY_MS }}" min="0" max="1000">
+                                    <small>Buffer de latence pour rtspsrc</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="SCREEN_DISPLAY">
+                                        <i class="fas fa-desktop"></i> Display écran
+                                    </label>
+                                    <input type="text" id="SCREEN_DISPLAY" name="SCREEN_DISPLAY"
+                                           value="{{ config.SCREEN_DISPLAY }}" placeholder=":0.0">
+                                    <small>Display X11 pour capture écran</small>
+                                </div>
+                            </div>
+
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="VIDEO_FPS">
@@ -685,6 +762,67 @@
                                         <input type="text" id="onvif_name" name="onvif_name" 
                                                placeholder="UNPROVISIONNED" readonly>
                                         <small id="onvif_name_hint">Nom récupéré automatiquement depuis Meeting API (product_serial)</small>
+                                    </div>
+                                </div>
+
+                                <div class="form-section">
+                                    <h5><i class="fas fa-toggle-on"></i> Relais GPIO (ONVIF)</h5>
+                                    <small class="section-help">Expose un relais ONVIF (DeviceIO) pour sortie digitale.</small>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="RELAY_ENABLE">
+                                                <i class="fas fa-bolt"></i> Activer relais
+                                            </label>
+                                            <select id="RELAY_ENABLE" name="RELAY_ENABLE">
+                                                <option value="no" {% if config.RELAY_ENABLE != 'yes' %}selected{% endif %}>Non</option>
+                                                <option value="yes" {% if config.RELAY_ENABLE == 'yes' %}selected{% endif %}>Oui</option>
+                                            </select>
+                                            <small>Active la sortie digitale ONVIF</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="RELAY_GPIO_PIN">
+                                                <i class="fas fa-microchip"></i> GPIO (BCM)
+                                            </label>
+                                            <input type="number" id="RELAY_GPIO_PIN" name="RELAY_GPIO_PIN"
+                                                   value="{{ config.RELAY_GPIO_PIN }}" min="0" max="40">
+                                            <small>Numéro BCM (ex: 17)</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="RELAY_GPIO_CHIP">
+                                                <i class="fas fa-code-branch"></i> GPIO chip
+                                            </label>
+                                            <input type="text" id="RELAY_GPIO_CHIP" name="RELAY_GPIO_CHIP"
+                                                   value="{{ config.RELAY_GPIO_CHIP }}" placeholder="gpiochip0">
+                                            <small>Chip GPIO (gpiod)</small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="RELAY_ACTIVE_HIGH">
+                                                <i class="fas fa-wave-square"></i> Actif à 1
+                                            </label>
+                                            <select id="RELAY_ACTIVE_HIGH" name="RELAY_ACTIVE_HIGH">
+                                                <option value="true" {% if config.RELAY_ACTIVE_HIGH == 'true' %}selected{% endif %}>Oui</option>
+                                                <option value="false" {% if config.RELAY_ACTIVE_HIGH == 'false' %}selected{% endif %}>Non</option>
+                                            </select>
+                                            <small>Niveau haut = relais actif</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="RELAY_OUTPUT_NAME">
+                                                <i class="fas fa-tag"></i> Nom relais
+                                            </label>
+                                            <input type="text" id="RELAY_OUTPUT_NAME" name="RELAY_OUTPUT_NAME"
+                                                   value="{{ config.RELAY_OUTPUT_NAME }}">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="RELAY_OUTPUT_TOKEN">
+                                                <i class="fas fa-key"></i> Token relais
+                                            </label>
+                                            <input type="text" id="RELAY_OUTPUT_TOKEN" name="RELAY_OUTPUT_TOKEN"
+                                                   value="{{ config.RELAY_OUTPUT_TOKEN }}">
+                                        </div>
                                     </div>
                                 </div>
 

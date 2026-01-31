@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # install_onvif_server.sh - Install ONVIF Server for RTSP Cameras
-# Version: 1.0.0
+# Version: 1.0.1
 #
 # Target: Raspberry Pi OS Trixie (64-bit)
 #
@@ -82,6 +82,12 @@ install_dependencies() {
     fi
     
     log "Python $(python3 --version) found"
+
+    # GPIO tools for relay outputs (optional)
+    if command -v apt-get &>/dev/null; then
+        log "Installing gpiod (GPIO tools) if available..."
+        apt-get install -y gpiod >/dev/null 2>&1 || log_warn "gpiod not installed (relay may fallback to sysfs)"
+    fi
 }
 
 install_onvif_server() {

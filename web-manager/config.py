@@ -3,7 +3,7 @@
 RTSP Recorder Web Manager - Configuration
 Central configuration file for constants, defaults, and metadata.
 
-Version: 1.1.5
+Version: 1.1.6
 """
 
 import os
@@ -135,6 +135,7 @@ DEFAULT_CONFIG = {
     # RTSP Settings
     "RTSP_PORT": "8554",
     "RTSP_PATH": "stream",
+    "RTSP_PROTOCOLS": "udp,tcp",
     # RTSP Authentication (optional - both required for auth to be enabled)
     "RTSP_USER": "",
     "RTSP_PASSWORD": "",
@@ -145,6 +146,12 @@ DEFAULT_CONFIG = {
     "VIDEO_FPS": "15",
     "VIDEO_DEVICE": "/dev/video0",
     "VIDEO_FORMAT": "auto",
+    "STREAM_SOURCE_MODE": "camera",
+    "STREAM_SOURCE_URL": "",
+    "RTSP_PROXY_TRANSPORT": "auto",
+    "RTSP_PROXY_AUDIO": "auto",
+    "RTSP_PROXY_LATENCY_MS": "100",
+    "SCREEN_DISPLAY": ":0.0",
     "VIDEO_OVERLAY_ENABLE": "no",
     "VIDEO_OVERLAY_TEXT": "",
     "VIDEO_OVERLAY_POSITION": "top-left",
@@ -168,6 +175,14 @@ DEFAULT_CONFIG = {
     "H264_KEYINT": "30",
     "H264_PROFILE": "",
     "H264_QP": "",
+
+    # Relay / GPIO
+    "RELAY_ENABLE": "no",
+    "RELAY_GPIO_PIN": "0",
+    "RELAY_GPIO_CHIP": "gpiochip0",
+    "RELAY_ACTIVE_HIGH": "true",
+    "RELAY_OUTPUT_NAME": "RelayOutput",
+    "RELAY_OUTPUT_TOKEN": "RelayOutput1",
     
     # Recording (disabled - use external recording via ffmpeg)
     "RECORD_ENABLE": "no",
@@ -249,6 +264,12 @@ CONFIG_METADATA = {
         "help": "Chemin du flux (ex: rtsp://IP:port/stream)",
         "category": "rtsp"
     },
+    "RTSP_PROTOCOLS": {
+        "label": "Protocoles RTSP",
+        "type": "text",
+        "help": "Liste séparée par virgules: udp,tcp,udp-mcast",
+        "category": "rtsp"
+    },
     "RTSP_USER": {
         "label": "Utilisateur RTSP",
         "type": "text",
@@ -296,6 +317,47 @@ CONFIG_METADATA = {
         "type": "select",
         "options": ["auto", "MJPG", "YUYV", "H264"],
         "help": "Format préféré pour les caméras USB (auto = sélection automatique)",
+        "category": "video"
+    },
+    "STREAM_SOURCE_MODE": {
+        "label": "Mode source",
+        "type": "select",
+        "options": ["camera", "rtsp", "mjpeg", "screen"],
+        "help": "Source du flux: caméra locale, proxy RTSP, MJPEG, ou capture écran",
+        "category": "video"
+    },
+    "STREAM_SOURCE_URL": {
+        "label": "URL source",
+        "type": "text",
+        "help": "URL de la source RTSP/MJPEG (si mode proxy)",
+        "category": "video"
+    },
+    "RTSP_PROXY_TRANSPORT": {
+        "label": "Transport RTSP source",
+        "type": "select",
+        "options": ["auto", "tcp", "udp"],
+        "help": "Transport RTSP côté source (proxy)",
+        "category": "video"
+    },
+    "RTSP_PROXY_AUDIO": {
+        "label": "Audio proxy RTSP",
+        "type": "select",
+        "options": ["auto", "yes", "no"],
+        "help": "Relayer l'audio du flux RTSP source",
+        "category": "video"
+    },
+    "RTSP_PROXY_LATENCY_MS": {
+        "label": "Latence RTSP source (ms)",
+        "type": "number",
+        "min": 0,
+        "max": 1000,
+        "help": "Buffer de latence pour rtspsrc",
+        "category": "video"
+    },
+    "SCREEN_DISPLAY": {
+        "label": "Display écran",
+        "type": "text",
+        "help": "Display X11 pour capture écran (ex: :0.0)",
         "category": "video"
     },
     "VIDEO_OVERLAY_ENABLE": {
@@ -572,6 +634,46 @@ CONFIG_METADATA = {
         "type": "text",
         "help": "Ordre de priorité (ex: eth0,wlan1,wlan0)",
         "category": "network"
+    },
+    "RELAY_ENABLE": {
+        "label": "Relais GPIO",
+        "type": "select",
+        "options": ["yes", "no"],
+        "help": "Active le relais ONVIF (GPIO)",
+        "category": "onvif"
+    },
+    "RELAY_GPIO_PIN": {
+        "label": "GPIO relais",
+        "type": "number",
+        "min": 0,
+        "max": 40,
+        "help": "Numéro de GPIO (BCM) pour le relais",
+        "category": "onvif"
+    },
+    "RELAY_GPIO_CHIP": {
+        "label": "GPIO chip",
+        "type": "text",
+        "help": "GPIO chip (ex: gpiochip0)",
+        "category": "onvif"
+    },
+    "RELAY_ACTIVE_HIGH": {
+        "label": "Relais actif à 1",
+        "type": "select",
+        "options": ["true", "false"],
+        "help": "true = niveau haut active le relais",
+        "category": "onvif"
+    },
+    "RELAY_OUTPUT_NAME": {
+        "label": "Nom relais",
+        "type": "text",
+        "help": "Nom affiché du relais",
+        "category": "onvif"
+    },
+    "RELAY_OUTPUT_TOKEN": {
+        "label": "Token relais",
+        "type": "text",
+        "help": "Token ONVIF du relais",
+        "category": "onvif"
     },
 }
 
