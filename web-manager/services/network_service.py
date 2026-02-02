@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Network Service - Network interfaces, WiFi, and AP mode management
-Version: 2.30.15
+Version: 2.30.16
+
+Changes in 2.30.16:
+- Added get_public_ip() for Meeting API heartbeat v1.8.0+ ip_public field
 """
 
 import os
@@ -61,6 +64,42 @@ def get_local_ip():
         return ip
     except:
         return "127.0.0.1"
+
+def get_public_ip():
+    """
+    Get public IP address by querying external services.
+    Used for Meeting API heartbeat (v1.8.0+ ip_public field).
+    
+    Returns:
+        str: Public IP address or None if detection fails
+    """
+    import urllib.request
+    import ssl
+    
+    # List of services that return plain text IP
+    services = [
+        'https://api.ipify.org',
+        'https://ipinfo.io/ip',
+        'https://checkip.amazonaws.com',
+    ]
+    
+    # SSL context that doesn't verify (some services have cert issues)
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+    
+    for service in services:
+        try:
+            request = urllib.request.Request(service, headers={'User-Agent': 'curl/7.64.0'})
+            with urllib.request.urlopen(request, timeout=5, context=ssl_context) as response:
+                ip = response.read().decode('utf-8').strip()
+                # Validate IP format
+                if re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', ip):
+                    return ip
+        except Exception:
+            continue
+    
+    return None
 
 def get_preferred_ip():
     """Get local IP address based on interface priority.

@@ -4,7 +4,7 @@
 RTSP Recorder Web Manager - Main Application
 Modular Flask application with blueprints architecture.
 
-Version: 2.30.16
+Version: 2.35.00
 """
 
 import os
@@ -35,7 +35,8 @@ from blueprints import (
     watchdog_bp,
     wifi_bp,
     debug_bp,
-    legacy_bp
+    legacy_bp,
+    i18n_bp
 )
 
 # Import services for background tasks
@@ -145,6 +146,7 @@ def register_blueprints(app):
         (wifi_bp, None),        # /api/wifi (legacy compatibility)
         (debug_bp, None),       # /api/debug, /api/system/ntp
         (legacy_bp, None),      # /api/leds/*, /api/gpu/* (backward compatibility)
+        (i18n_bp, None),        # /api/i18n/* (internationalization)
     ]
     
     for blueprint, url_prefix in blueprints:
@@ -305,7 +307,7 @@ def register_main_routes(app):
         gpu_mem = get_gpu_mem()
         ap_mode = load_ap_config()
         
-        # Check if debug tab should be shown (requires 'vnc' or 'debug' service in Meeting)
+        # Check if debug tab should be shown (requires 'debug' service in Meeting)
         debug_enabled = is_debug_enabled()
         
         # Extract status string from service status dict

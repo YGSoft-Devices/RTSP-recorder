@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Preview and camera controls
- * Version: 2.34.00
+ * Version: 2.33.01
  */
 
 (function () {
@@ -1505,9 +1505,7 @@ async function applyProfile(profileId) {
                 loadAdvancedCameraControls();
             }
         } else {
-            const errors = Array.isArray(data.errors) ? data.errors.join(', ') : '';
-            const message = data.message || data.error || errors || 'Échec de l\'application';
-            showToast(`Erreur: ${message}`, 'error');
+            showToast(`Erreur: ${data.message}`, 'error');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');
@@ -1531,9 +1529,7 @@ async function deleteProfile(profileId) {
             showToast('Profil supprimé', 'success');
             loadCameraProfiles();
         } else {
-            const errors = Array.isArray(data.errors) ? data.errors.join(', ') : '';
-            const message = data.message || data.error || errors || 'Échec de la suppression';
-            showToast(`Erreur: ${message}`, 'error');
+            showToast(`Erreur: ${data.message}`, 'error');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');

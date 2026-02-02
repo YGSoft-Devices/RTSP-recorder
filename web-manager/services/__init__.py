@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Services module - Business logic separated from Flask routes
-Version: 2.30.7
+Version: 2.30.8
+
+Changes in 2.30.8:
+- Added get_ssh_keys_status, ensure_ssh_keys_configured for SSH key management
 
 Changes in 2.30.7:
 - Added csi_camera_service lazy import for Picamera2 CSI camera controls
@@ -97,6 +100,7 @@ from .meeting_service import (
     save_meeting_config,
     get_meeting_status,
     send_heartbeat,
+    get_heartbeat_payload,
     meeting_heartbeat_loop,
     start_heartbeat_thread,
     stop_heartbeat_thread,
@@ -113,7 +117,21 @@ from .meeting_service import (
     is_service_declared,
     is_debug_enabled,
     trigger_immediate_heartbeat,
-    has_internet_connectivity
+    has_internet_connectivity,
+    # SSH key management (per Meeting API integration guide)
+    get_ssh_hostkey,
+    sync_ssh_hostkey,
+    generate_device_ssh_key,
+    publish_device_ssh_key,
+    get_device_ssh_pubkey,
+    full_ssh_setup,
+    get_meeting_ssh_pubkey,
+    install_meeting_ssh_pubkey,
+    get_ssh_keys_status,
+    ensure_ssh_keys_configured,
+    # Services declaration
+    get_declared_services,
+    get_meeting_authorized_services
 )
 
 from .system_service import (

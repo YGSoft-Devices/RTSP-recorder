@@ -55,6 +55,7 @@ Le projet RTSP-Full a été conçu et sera TOUJOURS conçu pour supporter ces 3 
    - Le flux RTSP et la transmission audio/video doit toujours etre protegés d'un crash eventuel. Les services sur les devices doivent etre le moins coupés possibles.
    - a chaque mise a jour, utiliser debug_tools\package_update.ps1 pour generer un package.
 
+
 ## 🏗️ Structure du Projet de base (à garder a jour)
 NOTE : App.py ayant été refactorisé, il est important de respecter sa nouvelle structure non monolythique.
 Plus d'informations : docs\ARCHITECTURE_MODULAIRE.md
@@ -74,27 +75,29 @@ RTSP-Full/
 ├── web-manager/                      # Interface web Flask (ARCHITECTURE MODULAIRE v2.32.72)
 │   ├── app.py                        # Orchestrateur Flask (~450 lignes)
 │   ├── config.py                     # Configuration centralisée (v1.1.0, lit VERSION)
-│   ├── services/                     # Logique métier (10 modules)
+│   ├── tunnel_agent.py               # Agent tunnel inversé Meeting (v1.4.0)
+│   ├── services/                     # Logique métier (11 modules)
 │   │   ├── __init__.py               # Exports (v2.30.6)
 │   │   ├── platform_service.py       # Détection plateforme (~210 lignes)
 │   │   ├── config_service.py         # Gestion config/services
 │   │   ├── camera_service.py         # Contrôles caméra - USB + CSI (~1000 lignes)
-│   │   ├── csi_camera_service.py     # Contrôles CSI via Picamera2 (v1.0.0) [NOUVEAU]
+│   │   ├── csi_camera_service.py     # Contrôles CSI via Picamera2 (v1.0.0)
+│   │   ├── i18n_service.py           # Internationalisation (v1.0.0) [NOUVEAU]
 │   │   ├── network_service.py        # Réseau, WiFi (~793 lignes)
 │   │   ├── power_service.py          # LED, GPU, HDMI (~700 lignes)
 │   │   ├── recording_service.py      # Enregistrements (v2.30.2)
 │   │   ├── media_cache_service.py    # Cache SQLite métadonnées/thumbnails (v1.0.1)
-│   │   ├── meeting_service.py        # Meeting API
+│   │   ├── meeting_service.py        # Meeting API (v2.30.18)
 │   │   ├── system_service.py         # Diagnostics, mises à jour
 │   │   └── watchdog_service.py       # RTSP/WiFi watchdog (~567 lignes)
-│   ├── blueprints/                   # Routes HTTP (15 modules)
+│   ├── blueprints/                   # Routes HTTP (16 modules)
 │   │   ├── __init__.py               # Exports
 │   │   ├── config_bp.py              # /api/config, /api/service
 │   │   ├── camera_bp.py              # /api/camera/*
 │   │   ├── recordings_bp.py          # /api/recordings/*, /api/recordings/cache/* (v2.30.6)
 │   │   ├── network_bp.py             # /api/network/*
 │   │   ├── system_bp.py              # /api/system/* (v2.30.7)
-│   │   ├── meeting_bp.py             # /api/meeting/*
+│   │   ├── meeting_bp.py             # /api/meeting/* (v2.30.7)
 │   │   ├── logs_bp.py                # /api/logs/*
 │   │   ├── video_bp.py               # /api/video/*
 │   │   ├── power_bp.py               # /api/leds/*, /api/power/*
@@ -102,11 +105,16 @@ RTSP-Full/
 │   │   ├── detect_bp.py              # /api/detect/*, /api/platform
 │   │   ├── watchdog_bp.py            # /api/rtsp/watchdog/*
 │   │   ├── wifi_bp.py                # /api/wifi/*
+│   │   ├── i18n_bp.py                # /api/i18n/* (v1.0.0) [NOUVEAU]
 │   │   ├── debug_bp.py               # /api/debug/*
 │   │   └── legacy_bp.py              # Routes rétrocompatibilité
-│   ├── templates/index.html          # Frontend HTML (v2.32.58)
-│   ├── static/js/app.js              # JavaScript (v2.32.58)
-│   ├── static/css/style.css          # Styles CSS (v2.32.58)
+│   ├── templates/index.html          # Frontend HTML (v2.35.00)
+│   ├── static/js/app.js              # JavaScript (v2.35.00)
+│   ├── static/js/modules/i18n.js     # Module i18n (v2.35.00) [NOUVEAU]
+│   ├── static/css/style.css          # Styles CSS (v2.35.00)
+│   ├── static/locales/               # Fichiers de traduction [NOUVEAU]
+│   │   ├── fr.json                   # Français (v2.35.00)
+│   │   └── en.json                   # English (v2.35.00)
 │   └── backup-app.py-backup          # Backup monolithique (8350 lignes)
 ├── esp32/                            # Dérivé ESP32 (caméra only, UI légère) (v0.1.0)
 ├── setup/                            # Scripts d'installation
@@ -117,6 +125,7 @@ RTSP-Full/
 │   ├── install_web_manager.sh
 │   ├── install_rtsp_watchdog.sh      # Installation watchdog (v1.0.0)
 │   ├── install_onvif_server.sh       # Installation ONVIF (v1.0.1)
+│   ├── meeting-tunnel-agent.service  # Service tunnel Meeting (v1.0.0) [NOUVEAU]
 │   ├── rtsp-watchdog.service         # Service systemd watchdog
 │   ├── rtsp-camera-recovery.service  # Service récupération caméra
 │   ├── rpi-cam-onvif.service         # Service systemd ONVIF
@@ -592,60 +601,69 @@ RTSP-Full/
 
 | Fichier | Version Actuelle |
 |---------|------------------|
-| VERSION | 2.34.00 (source unique) |
+| VERSION | 2.35.17 (source unique) |
 | rpi_av_rtsp_recorder.sh | 2.13.0 |
 | rtsp_recorder.sh | 1.6.0 |
 | rtsp_watchdog.sh | 1.2.0 |
 | onvif-server/onvif_server.py | 1.6.0 |
 | rpi_csi_rtsp_server.py | 1.4.14 |
-| web-manager/app.py | 2.30.16 |
+| web-manager/app.py | 2.35.03 |
 | web-manager/config.py | 1.1.6 |
+| web-manager/tunnel_agent.py | 1.4.2 |
 | esp32/firmware (PlatformIO) | 0.1.2 |
 | web-manager/services/camera_service.py | 2.30.9 |
 | web-manager/services/csi_camera_service.py | 1.2.0 |
+| web-manager/services/i18n_service.py | 1.0.0 |
 | web-manager/services/media_cache_service.py | 1.0.1 |
-| web-manager/services/meeting_service.py | 2.30.17 |
+| web-manager/services/meeting_service.py | 2.30.23 |
 | web-manager/services/recording_service.py | 2.30.2 |
 | web-manager/services/system_service.py | 2.30.25 |
 | web-manager/services/watchdog_service.py | 2.30.7 |
-| web-manager/services/__init__.py | 2.30.8 |
+| web-manager/services/__init__.py | 2.30.9 |
 | web-manager/services/config_service.py | 2.30.15 |
-| web-manager/services/network_service.py | 2.30.15 |
+| web-manager/services/network_service.py | 2.30.16 |
 | web-manager/services/power_service.py | 2.30.7 |
 | web-manager/services/platform_service.py | 2.30.1 |
 | web-manager/services/*.py (autres) | 2.30.3 |
 | web-manager/blueprints/camera_bp.py | 2.30.11 |
 | web-manager/blueprints/config_bp.py | 2.30.1 |
 | web-manager/blueprints/detect_bp.py | 2.30.1 |
+| web-manager/blueprints/i18n_bp.py | 1.0.0 |
+| web-manager/blueprints/meeting_bp.py | 2.30.12 |
 | web-manager/blueprints/network_bp.py | 2.30.8 |
 | web-manager/blueprints/power_bp.py | 2.30.4 |
 | web-manager/blueprints/recordings_bp.py | 2.30.6 |
 | web-manager/blueprints/system_bp.py | 2.30.12 |
 | web-manager/blueprints/logs_bp.py | 2.30.6 |
 | web-manager/blueprints/wifi_bp.py | 2.30.8 |
-| web-manager/blueprints/debug_bp.py | 2.30.8 |
+| web-manager/blueprints/debug_bp.py | 2.30.9 |
 | web-manager/blueprints/legacy_bp.py | 2.30.2 |
 | web-manager/blueprints/*.py (autres) | 2.30.5 |
-| web-manager/templates/index.html | 2.34.00 |
-| web-manager/static/js/app.js | 2.34.00 |
-| web-manager/static/css/style.css | 2.34.00 |
+| web-manager/templates/index.html | 2.35.03 |
+| web-manager/static/js/app.js | 2.35.00 |
+| web-manager/static/js/modules/meeting.js | 2.35.03 |
+| web-manager/static/js/modules/i18n.js | 2.35.00 |
+| web-manager/static/css/style.css | 2.35.03 |
+| web-manager/static/locales/fr.json | 2.35.00 |
+| web-manager/static/locales/en.json | 2.35.00 |
 | setup/install.sh | 1.3.0 |
 | setup/install_gstreamer_rtsp.sh | 2.2.5 |
 | setup/test-launch.c | 2.2.0 |
 | setup/install_rpi_av_rtsp_recorder.sh | 2.0.2 |
 | setup/install_rtsp_recorder.sh | 1.0.0 |
-| setup/install_web_manager.sh | 2.4.2 |
+| setup/install_web_manager.sh | 2.4.3 |
+| setup/meeting-tunnel-agent.service | 1.0.0 |
 | setup/install_onvif_server.sh | 1.0.1 |
 | setup/install_rtsp_watchdog.sh | 1.0.0 |
-| debug_tools/install_device.ps1 | 1.4.2 |
+| debug_tools/install_device.ps1 | 1.4.4 |
 | debug_tools/install_device_gui.ps1 | 1.4.0 |
 | debug_tools/run_remote.ps1 | 1.3.1 |
-| debug_tools/update_device.ps1 | 2.0.3 |
+| debug_tools/update_device.ps1 | 2.0.4 |
 | debug_tools/ssh_device.ps1 | 1.0.0 |
-| debug_tools/deploy_scp.ps1 | 1.4.2 |
+| debug_tools/deploy_scp.ps1 | 1.4.5 |
 | debug_tools/Get-DeviceIP.ps1 | 1.0.0 |
 | debug_tools/stop_services.sh | 1.0.0 |
-| docs/DOCUMENTATION_COMPLETE.md | 2.34.00 |
+| docs/DOCUMENTATION_COMPLETE.md | 2.35.18 |
 | debug_tools/package_update.ps1 | 1.0.1 |
 
 
@@ -1069,6 +1087,35 @@ RTSP-Full/
   ```
 - **Fichier** : [web-manager/services/meeting_service.py](web-manager/services/meeting_service.py) v2.30.17
 
+### Bug: Tunnel Agent Handshake MemoryError (CORRIGÉ v1.4.0)
+- **Symptôme** : Tunnel crash avec `MemoryError` immédiatement après connexion au proxy Meeting
+  - Erreur : `MemoryError` lors de la lecture de frame binaire
+  - Tentative d'allouer ~1.9GB (payload_length = valeur absurde)
+- **Cause racine** : Mauvaise gestion du protocole handshake
+  1. Le tunnel envoie `{"token":"...","name":"..."}\n` au proxy
+  2. Le proxy répond avec `{"status":"authenticated",...}\n` (JSON texte)
+  3. **BUG** : Le code passait immédiatement en mode frames binaires SANS lire la réponse
+  4. La réponse JSON était interprétée comme header binaire (8 bytes)
+  5. `{"status` lu comme `stream_id (4B) + length (4B)` → length = 1.9GB !
+- **Impact** : CRITIQUE - Tunnel complètement non-fonctionnel, connexion SSH via Meeting impossible
+- **Solution v1.4.0** : Modifier `_handshake()` pour lire la réponse JSON :
+  ```python
+  # Send handshake
+  self._raw_send(handshake_msg.encode() + b'\n')
+  
+  # Read JSON response (NEW!)
+  response_line = self._read_line()
+  response = json.loads(response_line)
+  if response.get('status') != 'authenticated':
+      raise Exception(f"Handshake failed: {response}")
+  
+  # NOW switch to frame mode
+  ```
+- **Résultat** : Tunnel authentifié, streams SSH fonctionnels
+- **Test** : Device 192.168.1.4 ✅ `New stream 369824 -> 127.0.0.1:22`, streams ouverts/fermés proprement
+- **Fichier** : [web-manager/tunnel_agent.py](web-manager/tunnel_agent.py) v1.4.0
+- **Note** : Documentation MEETING - integration.md mise à jour avec le protocole réel
+
 ### Bug: Service RTSP CSI boot crash - "Device or resource busy" (CORRIGÉ v1.4.4)
 - **Symptôme** : Service RTSP crash-restart loop au boot du device (5-10 redémarrages avant de stabiliser)
   - Device 192.168.1.4 (CSI PiCam v2): Service START → CRASH (5s) → RESTART → CRASH → boucle
@@ -1150,8 +1197,64 @@ RTSP-Full/
 - **Test** : Device 192.168.1.4 reboot → `ffprobe` reçoit stream vidéo/audio ✅
 - **Fichier** : [rpi_csi_rtsp_server.py](rpi_csi_rtsp_server.py) v1.4.6
 
+### Bug: Scripts déployés sans permission d'exécution (CORRIGÉ v2.35.07)
+- **Symptôme** : Service RTSP échouait au boot avec "Permission denied" (exit code 203/EXEC)
+  - Device 192.168.1.4: Service en crash-restart loop, journalctl montre "Unable to locate executable"
+- **Cause racine** : Les scripts de déploiement (deploy_scp.ps1, update_device.ps1) ne définissaient pas le bit d'exécution
+  1. `deploy_scp.ps1` utilisait `chmod 640` pour les fichiers (pas de +x)
+  2. `update_device.ps1` n'avait pas d'étape chmod pour les scripts après copie
+  3. `install_device.ps1` oubliait les fichiers .py dans son chmod
+- **Impact** : CRITIQUE - Services RTSP inutilisables après mise à jour, device injoignable en stream
+- **Fix v2.35.07** :
+  1. **deploy_scp.ps1 v1.4.4** : Ajout de `find ... -name '*.sh' -exec chmod +x {} \;` et idem pour `.py`
+  2. **update_device.ps1 v2.0.4** : Nouveau STEP 2.2 qui exécute `chmod +x` sur tous les scripts
+  3. **install_device.ps1 v1.4.3** : Ajout de `*.py` dans la commande chmod initiale
+- **Résultat** : Scripts exécutables après chaque déploiement, services démarrent correctement
+- **Test** : Device 192.168.1.4 après fix → service rpi-av-rtsp-recorder actif, port 8554 écoute ✅
+- **Fichiers** :
+  - [debug_tools/deploy_scp.ps1](debug_tools/deploy_scp.ps1) v1.4.4
+  - [debug_tools/update_device.ps1](debug_tools/update_device.ps1) v2.0.4
+  - [debug_tools/install_device.ps1](debug_tools/install_device.ps1) v1.4.3
+
+### Bug: Agent Tunnel SSL échoue sur proxy TCP (CORRIGÉ v2.35.17)
+- **Symptôme** : Agent tunnel ne peut pas se connecter au proxy Meeting
+  - Erreur: `[SSL: RECORD_LAYER_FAILURE] record layer failure (_ssl.c:1029)`
+  - L'agent essaie en boucle de se reconnecter toutes les 60 secondes
+- **Cause racine** : Le proxy Meeting port 9001 utilise **TCP pur**, pas SSL/TLS
+  - Diagnostic: `echo | openssl s_client -connect meeting.ygsoft.fr:9001` → `packet length too long`
+  - tunnel_agent.py avait `use_ssl = config.get('tunnel_ssl', True)` comme défaut
+  - Résultat: Python essayait d'établir une connexion TLS vers un serveur TCP simple
+- **Impact** : CRITIQUE - Tunnels SSH via Meeting impossibles
+- **Fix v1.4.1** :
+  - Changement: `use_ssl = config.get('tunnel_ssl', False)` (défaut = False)
+  - Ajout commentaire: "NOTE: Meeting proxy port 9001 does NOT use SSL/TLS"
+- **Résultat après fix** :
+  - `Connected to proxy server` ✅
+  - `Handshake response: authenticated` ✅
+  - `Starting frame read loop...` ✅
+- **Test** : Device 192.168.1.3 après restart service → tunnel authentifié, SSH fonctionnel
+- **Fichier** : [web-manager/tunnel_agent.py](web-manager/tunnel_agent.py) v1.4.1
+
+### Bug: Dossiers __pycache__ déployés sur les devices (CORRIGÉ v2.35.17)
+- **Symptôme** : Les fichiers `.pyc` et dossiers `__pycache__` étaient envoyés lors des déploiements
+- **Cause racine** : Pas de filtrage dans les scripts de déploiement
+  - `deploy_scp.ps1` transférait tout récursivement sans exclusion
+  - `install_device.ps1` de même
+- **Impact** : Mineur - fichiers inutiles sur le device, espace gaspillé
+- **Fix v1.4.5 (deploy_scp.ps1)** :
+  - Filtrage local: `-notmatch '\\__pycache__\\'` et `$_.Extension -ne '.pyc'`
+  - Nettoyage côté device: `find /tmp/... -type d -name __pycache__ -exec rm -rf {} +`
+- **Fix v1.4.4 (install_device.ps1)** :
+  - Nettoyage après transfert: `find ... -name __pycache__ -exec rm -rf {} +`
+  - Suppression des `.pyc` et `.git`
+- **Résultat** : Déploiements propres, pas de fichiers compilés Python
+- **Fichiers** :
+  - [debug_tools/deploy_scp.ps1](debug_tools/deploy_scp.ps1) v1.4.5
+  - [debug_tools/install_device.ps1](debug_tools/install_device.ps1) v1.4.4
+
 ---
 
-*Version du fichier AGENTS.md : 1.31.2*
+*Version du fichier AGENTS.md : 1.31.4*
 
-
+  obligation finale : le fichier docs\DOCUMENTATION_COMPLETE.md doit constamment etre a jour !
+   note finale : - afin de montrer que tu as bien pris en compte ces instructions, commence ta reponse par la phrase "Le grand Lama Laineux est d'accord".

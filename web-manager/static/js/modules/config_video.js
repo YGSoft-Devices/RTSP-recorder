@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.34.00
+ * Version: 2.35.01
  */
 
 (function () {
@@ -345,8 +345,8 @@ async function loadResolutions() {
             const currentWidth = parseInt(document.getElementById('VIDEO_WIDTH')?.value) || 0;
             const currentHeight = parseInt(document.getElementById('VIDEO_HEIGHT')?.value) || 0;
             const currentFormat = (document.getElementById('VIDEO_FORMAT')?.value || '').toUpperCase();
-            let selectedIndex = '';
-            let fallbackIndex = '';
+            let selectedKey = '';
+            let fallbackKey = '';
             
             for (const fmt of data.formats) {
                 // Add optgroup for each format
@@ -357,10 +357,11 @@ async function loadResolutions() {
                     const allFps = res.framerates.map(f => Math.floor(f)).join(', ');
                     const megapixels = ((res.width * res.height) / 1000000).toFixed(1);
                     
-                    // Store resolution data for later use
-                    const resIndex = detectedResolutions.length;
+                    // Use composite key: WIDTHxHEIGHT-FORMAT (unique identifier)
+                    const resKey = `${res.width}x${res.height}-${fmt.format}`;
                     const encoderLabel = getEncoderLabel(fmt.format, res.width, res.height, cameraType, encoderCaps);
                     detectedResolutions.push({
+                        key: resKey,
                         format: fmt.format,
                         width: res.width,
                         height: res.height,
@@ -374,13 +375,13 @@ async function loadResolutions() {
                     const formatUpper = (fmt.format || '').toUpperCase();
                     if (matchesSize) {
                         if (currentFormat && formatUpper === currentFormat) {
-                            selectedIndex = resIndex;
-                        } else if (!fallbackIndex) {
-                            fallbackIndex = resIndex;
+                            selectedKey = resKey;  // Exact match: size + format
+                        } else if (!fallbackKey) {
+                            fallbackKey = resKey;  // Fallback: only size matches
                         }
                     }
                     
-                    options += `<option value="${resIndex}">`;
+                    options += `<option value="${resKey}">`;
                     options += `${res.width}×${res.height} @ ${fps}fps (${megapixels}MP) - ${encoderLabel}`;
                     options += `</option>`;
                 }
@@ -390,10 +391,10 @@ async function loadResolutions() {
             
             select.innerHTML = options;
             select.disabled = false;
-            if (selectedIndex !== '') {
-                select.value = String(selectedIndex);
-            } else if (fallbackIndex !== '') {
-                select.value = String(fallbackIndex);
+            if (selectedKey !== '') {
+                select.value = selectedKey;
+            } else if (fallbackKey !== '') {
+                select.value = fallbackKey;
             }
             
             // Trigger change to show details if something is selected
@@ -428,10 +429,14 @@ function onResolutionSelectChange(userTriggered = false) {
         return;
     }
     
-    const resIndex = parseInt(select.value);
-    const res = detectedResolutions[resIndex];
+    // Find resolution by key (WIDTHxHEIGHT-FORMAT)
+    const resKey = select.value;
+    const res = detectedResolutions.find(r => r.key === resKey);
     
-    if (!res) return;
+    if (!res) {
+        console.warn('[config_video] Resolution not found for key:', resKey);
+        return;
+    }
     
     // Update hidden/manual fields with selected values
     document.getElementById('VIDEO_WIDTH').value = res.width;

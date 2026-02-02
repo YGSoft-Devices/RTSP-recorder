@@ -1,5 +1,5 @@
 /* RTSP Recorder Web Manager - Stylesheet */
-/* Version: 2.34.00 */
+/* Version: 2.35.04 */
 
 :root {
     --primary-color: #2563eb;
@@ -82,6 +82,68 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+/* Header Right Section */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Language Selector */
+.language-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.language-select {
+    appearance: none;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 28px 6px 12px;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    transition: all 0.2s ease;
+}
+
+.language-select:hover {
+    border-color: var(--primary-color);
+    background-color: rgba(37, 99, 235, 0.1);
+}
+
+.language-select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.language-select option {
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: 8px;
+}
+
+.language-btn-ok {
+    padding: 6px 10px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.language-btn-ok:hover {
+    background: var(--primary-hover);
 }
 
 .status-badge {
@@ -946,6 +1008,29 @@ body {
 .files-storage-banner .stat-value.disk-full {
     color: #ff3b3b;
     font-weight: bold;
+}
+
+/* Quota warning (90% reached) */
+.files-storage-banner .storage-stat.quota-warning {
+    background: rgba(255, 193, 7, 0.15);
+    border-color: rgba(255, 193, 7, 0.5);
+    color: #ffc107;
+}
+
+.files-storage-banner .storage-stat.quota-warning i {
+    color: #ffc107;
+}
+
+/* Quota exceeded (100% reached) */
+.files-storage-banner .storage-stat.quota-exceeded {
+    background: rgba(255, 59, 59, 0.15);
+    border-color: rgba(255, 59, 59, 0.5);
+    color: #ff3b3b;
+    animation: pulse-warning 1.5s infinite;
+}
+
+.files-storage-banner .storage-stat.quota-exceeded i {
+    color: #ff3b3b;
 }
 
 @keyframes pulse-warning {
@@ -3169,6 +3254,146 @@ body {
     color: var(--text-primary);
 }
 
+/* Services Grid - Meeting tab */
+.services-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .services-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .services-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.service-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px;
+    background: var(--bg-color);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+}
+
+.service-item:hover {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.service-icon {
+    font-size: 1.5em;
+    opacity: 0.8;
+}
+
+.service-item.active .service-icon {
+    opacity: 1;
+}
+
+.service-name {
+    font-size: 0.85em;
+    font-weight: 500;
+    color: var(--text-primary);
+    text-transform: uppercase;
+}
+
+.service-status {
+    font-size: 0.75em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.service-status.enabled {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success-color);
+}
+
+.service-status.disabled {
+    background: rgba(156, 163, 175, 0.15);
+    color: var(--text-muted);
+}
+
+/* SSH Key Management - Meeting tab */
+.ssh-key-section {
+    margin-top: 15px;
+}
+
+/* SSH Keys Status Panel */
+.ssh-keys-status-panel {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.ssh-key-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9em;
+}
+
+.ssh-key-indicator i {
+    font-size: 1em;
+}
+
+.ssh-key-info {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 8px 15px;
+    padding: 12px;
+    background: var(--bg-color);
+    border-radius: var(--radius);
+    margin-bottom: 15px;
+    font-size: 0.9em;
+}
+
+.ssh-key-info label {
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.ssh-key-info span {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.85em;
+    word-break: break-all;
+    color: var(--text-primary);
+}
+
+.ssh-key-info span.mono-truncate {
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.ssh-key-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ssh-key-actions .btn {
+    flex: 1;
+    min-width: 140px;
+}
+
+@media (max-width: 600px) {
+    .ssh-key-actions .btn {
+        min-width: 100%;
+    }
+}
+
 .meeting-info-container {
     background: var(--bg-secondary);
     border-radius: var(--radius);
@@ -4200,9 +4425,35 @@ body {
     user-select: none;
 }
 
+.form-section.collapsible h4 .collapse-icon {
+    transition: transform 0.2s ease;
+    margin-right: 8px;
+    display: inline-block;
+}
+
 .form-section.collapsible h4 .fa-chevron-down {
     transition: transform 0.2s;
     margin-right: 5px;
+}
+
+.form-section.collapsible .collapsible-content {
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+    overflow: hidden;
+}
+
+.form-section.collapsible.collapsed .collapsible-content {
+    display: none;
+}
+
+.form-section.collapsible.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+}
+
+/* Resolution actions */
+.resolution-actions {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color);
 }
 
 /* Mobile Responsive for Network */
@@ -6179,6 +6430,87 @@ body {
 }
 
 /* ===== End Power Settings Overlay Styles ===== */
+
+/* ===== Language/i18n Management Styles ===== */
+.language-status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.language-status .language-select {
+    min-width: 150px;
+}
+
+.file-upload-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius);
+    padding: 30px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.file-upload-zone:hover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.file-upload-zone.dragover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.2);
+}
+
+.file-upload-zone .upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-secondary);
+}
+
+.file-upload-zone .upload-content i {
+    color: var(--primary-color);
+}
+
+.file-upload-zone .upload-content p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.custom-translation-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+}
+
+.custom-translation-item .lang-name {
+    font-weight: 500;
+}
+
+.custom-translation-item .lang-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+}
+
+.btn-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ===== End Language/i18n Management Styles ===== */
 
 /* ===== End Home Page Styles =====
 /* Camera Type Toggle */

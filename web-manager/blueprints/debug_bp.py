@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Debug Blueprint - Firmware, APT, and system debug routes
-Version: 2.30.8
+Version: 2.30.9
 
-NOTE: All debug API endpoints require 'vnc' or 'debug' service to be declared
+NOTE: All debug API endpoints require 'debug' service to be declared
 in Meeting. If not declared, endpoints return 403 Forbidden.
 """
 
@@ -26,14 +26,14 @@ debug_bp = Blueprint('debug', __name__, url_prefix='/api')
 # ============================================================================
 
 def require_debug_access(f):
-    """Decorator to require debug access (vnc or debug service declared in Meeting)."""
+    """Decorator to require debug access ('debug' service declared in Meeting)."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not is_debug_enabled():
             return jsonify({
                 'success': False,
-                'error': 'Debug access not authorized',
-                'message': 'This feature requires the "vnc" or "debug" service to be declared in Meeting.'
+                'error': 'Debug access required',
+                'message': 'This feature requires the "debug" service to be declared in Meeting.'
             }), 403
         return f(*args, **kwargs)
     return decorated_function

@@ -1,18 +1,32 @@
 # -*- coding: utf-8 -*-
 """
 Meeting Blueprint - Meeting API integration routes
-Version: 2.30.5
+Version: 2.30.12
+
+Conforms to Meeting API integration guide (docs/MEETING - integration.md):
+- Heartbeat: POST /api/devices/{device_key}/online
+- SSH hostkey sync: GET /api/ssh-hostkey  
+- SSH key publication: PUT /api/devices/{device_key}/ssh-key
+- Meeting SSH pubkey: GET /api/ssh/pubkey (install on device)
 """
 
 from flask import Blueprint, request, jsonify
 
 from services.meeting_service import (
     load_meeting_config, save_meeting_config, get_meeting_status,
-    send_heartbeat, get_meeting_device_info, request_tunnel,
+    send_heartbeat, get_heartbeat_payload, get_meeting_device_info, request_tunnel,
     update_provision, get_device_availability,
     enable_meeting_service, disable_meeting_service,
     validate_credentials, provision_device, master_reset,
-    init_meeting_service
+    init_meeting_service,
+    # SSH key management
+    sync_ssh_hostkey, generate_device_ssh_key, publish_device_ssh_key,
+    get_device_ssh_pubkey, full_ssh_setup,
+    get_meeting_ssh_pubkey, install_meeting_ssh_pubkey,
+    get_ssh_keys_status, ensure_ssh_keys_configured,
+    # Services
+    get_declared_services,
+    get_meeting_authorized_services
 )
 
 meeting_bp = Blueprint('meeting', __name__, url_prefix='/api/meeting')
@@ -146,6 +160,40 @@ def manual_heartbeat():
     status_code = 200 if result['success'] else 400
     return jsonify(result), status_code
 
+@meeting_bp.route('/heartbeat/preview', methods=['GET'])
+def preview_heartbeat():
+    """Preview heartbeat payload without sending it.
+    
+    Returns the exact payload that would be sent to Meeting API.
+    Useful for debugging network field detection (ip_lan, ip_public, mac).
+    """
+    result = get_heartbeat_payload()
+    
+    status_code = 200 if result['success'] else 400
+    return jsonify(result), status_code
+
+@meeting_bp.route('/heartbeat/debug', methods=['POST'])
+def debug_heartbeat():
+    """Send a heartbeat and return both the payload sent and the response.
+    
+    Returns:
+        - payload: What was sent to Meeting API
+        - response: What Meeting API returned
+    """
+    # First get the payload
+    payload_result = get_heartbeat_payload()
+    
+    # Then send the heartbeat
+    send_result = send_heartbeat()
+    
+    return jsonify({
+        'success': send_result.get('success', False),
+        'payload_sent': payload_result.get('payload', {}),
+        'endpoint': payload_result.get('endpoint', ''),
+        'api_url': payload_result.get('api_url', ''),
+        'response': send_result
+    })
+
 # ============================================================================
 # TUNNEL ROUTES
 # ============================================================================
@@ -254,3 +302,290 @@ def do_master_reset():
     
     status_code = 200 if result['success'] else 400
     return jsonify(result), status_code
+# ============================================================================
+# SSH KEY MANAGEMENT ROUTES (per Meeting API integration guide)
+# ============================================================================
+
+@meeting_bp.route('/ssh/hostkey/sync', methods=['POST'])
+def sync_hostkey():
+    """
+    Synchronize SSH hostkeys from Meeting server.
+    GET /api/ssh-hostkey returns server public keys in ssh-keyscan format.
+    Updates /root/.ssh/known_hosts atomically.
+    """
+    result = sync_ssh_hostkey()
+    
+    status_code = 200 if result['success'] else 400
+    return jsonify(result), status_code
+
+@meeting_bp.route('/ssh/key', methods=['GET'])
+def get_ssh_key():
+    """Get device's SSH public key."""
+    result = get_device_ssh_pubkey()
+    
+    status_code = 200 if result['success'] else 400
+    return jsonify(result), status_code
+
+@meeting_bp.route('/ssh/key/generate', methods=['POST'])
+def generate_ssh_key():
+    """Generate device SSH key pair (ed25519) if not exists."""
+    result = generate_device_ssh_key()
+    
+    status_code = 200 if result['success'] else 400
+    return jsonify(result), status_code
+
+@meeting_bp.route('/ssh/key/publish', methods=['POST'])
+def publish_ssh_key():
+    """
+    Publish device's SSH public key to Meeting server.
+    PUT /api/devices/{device_key}/ssh-key
+    """
+    result = publish_device_ssh_key()
+    
+    status_code = 200 if result['success'] else 400
+    return jsonify(result), status_code
+
+@meeting_bp.route('/ssh/setup', methods=['POST'])
+def ssh_setup():
+    """
+    Perform complete SSH setup for Meeting integration:
+    1. Generate device SSH key if missing
+    2. Sync server hostkeys to known_hosts
+    3. Publish device key to Meeting server
+    4. Install Meeting server pubkey to authorized_keys
+    """
+    result = full_ssh_setup()
+    
+    # Also install Meeting SSH pubkey
+    if result.get('success'):
+        install_result = install_meeting_ssh_pubkey()
+        result['meeting_pubkey_installed'] = install_result.get('success', False)
+        if not install_result.get('success'):
+            result['meeting_pubkey_error'] = install_result.get('message', 'Unknown error')
+    
+    status_code = 200 if result['success'] else 400
+    return jsonify(result), status_code
+
+
+@meeting_bp.route('/ssh/meeting-pubkey', methods=['GET'])
+def get_meeting_pubkey():
+    """
+    Get Meeting server's SSH public key.
+    """
+    result = get_meeting_ssh_pubkey()
+    status_code = 200 if result['success'] else 400
+    return jsonify(result), status_code
+
+
+@meeting_bp.route('/ssh/meeting-pubkey/install', methods=['POST'])
+def install_meeting_pubkey():
+    """
+    Install Meeting server's SSH public key to authorized_keys.
+    This allows Meeting to SSH into this device via tunnel.
+    Installs for both 'root' and 'device' users.
+    """
+    result = install_meeting_ssh_pubkey()
+    status_code = 200 if result['success'] else 400
+    return jsonify(result), status_code
+
+
+@meeting_bp.route('/ssh/keys/status', methods=['GET'])
+def ssh_keys_status():
+    """
+    Get SSH keys status for Meeting integration.
+    Returns whether device key exists, Meeting key is installed, etc.
+    """
+    result = get_ssh_keys_status()
+    return jsonify({
+        'success': True,
+        **result
+    })
+
+
+@meeting_bp.route('/ssh/keys/ensure', methods=['POST'])
+def ensure_ssh_keys():
+    """
+    Ensure SSH keys are properly configured for Meeting integration.
+    This will:
+    1. Generate device SSH key if missing
+    2. Install Meeting pubkey in authorized_keys for 'device' user
+    3. Publish device key to Meeting API
+    
+    Called automatically when tunnel agent starts, but can also be triggered manually.
+    """
+    result = ensure_ssh_keys_configured()
+    status_code = 200 if result['success'] else 400
+    return jsonify(result), status_code
+
+
+# ============================================================================
+# SERVICES DECLARATION ROUTES
+# ============================================================================
+
+@meeting_bp.route('/services', methods=['GET'])
+def get_services():
+    """
+    Get services status.
+    
+    Query params:
+        source: 'local' (default) - services running locally on device
+                'meeting' - services authorized by Meeting API admin
+    
+    Per Meeting API: services are ssh, http, vnc, scp, debug.
+    """
+    source = request.args.get('source', 'local')
+    
+    if source == 'meeting':
+        # Get services authorized by Meeting API
+        result = get_meeting_authorized_services()
+        return jsonify(result)
+    else:
+        # Get local services status (running on device)
+        services = get_declared_services()
+        return jsonify({
+            'success': True,
+            'services': services
+        })
+
+# ============================================================================
+# TUNNEL AGENT ROUTES
+# ============================================================================
+
+@meeting_bp.route('/tunnel/agent/status', methods=['GET'])
+def tunnel_agent_status():
+    """Get tunnel agent service status."""
+    import subprocess
+    
+    try:
+        result = subprocess.run(
+            ['systemctl', 'is-active', 'meeting-tunnel-agent'],
+            capture_output=True, text=True, timeout=5
+        )
+        active = result.stdout.strip() == 'active'
+        
+        # Get enabled status
+        result_enabled = subprocess.run(
+            ['systemctl', 'is-enabled', 'meeting-tunnel-agent'],
+            capture_output=True, text=True, timeout=5
+        )
+        enabled = result_enabled.stdout.strip() == 'enabled'
+        
+        return jsonify({
+            'success': True,
+            'status': {
+                'active': active,
+                'enabled': enabled,
+                'state': result.stdout.strip()
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@meeting_bp.route('/tunnel/agent/start', methods=['POST'])
+def tunnel_agent_start():
+    """Start the tunnel agent service (install if missing)."""
+    import subprocess
+    import os
+    
+    try:
+        # Check if service file exists, if not install it
+        service_file = '/etc/systemd/system/meeting-tunnel-agent.service'
+        source_file = '/opt/rpi-cam-webmanager/setup/meeting-tunnel-agent.service'
+        
+        if not os.path.exists(service_file):
+            # Copy service file and reload systemd
+            if os.path.exists(source_file):
+                subprocess.run(['sudo', 'cp', source_file, service_file], check=True, timeout=5)
+                subprocess.run(['sudo', 'systemctl', 'daemon-reload'], check=True, timeout=5)
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': f'Service file not found: {source_file}'
+                }), 500
+        
+        subprocess.run(
+            ['sudo', 'systemctl', 'start', 'meeting-tunnel-agent'],
+            check=True, timeout=10
+        )
+        return jsonify({
+            'success': True,
+            'message': 'Tunnel agent démarré'
+        })
+    except subprocess.CalledProcessError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Échec du démarrage: {e}'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@meeting_bp.route('/tunnel/agent/stop', methods=['POST'])
+def tunnel_agent_stop():
+    """Stop the tunnel agent service."""
+    import subprocess
+    
+    try:
+        subprocess.run(
+            ['sudo', 'systemctl', 'stop', 'meeting-tunnel-agent'],
+            check=True, timeout=10
+        )
+        return jsonify({
+            'success': True,
+            'message': 'Tunnel agent arrêté'
+        })
+    except subprocess.CalledProcessError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Échec de l\'arrêt: {e}'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@meeting_bp.route('/tunnel/agent/enable', methods=['POST'])
+def tunnel_agent_enable():
+    """Enable the tunnel agent service at boot."""
+    import subprocess
+    
+    try:
+        subprocess.run(
+            ['sudo', 'systemctl', 'enable', 'meeting-tunnel-agent'],
+            check=True, timeout=10
+        )
+        return jsonify({
+            'success': True,
+            'message': 'Tunnel agent activé au démarrage'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@meeting_bp.route('/tunnel/agent/disable', methods=['POST'])
+def tunnel_agent_disable():
+    """Disable the tunnel agent service at boot."""
+    import subprocess
+    
+    try:
+        subprocess.run(
+            ['sudo', 'systemctl', 'disable', 'meeting-tunnel-agent'],
+            check=True, timeout=10
+        )
+        return jsonify({
+            'success': True,
+            'message': 'Tunnel agent désactivé au démarrage'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

@@ -7,8 +7,11 @@
 #   - Record RTSP stream to segmented files using ffmpeg
 #   - Runs as a separate service from the RTSP server
 #   - Auto-prunes old recordings to maintain minimum free disk space
+#   - Enforces maximum recordings folder size (MAX_DISK_MB)
 #
-# Version: 1.6.0
+# Version: 1.7.0
+# Changelog:
+#   - 1.7.0: Added MAX_DISK_MB support to limit recordings folder size
 #===============================================================================
 
 set -euo pipefail
@@ -34,6 +37,7 @@ fi
 : "${RECORD_DIR:=/var/cache/rpi-cam/recordings}"
 : "${SEGMENT_SECONDS:=300}"
 : "${MIN_FREE_DISK_MB:=1000}"  # Minimum free space to maintain (default 1GB)
+: "${MAX_DISK_MB:=0}"          # Maximum recordings folder size (0 = no limit)
 : "${LOG_DIR:=/var/log/rpi-cam}"
 : "${PRUNE_CHECK_INTERVAL:=60}"  # Check disk space every 60 seconds
 
@@ -70,10 +74,16 @@ setup_fs() {
 #---------------------------
 # Disk space management
 # Maintains minimum free disk space by deleting oldest recordings
+# Also enforces maximum recordings folder size (MAX_DISK_MB)
 #---------------------------
 get_free_disk_mb() {
     # Get free space in MB for the partition containing RECORD_DIR
     df -BM "$RECORD_DIR" 2>/dev/null | awk 'NR==2 {gsub(/M/,"",$4); print $4}'
+}
+
+get_recordings_size_mb() {
+    # Get total size of recordings folder in MB
+    du -sm "$RECORD_DIR" 2>/dev/null | awk '{print $1}'
 }
 
 #---------------------------
@@ -198,6 +208,51 @@ prune_if_needed() {
 }
 
 #---------------------------
+# Max disk size enforcement
+# Deletes oldest recordings when folder exceeds MAX_DISK_MB
+#---------------------------
+prune_if_max_exceeded() {
+    if [[ "$MAX_DISK_MB" -le 0 ]]; then
+        return 0
+    fi
+
+    local used_mb
+    used_mb="$(get_recordings_size_mb)" || used_mb=0
+    used_mb="${used_mb:-0}"
+    [[ "$used_mb" =~ ^[0-9]+$ ]] || used_mb=0
+
+    if [[ "$used_mb" -le "$MAX_DISK_MB" ]]; then
+        return 0
+    fi
+
+    log "Recordings folder size exceeded: ${used_mb}MB > ${MAX_DISK_MB}MB limit"
+
+    while [[ "$used_mb" -gt "$MAX_DISK_MB" ]]; do
+        local oldest
+        # Find oldest file by modification time
+        oldest="$(find "$RECORD_DIR" \( -name "*.ts" -o -name "*.mp4" -o -name "*.mkv" \) -type f 2>/dev/null | \
+                  xargs -r ls -1t 2>/dev/null | tail -1)" || oldest=""
+        
+        if [[ -z "$oldest" ]]; then
+            log_err "No more recordings to delete, but folder still exceeds limit: ${used_mb}MB"
+            break
+        fi
+
+        local file_size
+        file_size="$(du -sm "$oldest" 2>/dev/null | awk '{print $1}')" || file_size=0
+        file_size="${file_size:-0}"
+        log "Deleting oldest recording (max size limit): $oldest (${file_size}MB)"
+        rm -f "$oldest" || true
+
+        used_mb="$(get_recordings_size_mb)" || used_mb=0
+        used_mb="${used_mb:-0}"
+        [[ "$used_mb" =~ ^[0-9]+$ ]] || used_mb=0
+    done
+
+    log "After max-size pruning: ${used_mb}MB used (limit: ${MAX_DISK_MB}MB)"
+}
+
+#---------------------------
 # Background pruning loop
 # Runs in background during recording to check disk space periodically
 #---------------------------
@@ -207,7 +262,8 @@ start_prune_loop() {
         exec </dev/null
         while true; do
             sleep "$PRUNE_CHECK_INTERVAL"
-            prune_if_needed
+            prune_if_needed       # Check MIN_FREE_DISK_MB (free space)
+            prune_if_max_exceeded # Check MAX_DISK_MB (folder size limit)
         done
     ) &
     PRUNE_PID=$!
@@ -264,6 +320,7 @@ record_stream() {
     log "Starting recording from: $log_url"
     log "Output directory: $RECORD_DIR"
     log "Segment duration: ${SEGMENT_SECONDS}s"
+    log "Disk limits: MIN_FREE=${MIN_FREE_DISK_MB}MB, MAX_FOLDER=${MAX_DISK_MB}MB (0=unlimited)"
     
     # Use ffmpeg with segment muxer for robust recordings
     # - segment_time: duration of each segment

@@ -126,6 +126,8 @@ def list_recordings_paginated():
     available_bytes = disk.get('available', 0)
     usable_bytes = max(0, available_bytes - min_free_bytes) if min_free_bytes > 0 else available_bytes
     disk_full = min_free_bytes > 0 and available_bytes < min_free_bytes
+    quota_exceeded = max_disk_bytes > 0 and total_size >= max_disk_bytes
+    quota_warning = max_disk_bytes > 0 and total_size >= (max_disk_bytes * 0.9)  # 90% threshold
 
     return jsonify({
         'success': True,
@@ -161,7 +163,9 @@ def list_recordings_paginated():
             'max_disk_enabled': max_disk_bytes > 0,
             'recordings_size_bytes': total_size,
             'recordings_size_display': format_size(total_size),
-            'disk_full': disk_full
+            'disk_full': disk_full,
+            'quota_exceeded': quota_exceeded,
+            'quota_warning': quota_warning
         }
     })
 

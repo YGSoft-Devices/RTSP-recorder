@@ -1,5 +1,5 @@
 # deploy_scp.ps1 - Déploiement SCP vers le device
-# Version: 1.4.2
+# Version: 1.4.5
 #
 # SECURITY: Requires explicit IP address or DeviceKey. No hardcoded defaults.
 # Validates IP against Meeting API when available.
@@ -190,7 +190,14 @@ Write-Host "Fichiers à transférer:" -ForegroundColor Yellow
 
 if ($Recursive) {
     # Pour les dossiers, on doit tracker les chemins complets
-    Get-ChildItem $Source -Recurse -File | ForEach-Object {
+    # EXCLUSION: ignorer __pycache__, .pyc, .git, et autres fichiers inutiles
+    Get-ChildItem $Source -Recurse -File | Where-Object {
+        $_.FullName -notmatch '\\__pycache__\\' -and
+        $_.FullName -notmatch '/__pycache__/' -and
+        $_.Extension -ne '.pyc' -and
+        $_.FullName -notmatch '\\.git\\' -and
+        $_.FullName -notmatch '/.git/'
+    } | ForEach-Object {
         $relPath = $_.FullName.Substring((Resolve-Path (Split-Path $Source)).Path.Length).TrimStart('\/')
         Write-Host "  - $relPath" -ForegroundColor Gray
         $FileNames += $_.Name
@@ -270,19 +277,29 @@ if ($exitCode -eq 0 -and $NeedsSudo) {
     
     # Construire la commande de copie
     if ($Recursive) {
-        # Pour les dossiers: copier récursivement
+        # Pour les dossiers: copier récursivement LE CONTENU du dossier SOURCE dans la destination finale
         $SourceFolder = Split-Path (Resolve-Path $Source) -Leaf
-        $CopyCmd = "sudo cp -r /tmp/$SourceFolder $FinalDest"
+        # S'assurer que la destination existe et copier le contenu (éviter nested /web-manager/web-manager)
+        # Après la copie, supprimer un éventuel dossier imbriqué résiduel (ex: /opt/.../web-manager/web-manager)
+        # CLEANUP: Supprimer __pycache__ et .pyc du dossier temporaire AVANT la copie
+        # Ajouter chmod +x pour les scripts .sh et .py
+        # NOTE: éviter les quotes simples internes pour ne pas casser le quoting lors de l'appel ssh '...'
+        $CopyCmd = "sudo find /tmp/$SourceFolder -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; sudo find /tmp/$SourceFolder -name '*.pyc' -delete 2>/dev/null; sudo mkdir -p $FinalDest && sudo cp -r /tmp/$SourceFolder/* $FinalDest && if [ -d $FinalDest$SourceFolder ]; then sudo rm -rf $FinalDest$SourceFolder; fi && sudo chown -R root:www-data $FinalDest && sudo chmod -R 750 $FinalDest && sudo find $FinalDest -name '*.sh' -exec chmod +x {} \; && sudo find $FinalDest -name '*.py' -exec chmod +x {} \;"
     } else {
-        # Pour les fichiers: copier chaque fichier
-        $CopyCommands = $FileNames | ForEach-Object { "sudo cp /tmp/$_ $FinalDest" }
-        $CopyCmd = $CopyCommands -join " && "
+        # Pour les fichiers: copier chaque fichier puis corriger les permissions
+        # Ajouter chmod +x pour les scripts .sh et .py
+        $CopyCommands = $FileNames | ForEach-Object { "sudo mkdir -p $FinalDest && sudo cp /tmp/$_ $FinalDest" }
+        $ChmodExec = $FileNames | Where-Object { $_ -match '\.(sh|py)$' } | ForEach-Object { "sudo chmod +x $FinalDest/$_" }
+        $CopyCmd = ($CopyCommands -join " && ") + " && sudo chown root:www-data $FinalDest/* && sudo chmod 640 $FinalDest/*"
+        if ($ChmodExec) {
+            $CopyCmd += " && " + ($ChmodExec -join " && ")
+        }
     }
-    
+
     $SshCmd = "sshpass -p '$Password' ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $User@$DeviceIP '$CopyCmd'"
     $copyResult = wsl bash -c $SshCmd 2>&1
     $exitCode = $LASTEXITCODE
-    
+
     if ($copyResult -and $exitCode -ne 0) { Write-Host $copyResult }
 }
 

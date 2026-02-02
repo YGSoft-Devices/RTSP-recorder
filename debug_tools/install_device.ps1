@@ -1,5 +1,5 @@
 # install_device.ps1 - Installation automatique du projet sur un Raspberry Pi
-# Version: 1.4.2
+# Version: 1.4.4
 #
 # Ce script déploie et installe automatiquement le projet RTSP-Full sur un device
 # depuis Windows. Il vérifie et installe automatiquement les prérequis (WSL, sshpass).
@@ -793,6 +793,12 @@ function Copy-ProjectFiles {
     Write-Host ""
     Write-Step "Tous les fichiers transferes ($totalItems elements)" "OK"
     
+    # Nettoyage des fichiers inutiles (__pycache__, .pyc, .git)
+    Write-Step "Nettoyage des fichiers temporaires..."
+    $cleanupCmd = "find $RemoteTempDir -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; find $RemoteTempDir -name '*.pyc' -delete 2>/dev/null; find $RemoteTempDir -type d -name .git -exec rm -rf {} + 2>/dev/null || true"
+    Invoke-RemoteCommand -Command $cleanupCmd -Silent
+    Write-Step "Fichiers temporaires nettoyes" "OK"
+    
     return $true
 }
 
@@ -805,7 +811,7 @@ function Start-Installation {
     
     # Rendre les scripts exécutables
     Write-Step "Configuration des permissions"
-    Invoke-RemoteCommand -Command "chmod +x $RemoteTempDir/setup/*.sh $RemoteTempDir/*.sh 2>/dev/null" -Silent
+    Invoke-RemoteCommand -Command "chmod +x $RemoteTempDir/setup/*.sh $RemoteTempDir/*.sh $RemoteTempDir/*.py 2>/dev/null" -Silent
     Write-Step "Permissions configurees" "OK"
     
     # Convertir CRLF -> LF (fichiers Windows)

@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - UI utilities
- * Version: 2.34.00
+ * Version: 2.33.01
  */
 (function () {
     function showToast(message, type = 'info') {
@@ -28,7 +28,7 @@
     function copyRtspUrl() {
         const url = document.getElementById('rtsp-url').textContent;
         navigator.clipboard.writeText(url).then(() => {
-            showToast('URL RTSP copi?e !', 'success');
+            showToast('URL RTSP copiée !', 'success');
         }).catch(() => {
             showToast('Erreur lors de la copie', 'error');
         });
@@ -38,7 +38,7 @@
         // Modern API (HTTPS only)
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(text).then(() => {
-                showToast('Copi? !', 'success');
+                showToast('Copié !', 'success');
             }).catch(() => {
                 fallbackCopyToClipboard(text);
             });
@@ -61,7 +61,7 @@
         try {
             const successful = document.execCommand('copy');
             if (successful) {
-                showToast('Copi? !', 'success');
+                showToast('Copié !', 'success');
             } else {
                 showToast('Erreur lors de la copie', 'error');
             }

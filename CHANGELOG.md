@@ -7,6 +7,557 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.35.18] - SSH Keys Auto-Configuration pour Meeting
+
+### Fonctionnalités
+- **Auto-configuration des clés SSH pour Meeting integration**
+  - L'agent tunnel configure automatiquement les clés SSH au démarrage
+  - Génère la clé device si absente
+  - Installe la clé publique Meeting dans authorized_keys
+  - Publie la clé device vers l'API Meeting
+
+- **Indicateurs de status des clés SSH sur le frontend**
+  - Panel visuel montrant "Clé device: ✓/✗" et "Clé Meeting: ✓/✗"
+  - Bouton "Auto-config" pour lancer la configuration manuelle
+  - Status mis à jour automatiquement au chargement de la page Meeting
+
+### Corrections
+- **Bug CRITIQUE : SSH par tunnel Meeting demandait mot de passe**
+  - Les clés Meeting n'étaient installées que pour l'utilisateur root
+  - Meeting SSH se connecte à l'utilisateur 'device' (pas root)
+  - Fix: Installation dans BOTH `/root/.ssh/` AND `/home/device/.ssh/`
+  - Ownership correct avec `os.chown()` pour l'utilisateur device
+
+### Nouveaux endpoints API
+- `GET /api/meeting/ssh/keys/status` - Status des clés (device_key_exists, meeting_key_installed)
+- `POST /api/meeting/ssh/keys/ensure` - Auto-configuration des clés SSH
+
+### Modifications
+- **web-manager/services/meeting_service.py** (v2.30.23)
+  - Nouvelle fonction `get_ssh_keys_status()` : vérifie présence des clés
+  - Nouvelle fonction `ensure_ssh_keys_configured()` : auto-setup complet
+  - `install_meeting_ssh_pubkey()` installe pour root ET device
+  - Import `pwd` pour lookup des home directories
+
+- **web-manager/blueprints/meeting_bp.py** (v2.30.12)
+  - Nouveaux endpoints `/ssh/keys/status` et `/ssh/keys/ensure`
+  - Import des nouvelles fonctions
+
+- **web-manager/tunnel_agent.py** (v1.4.2)
+  - Auto-configuration SSH keys au démarrage (`ensure_ssh_keys_configured()`)
+  - Import dynamique de meeting_service
+
+- **web-manager/static/js/modules/meeting.js** (v2.35.18)
+  - Nouvelle fonction `loadSshKeysStatus()` : charge le status des clés
+  - Nouvelle fonction `ensureSshKeysConfigured()` : appelle auto-config
+  - Appel automatique de `loadSshKeysStatus()` au chargement Meeting
+
+- **web-manager/templates/index.html**
+  - Panel SSH keys status avec indicateurs visuels
+  - Bouton "Auto-config" remplace "Setup complet"
+
+- **web-manager/static/css/style.css** (v2.35.18)
+  - Styles pour `.ssh-keys-status-panel` et `.ssh-key-indicator`
+
+---
+
+## [2.35.17] - Tunnel SSL Fix + __pycache__ Exclusion
+
+### Corrections
+- **Bug CRITIQUE : Agent tunnel échouait avec erreur SSL**
+  - Le proxy Meeting port 9001 utilise TCP pur, pas SSL/TLS
+  - L'agent essayait d'établir une connexion SSL → échec systématique
+  - Symptôme: `[SSL: RECORD_LAYER_FAILURE] record layer failure`
+  - Fix: Changement du défaut `tunnel_ssl` de `True` à `False`
+
+- **Bug : Les dossiers `__pycache__` étaient déployés sur les devices**
+  - `deploy_scp.ps1` et `install_device.ps1` ne filtraient pas les fichiers Python compilés
+  - Fix: Exclusion locale + nettoyage côté device (`find -name __pycache__ -exec rm -rf {} +`)
+
+### Modifications
+- **web-manager/tunnel_agent.py** (v1.4.1)
+  - `tunnel_ssl` default `True` → `False` (proxy Meeting n'utilise pas SSL)
+  - Ajout commentaire explicatif dans le code
+
+- **debug_tools/deploy_scp.ps1** (v1.4.5)
+  - Filtrage local des fichiers `__pycache__/`, `.pyc`, `.git/`
+  - Nettoyage côté device avant copie finale
+
+- **debug_tools/install_device.ps1** (v1.4.4)
+  - Nettoyage automatique des `__pycache__` et `.pyc` après transfert
+
+- **docs/DOCUMENTATION_COMPLETE.md** (v2.35.17)
+  - Mise à jour section Agent Tunnel (tunnel_ssl=false)
+  - Ajout documentation MAX_DISK_MB
+  - Mise à jour payload heartbeat (champs réseau v2.35.11+)
+  - Mise à jour install_device.ps1 v1.4.4
+
+---
+
+## [2.35.16] - Meeting Services API Bug Fix + Deployment Fix
+
+### Corrections
+- **Bug : "Services déclarés" n'affichait pas les services Meeting API**
+  - Le code `get_meeting_authorized_services()` existait mais était déployé dans un sous-dossier imbriqué
+  - L'application utilisait une ancienne version des fichiers
+  - Synchronisé correctement les fichiers vers `/opt/rpi-cam-webmanager/`
+
+- **Bug : Scripts de déploiement créaient des dossiers imbriqués**
+  - `update_device.ps1` copiait `web-manager/` vers `/opt/rpi-cam-webmanager/web-manager/`
+  - L'application utilise une structure plate (`/opt/rpi-cam-webmanager/services/`, pas `/opt/rpi-cam-webmanager/web-manager/services/`)
+  - Corrigé pour copier le CONTENU de `web-manager/` directement vers `/opt/rpi-cam-webmanager/`
+
+### Modifications
+- **web-manager/services/meeting_service.py** (v2.30.22)
+  - Retiré le champ `_debug` utilisé pour le débogage
+
+- **debug_tools/update_device.ps1** (v2.0.7)
+  - Traitement spécial pour `web-manager/` : copie son contenu directement vers `/opt/rpi-cam-webmanager/`
+  - Évite la création du dossier imbriqué `/opt/rpi-cam-webmanager/web-manager/`
+
+---
+
+## [2.35.15] - Meeting Services API + Tunnel Agent Autostart
+
+### Corrections
+- **Bug 1 : "Services déclarés" interrogeait les services locaux au lieu de Meeting API**
+  - `loadMeetingServices()` appelait `/api/meeting/services` qui retournait les services LOCAUX actifs
+  - Maintenant appelle `/api/meeting/services?source=meeting` pour obtenir les services AUTORISÉS par Meeting API
+  - Le bouton "Actualiser" affiche correctement les services configurés par l'admin Meeting
+
+- **Bug 2 : Agent tunnel non démarré par défaut**
+  - Le service `meeting-tunnel-agent` était installé mais non activé au boot
+  - Maintenant activé et démarré par défaut à l'installation
+  - Utilisateur peut désactiver via le bouton "Auto-démarrage" dans l'interface
+
+### Modifications
+- **web-manager/services/meeting_service.py** (v2.30.21)
+  - Nouvelle fonction `get_meeting_authorized_services()` : Interroge Meeting API pour les services autorisés
+  - Utilise `_get_full_device_info()` avec cache 5 minutes
+
+- **web-manager/blueprints/meeting_bp.py** (v2.30.10)
+  - Endpoint `/api/meeting/services` accepte maintenant le paramètre `?source=`
+    - `source=local` (défaut) : services actifs localement sur le device
+    - `source=meeting` : services autorisés par Meeting API admin
+
+- **web-manager/static/js/modules/meeting.js** (v2.35.01)
+  - `loadMeetingServices()` utilise maintenant `?source=meeting` pour afficher les services autorisés
+
+- **setup/install_web_manager.sh** (v2.4.4)
+  - Service `meeting-tunnel-agent` maintenant activé (`systemctl enable`) et démarré à l'installation
+
+- **debug_tools/update_device.ps1** (v2.0.6)
+  - Active automatiquement `meeting-tunnel-agent` lors des mises à jour si le service existe
+
+---
+
+## [2.35.14] - MAX_DISK_MB Recording Folder Limit
+
+### Fonctionnalités
+- **rtsp_recorder.sh** (v1.7.0)
+  - **Nouvelle fonctionnalité** : Support de `MAX_DISK_MB` pour limiter la taille du dossier d'enregistrements
+  - Nouvelle fonction `get_recordings_size_mb()` : Calcule la taille totale du dossier
+  - Nouvelle fonction `prune_if_max_exceeded()` : Supprime les plus anciens fichiers si la limite est dépassée
+  - La boucle de pruning vérifie maintenant les deux limites :
+    - `MIN_FREE_DISK_MB` : Espace libre minimum sur le disque (existant)
+    - `MAX_DISK_MB` : Taille maximum du dossier d'enregistrements (nouveau)
+  - Log de démarrage affiche les deux limites
+
+- **web-manager/blueprints/recordings_bp.py** (v2.30.7)
+  - Nouveaux champs dans `storage_info` :
+    - `quota_exceeded` : true si taille enregistrements >= MAX_DISK_MB
+    - `quota_warning` : true si taille enregistrements >= 90% de MAX_DISK_MB
+
+- **web-manager/static/js/modules/recordings.js**
+  - Affichage visuel du statut quota :
+    - Normal : icône base de données bleue
+    - Warning (90%) : icône exclamation orange
+    - Exceeded : icône alerte rouge clignotante
+
+- **web-manager/static/css/style.css**
+  - Nouveaux styles `.quota-warning` et `.quota-exceeded` pour les alertes visuelles
+
+### Corrections
+- **setup/install_gstreamer_rtsp.sh** (v2.2.6)
+  - Fix vérification de `test-launch` : vérifie maintenant l'exécutabilité, pas juste l'existence
+  - Corrige automatiquement les permissions avec `chmod +x` si le fichier existe mais n'est pas exécutable
+  - Prévient l'erreur exit code 126 (Permission denied) qui causait des crash loops
+
+- **debug_tools/update_device.ps1** (v2.0.5)
+  - Ajout de `chmod +x /usr/local/bin/test-launch` dans l'étape de correction des permissions
+
+---
+
+## [2.35.12] - Heartbeat Debug UI + Import Fix
+
+### Fonctionnalités
+- **web-manager/blueprints/meeting_bp.py** (v2.30.9)
+  - **Nouveaux endpoints de debug heartbeat** :
+    - `GET /api/meeting/heartbeat/preview` : Voir le payload sans l'envoyer
+    - `POST /api/meeting/heartbeat/debug` : Envoyer et voir payload + réponse
+  - Utile pour diagnostiquer les champs réseau (ip_lan, ip_public, mac)
+
+- **web-manager/services/meeting_service.py** (v2.30.21)
+  - **Nouvelle fonction** `get_heartbeat_payload()` : Construit le payload heartbeat sans l'envoyer
+  - Correction des imports dans `get_heartbeat_payload()` (utilisait des fonctions inexistantes)
+
+- **web-manager/static/js/modules/meeting.js** (v2.35.04)
+  - **UI améliorée** pour "Envoyer un heartbeat" :
+    - Affiche le payload envoyé dans un bloc dépliable
+    - Affiche la réponse Meeting dans un bloc dépliable
+    - Montre l'endpoint API utilisé
+
+### Corrections
+- **meeting_service.py** : Fix import `get_preferred_local_ip` → `get_preferred_ip`
+  - La fonction `get_preferred_local_ip` n'existait pas dans `platform_service`
+  - Causait un fallback silencieux vers `127.0.0.1` pour `ip_address`
+
+---
+
+## [2.35.11] - Meeting API v1.8.0+ Network Fields + Tunnel Handshake Fix
+
+### Fonctionnalités
+- **web-manager/services/meeting_service.py** (v2.30.20)
+  - **Heartbeat v1.8.0+** : Nouveaux champs réseau supportés :
+    - `ip_lan`: IP de l'interface principale (ethernet ou WiFi actif)
+    - `ip_public`: IP publique détectée via services externes (ipify, ipinfo, amazonaws)
+    - `mac`: Adresse MAC de l'interface principale (format AA:BB:CC:DD:EE:FF)
+  - **SSH Hostkey Sync** : Nouvelles fonctions :
+    - `get_ssh_hostkey()`: Récupère les hostkeys SSH du serveur Meeting via `/api/ssh-hostkey`
+    - `sync_ssh_hostkey()`: Synchronise les hostkeys dans known_hosts du device
+    - `publish_device_ssh_key()`: Publie la clé SSH du device via `PUT /api/devices/{key}/ssh-key`
+
+- **web-manager/services/network_service.py** (v2.30.16)
+  - **Nouvelle fonction** `get_public_ip()`: Détecte l'IP publique du device
+    - Essaie plusieurs services en fallback: ipify, ipinfo.io, amazonaws checkip
+    - Timeout court (2s) pour éviter les blocages
+    - Cache possible pour éviter les requêtes répétées
+
+### Corrections
+- **web-manager/tunnel_agent.py** (v1.4.0)
+  - **Bug Fix CRITIQUE** : Handshake avec le proxy Meeting corrigé
+  - **Cause** : Le proxy envoie une réponse JSON `{"status":"authenticated",...}` après le handshake
+  - **Problème** : Le code passait directement en mode frames sans lire la réponse
+  - **Conséquence** : Le JSON était interprété comme header binaire → MemoryError (1.9GB allocation!)
+  - **Fix** : Lecture et parsing de la réponse JSON avant de passer en mode frames
+  - Le tunnel fonctionne maintenant correctement avec authentification et forwarding SSH
+
+### Documentation
+- **docs/MEETING - integration.md** : Mise à jour protocole tunnel handshake
+  - Ajout de la documentation de la réponse JSON du proxy
+  - Format: `{"status":"authenticated","device_key":"..."}`
+
+---
+
+## [2.35.08] - Meeting API Conformance + SSH Pubkey Install
+
+### Corrections
+- **web-manager/services/meeting_service.py** (v2.30.19)
+  - Suppression du champ `services` dans le payload heartbeat
+  - Meeting gère les services côté admin, les devices ne doivent pas les envoyer
+  - Nouvelles fonctions:
+    - `get_meeting_ssh_pubkey()`: Récupère la clé SSH publique de Meeting via `/api/ssh/pubkey`
+    - `install_meeting_ssh_pubkey()`: Installe la clé dans `~/.ssh/authorized_keys`
+
+- **web-manager/blueprints/meeting_bp.py** (v2.30.8)
+  - Nouveaux endpoints:
+    - `GET /api/meeting/ssh/meeting-pubkey`: Récupère la clé SSH Meeting
+    - `POST /api/meeting/ssh/meeting-pubkey/install`: Installe la clé SSH Meeting
+  - `POST /api/meeting/ssh/setup` installe maintenant aussi la clé Meeting
+
+### Documentation
+- **docs/BUG_REPORT_MEETING_API_SERVICES.md**: Bug report complet avec corrections
+  - BUG-001: Services écrasés par heartbeat → CORRIGÉ côté Meeting
+  - BUG-002: Erreur SSL tunnel port 9001 → CORRIGÉ côté Meeting (TLS optionnel)
+  - BUG-003: Endpoint `/api/ssh/pubkey` manquant → AJOUTÉ côté Meeting
+
+---
+
+## [2.35.07] - Fix Script Permissions in Deployment
+
+### Corrections
+- **debug_tools/deploy_scp.ps1** (v1.4.4)
+  - **Bug Fix CRITIQUE**: Les scripts .sh et .py n'avaient pas le bit d'exécution après déploiement
+  - Problème: `chmod 640` et `chmod 750` ne donnaient pas +x aux scripts
+  - Conséquence: Service RTSP échouait avec "Permission denied" (exit code 203/EXEC)
+  - Fix: Ajout de `find ... -name '*.sh' -exec chmod +x {} \;` et `find ... -name '*.py' -exec chmod +x {} \;`
+  - Affecte: Tous les déploiements via SCP
+
+- **debug_tools/update_device.ps1** (v2.0.4)
+  - Nouveau STEP 2.2: Fix des permissions des scripts après déploiement
+  - Exécute `chmod +x` sur tous les scripts dans /usr/local/bin/ et /opt/rpi-cam-webmanager/
+  - Garantit que les scripts sont exécutables après chaque update
+
+- **debug_tools/install_device.ps1** (v1.4.3)
+  - Ajout de `*.py` dans la commande chmod lors de la préparation
+  - Avant: `chmod +x $RemoteTempDir/setup/*.sh $RemoteTempDir/*.sh`
+  - Après: `chmod +x $RemoteTempDir/setup/*.sh $RemoteTempDir/*.sh $RemoteTempDir/*.py`
+
+---
+
+## [2.35.06] - Meeting Tab Auto-Load + Remove Obsolete Section
+
+### Corrections
+- **web-manager/templates/index.html** (v2.35.06)
+  - Suppression de la section obsolète "Tunnels (Services distants)"
+  - Cette section demandait un tunnel TCP simple (obsolète avec le nouvel agent)
+  
+- **web-manager/static/js/modules/meeting.js** (v2.35.06)
+  - `loadMeetingStatus()` appelle maintenant automatiquement:
+    - `loadMeetingServices()` pour charger les services déclarés
+    - `loadDeviceSshKey()` pour charger la clé SSH
+    - `loadTunnelAgentStatus()` pour charger l'état de l'agent tunnel
+  - Plus besoin de cliquer sur "Actualiser" manuellement
+
+---
+
+## [2.35.05] - Fix Meeting Services Display + Tunnel Agent Service
+
+### Corrections
+- **web-manager/static/js/modules/meeting.js** (v2.35.05)
+  - Bug Fix: `enabledServices.includes is not a function`
+  - Cause: API retourne un dict `{ssh: true, ...}`, JS attendait un array
+  - Fix: Conversion du dict en array via `Object.entries()`
+  - Bug Fix: Affichage clé SSH utilisait `key.public_key` au lieu de `pubkey`
+
+- **setup/meeting-tunnel-agent.service** (v1.0.1)
+  - Bug Fix: Le service échouait au démarrage (exit status 5)
+  - Cause: `User=device` n'avait pas les permissions pour lire meeting.json
+  - Fix: `User=root` (le script gère ses propres privilèges)
+
+---
+
+## [2.35.04] - Fix CSI Camera Resolution Selection Bug
+
+### Corrections
+- **web-manager/static/js/app.js** (v2.35.04)
+  - **Bug Fix CRITIQUE**: Correction de l'ID du sélecteur de résolution
+  - Problème: `applyResolution()` utilisait `'camera-resolution-select'` mais l'HTML a `'resolution-select'`
+  - Conséquence: `resolutionSelect` était null → width/height undefined → "Invalid resolution" pour TOUTES les sélections
+  - Fix: Changement de `getElementById('camera-resolution-select')` → `getElementById('resolution-select')`
+  - Affecte: Caméras CSI (libcamera/Picamera2) et USB
+
+---
+
+## [2.35.03] - Agent Tunnel + Frontend Meeting Complet
+
+### Ajouts
+- **web-manager/tunnel_agent.py** (v1.0.0) [NOUVEAU]
+  - Agent de tunnel inversé pour Meeting API
+  - Protocole: handshake JSON + frames N/D/C avec streamId
+  - Support multi-stream pour SSH/SCP/VNC/HTTP
+  - Reconnexion automatique avec backoff exponentiel
+  - Intégration avec services locaux (127.0.0.1:port)
+
+- **setup/meeting-tunnel-agent.service** [NOUVEAU]
+  - Service systemd pour l'agent tunnel
+  - Non activé par défaut (activation via interface web)
+  - PartOf rpi-cam-webmanager pour arrêt coordonné
+
+- **web-manager/blueprints/meeting_bp.py** (v2.30.7)
+  - Nouveaux endpoints pour contrôle de l'agent tunnel:
+    - `GET /api/meeting/tunnel/agent/status`: état du service
+    - `POST /api/meeting/tunnel/agent/start`: démarrage
+    - `POST /api/meeting/tunnel/agent/stop`: arrêt
+    - `POST /api/meeting/tunnel/agent/enable`: activation au boot
+    - `POST /api/meeting/tunnel/agent/disable`: désactivation au boot
+
+- **web-manager/static/js/modules/meeting.js** (v2.33.02)
+  - Nouvelles fonctions pour services et clés SSH:
+    - `loadMeetingServices()`: affiche les services déclarés
+    - `loadDeviceSshKey()`: affiche la clé SSH du device
+    - `generateDeviceSshKey()`: génère une nouvelle clé
+    - `publishDeviceSshKey()`: publie sur Meeting
+    - `syncSshHostkey()`: synchronise les hostkeys
+    - `fullSshSetup()`: setup SSH complet
+  - Nouvelles fonctions pour agent tunnel:
+    - `loadTunnelAgentStatus()`: état de l'agent
+    - `startTunnelAgent()`: démarrage
+    - `stopTunnelAgent()`: arrêt
+    - `toggleTunnelAgentAutostart()`: bascule auto-démarrage
+
+- **web-manager/static/css/style.css** (v2.35.03)
+  - Styles pour grille de services Meeting
+  - Styles pour section SSH key management
+
+### Modifications
+- **web-manager/templates/index.html** (v2.35.03)
+  - Section "Services déclarés" avec grille visuelle ssh/http/vnc/scp/debug
+  - Section "Gestion des clés SSH" avec boutons génération/publication/sync
+  - Section "Agent Tunnel" avec contrôles start/stop/auto-démarrage
+
+- **web-manager/services/meeting_service.py** (v2.30.18)
+  - `is_debug_enabled()` ne vérifie plus que le service 'debug' (plus 'vnc')
+
+- **web-manager/blueprints/debug_bp.py** (v2.30.9)
+  - Décorateur `require_debug_access` vérifie seulement 'debug' (plus 'vnc')
+  - Onglet debug du frontend n'apparaît que si service 'debug' est activé
+
+- **setup/install_web_manager.sh** (v2.4.3)
+  - Installation automatique du service meeting-tunnel-agent
+  - Service non activé par défaut
+
+---
+
+## [2.35.02] - Conformité Meeting API Integration Guide
+
+### Ajouts
+- **web-manager/services/meeting_service.py** (v2.30.18)
+  - Nouvelle fonction `get_declared_services()`: retourne l'état des services (ssh, http, vnc, scp, debug)
+  - Nouvelle fonction `sync_ssh_hostkey()`: synchronise les hostkeys du serveur Meeting via `GET /api/ssh-hostkey`
+  - Nouvelle fonction `generate_device_ssh_key()`: génère une paire de clés ed25519 pour le device
+  - Nouvelle fonction `publish_device_ssh_key()`: publie la clé publique via `PUT /api/devices/{device_key}/ssh-key`
+  - Nouvelle fonction `get_device_ssh_pubkey()`: récupère la clé publique du device
+  - Nouvelle fonction `full_ssh_setup()`: exécute le setup SSH complet (génération + sync + publication)
+  - Heartbeat inclut maintenant les services déclarés conformément au guide Meeting
+
+- **web-manager/blueprints/meeting_bp.py** (v2.30.6)
+  - Nouveaux endpoints SSH:
+    - `GET /api/meeting/ssh/key`: récupère la clé publique du device
+    - `POST /api/meeting/ssh/key/generate`: génère une paire de clés SSH
+    - `POST /api/meeting/ssh/key/publish`: publie la clé sur Meeting
+    - `POST /api/meeting/ssh/hostkey/sync`: synchronise les hostkeys du serveur
+    - `POST /api/meeting/ssh/setup`: setup SSH complet
+  - Nouvel endpoint `GET /api/meeting/services`: retourne les services déclarés
+
+### Modifications
+- **web-manager/services/meeting_service.py** (v2.30.18)
+  - Intervalle heartbeat par défaut changé de 30s à 60s (recommandation Meeting API)
+  - Payload heartbeat conforme au guide: ip_address, services, note
+  - SSH setup automatique lors du provisioning
+
+- **web-manager/services/__init__.py** (v2.30.9)
+  - Export des nouvelles fonctions SSH et services
+
+- **docs/DOCUMENTATION_COMPLETE.md** (v2.35.02)
+  - Documentation complète de l'intégration Meeting API
+  - Section 14.5.1: détail du payload heartbeat
+  - Section 14.5.2: gestion des clés SSH
+  - Nouveaux endpoints API documentés
+
+### Conformité Meeting API Integration Guide
+L'implémentation est maintenant conforme au guide `docs/MEETING - integration.md`:
+- ✅ Heartbeat: POST /api/devices/{device_key}/online avec services déclarés
+- ✅ Services: ssh, http, vnc, scp, debug détectés automatiquement
+- ✅ SSH hostkey sync: GET /api/ssh-hostkey + update known_hosts
+- ✅ SSH key publication: PUT /api/devices/{device_key}/ssh-key
+- ✅ Intervalle recommandé: 60 secondes
+
+---
+
+## [2.35.01] - Améliorations UI Page Vidéo
+
+### Modifications
+- **web-manager/templates/index.html** (v2.35.01)
+  - Section "Aperçu en direct" rendue collapsible et repliée par défaut
+  - Suppression des sélecteurs legacy CSI_ENABLE/USB_ENABLE (champs cachés conservés)
+  - Suppression du champ CAMERA_DEVICE visible (champ caché conservé)
+  - Ajout bouton "Appliquer" dans la section Résolution vidéo
+
+- **web-manager/static/css/style.css** (v2.35.01)
+  - Styles pour sections collapsibles (.collapsed, .collapsible-content)
+  - Animation rotation icône chevron
+  - Styles pour bouton OK du sélecteur de langue (.language-btn-ok)
+  - Styles .resolution-actions pour le bouton Appliquer
+
+- **web-manager/static/js/app.js** (v2.35.01)
+  - Nouvelle fonction toggleSection() pour sections collapsibles génériques
+  - Nouvelle fonction applyResolution() pour sauvegarder la résolution sélectionnée
+
+- **web-manager/static/js/modules/i18n.js** (v2.35.01)
+  - Bouton "OK" ajouté au sélecteur de langue (remplace application automatique)
+  - Application de la langue uniquement au clic sur OK
+
+- **web-manager/static/js/modules/config_video.js** (v2.35.01)
+  - Correction bug résolution: utilisation de clé composite WIDTHxHEIGHT-FORMAT
+  - Évite les conflits quand même résolution existe dans formats différents
+
+- **web-manager/static/locales/fr.json** (v2.35.01)
+  - Ajout clés i18n.select_language, i18n.apply_language
+  - Ajout section video avec resolution_invalid, resolution_applied
+
+- **web-manager/static/locales/en.json** (v2.35.01)
+  - Ajout mêmes clés de traduction en anglais
+
+---
+
+## [2.35.00] - Internationalisation (i18n) Multilingue
+
+### Ajouts
+- **web-manager/services/i18n_service.py** (v1.0.0)
+  - Service backend pour la gestion des traductions
+  - Chargement et cache des fichiers de traduction JSON
+  - Support des traductions personnalisées (custom locales)
+  - Deep merge pour fusionner traductions par défaut et personnalisées
+  - Validation des fichiers de traduction uploadés
+  - Détection de la langue utilisateur (cookies, Accept-Language, navigator)
+
+- **web-manager/blueprints/i18n_bp.py** (v1.0.0)
+  - API REST complète pour la gestion i18n
+  - Endpoints: GET/POST /api/i18n/language, GET /api/i18n/languages
+  - GET/PUT/POST/DELETE /api/i18n/translations/<lang_code>
+  - GET /api/i18n/template, POST /api/i18n/validate
+
+- **web-manager/static/js/modules/i18n.js** (v2.35.00)
+  - Module JavaScript pour internationalisation côté client
+  - Traduction dynamique du DOM via attributs data-i18n
+  - Support des placeholders, titles, et alt text
+  - Interpolation de variables {{variable}}
+  - Formatage localisé (nombres, dates, tailles, durées)
+  - Sélecteur de langue avec persistence (localStorage + cookies)
+
+- **web-manager/static/locales/fr.json** (v2.35.00)
+  - Traduction française complète (~600+ clés)
+  - Sections: common, header, nav, dashboard, home, rtsp, onvif, video, audio, recording, files, network, system, meeting, logs, advanced, debug, modals, toast, i18n
+
+- **web-manager/static/locales/en.json** (v2.35.00)
+  - Traduction anglaise complète (même structure que fr.json)
+  - Support natif anglais/français de l'interface
+
+### Modifications
+- **web-manager/templates/index.html** (v2.35.00)
+  - Ajout des attributs data-i18n sur tous les éléments traduisibles
+  - Nouveau sélecteur de langue dans le header
+  - Section gestion des langues dans l'onglet Avancé
+  - Upload de traductions personnalisées
+  - Téléchargement de modèle de traduction
+
+- **web-manager/static/js/app.js** (v2.35.00)
+  - Initialisation async du module i18n au chargement
+  - Fonctions de gestion des traductions personnalisées
+  - Handlers pour upload/download de fichiers JSON
+
+- **web-manager/static/css/style.css** (v2.35.00)
+  - Styles pour le sélecteur de langue
+  - Zone d'upload drag & drop pour traductions
+  - Liste des traductions personnalisées
+
+- **web-manager/app.py** (v2.35.00)
+  - Enregistrement du blueprint i18n_bp
+
+- **web-manager/blueprints/__init__.py** (v2.35.00)
+  - Export du blueprint i18n_bp
+
+- **VERSION**: 2.34.00 → 2.35.00
+
+### Structure des fichiers de traduction
+```
+web-manager/static/locales/
+├── fr.json          # Français (par défaut)
+└── en.json          # English
+
+/etc/rpi-cam/locales/     # Traductions personnalisées
+└── <lang_code>.json      # Ex: de.json, es.json, etc.
+```
+
+### Utilisation
+- La langue est automatiquement détectée (navigateur, cookie, préférence)
+- Changement de langue instantané sans rechargement
+- Les traductions personnalisées surchargent les traductions par défaut
+- Modèle JSON disponible pour créer de nouvelles traductions
+
+---
+
 ## [2.34.00] - ONVIF Imaging/Relay + RTSP Proxy/Transport
 
 ### Ajouts

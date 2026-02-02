@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.34.00 -->
+<!-- RTSP Recorder Web Interface - Version 2.35.04 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RTSP Recorder - Configuration</title>
+    <title data-i18n="header.title">RTSP Recorder - Configuration</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ app_version }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -15,11 +15,15 @@
             <div class="header-content">
                 <div class="logo">
                     <i class="fas fa-video"></i>
-                    <h1>RTSP Recorder</h1>
+                    <h1 data-i18n="header.app_name">RTSP Recorder</h1>
                 </div>
-                <div class="status-badge" id="service-status">
-                    <span class="status-dot {{ 'active' if status == 'active' else 'inactive' }}"></span>
-                    <span class="status-text">{{ status | capitalize }}</span>
+                <div class="header-right">
+                    <!-- Language Selector -->
+                    <div class="language-selector" id="language-selector-container"></div>
+                    <div class="status-badge" id="service-status">
+                        <span class="status-dot {{ 'active' if status == 'active' else 'inactive' }}"></span>
+                        <span class="status-text">{{ status | capitalize }}</span>
+                    </div>
                 </div>
             </div>
         </header>
@@ -34,7 +38,7 @@
                         <div class="card-icon">
                             <i class="fas fa-server"></i>
                         </div>
-                        <h3>Système</h3>
+                        <h3 data-i18n="dashboard.system">Système</h3>
                     </div>
                     <div class="card-content">
                         <div class="system-info">
@@ -42,8 +46,8 @@
                                 <i class="fas fa-tag"></i> {{ system_info.get('hostname', 'N/A') }}
                             </div>
                             <div class="system-details">
-                                <span title="Adresse IP"><i class="fas fa-network-wired"></i> {{ system_info.get('ip_addresses', ['N/A'])[0] }}</span>
-                                <span title="Uptime"><i class="fas fa-clock"></i> {{ system_info.get('uptime', 'N/A') }}</span>
+                                <span data-i18n-title="dashboard.ip_address" title="Adresse IP"><i class="fas fa-network-wired"></i> {{ system_info.get('ip_addresses', ['N/A'])[0] }}</span>
+                                <span data-i18n-title="dashboard.uptime" title="Uptime"><i class="fas fa-clock"></i> {{ system_info.get('uptime', 'N/A') }}</span>
                             </div>
                             <div class="system-metrics">
                                 <div class="metric" title="CPU">
@@ -55,7 +59,7 @@
                                     <span>{{ system_info.get('ram_percent', 0) }}%</span>
                                 </div>
                                 {% if system_info.get('cpu_temp') %}
-                                <div class="metric {% if system_info.get('cpu_temp', 0) > 70 %}hot{% elif system_info.get('cpu_temp', 0) > 55 %}warm{% endif %}" title="Température">
+                                <div class="metric {% if system_info.get('cpu_temp', 0) > 70 %}hot{% elif system_info.get('cpu_temp', 0) > 55 %}warm{% endif %}" data-i18n-title="dashboard.temperature" title="Température">
                                     <i class="fas fa-thermometer-half"></i>
                                     <span>{{ system_info.get('cpu_temp', 'N/A') }}°C</span>
                                 </div>
@@ -71,7 +75,7 @@
                         <div class="card-icon">
                             <i class="fas fa-hdd"></i>
                         </div>
-                        <h3>Stockage</h3>
+                        <h3 data-i18n="dashboard.storage">Stockage</h3>
                     </div>
                     <div class="card-content">
                         <div class="storage-info">
@@ -84,9 +88,9 @@
                                 <div class="storage-bar-fill" style="width: {{ system_info.get('disk_percent_num', 0) }}%"></div>
                             </div>
                             <div class="storage-details">
-                                <span><i class="fas fa-folder-open"></i> {{ system_info.get('recording_count', 0) }} fichiers</span>
+                                <span><i class="fas fa-folder-open"></i> {{ system_info.get('recording_count', 0) }} <span data-i18n="dashboard.files">fichiers</span></span>
                                 <span><i class="fas fa-film"></i> {{ system_info.get('recording_size_mb', 0) }} Mo</span>
-                                <span class="storage-free"><i class="fas fa-check-circle"></i> {{ system_info.get('disk_avail', 'N/A') }} libre</span>
+                                <span class="storage-free"><i class="fas fa-check-circle"></i> {{ system_info.get('disk_avail', 'N/A') }} <span data-i18n="dashboard.free">libre</span></span>
                             </div>
                         </div>
                     </div>
@@ -98,22 +102,22 @@
                         <div class="card-icon">
                             <i class="fas fa-link"></i>
                         </div>
-                        <h3>URL RTSP</h3>
+                        <h3 data-i18n="dashboard.rtsp_url">URL RTSP</h3>
                     </div>
                     <div class="card-content">
                         {% if is_provisioned and rtsp_url_hostname %}
                         <div class="url-display-compact">
                             <div class="url-row">
-                                <span class="url-badge primary">Principal</span>
+                                <span class="url-badge primary" data-i18n="dashboard.primary">Principal</span>
                                 <code class="url-text" title="{{ rtsp_url_hostname }}">{{ rtsp_url_hostname }}</code>
-                                <button class="btn-icon" onclick="copyToClipboard('{{ rtsp_url_hostname }}')" title="Copier">
+                                <button class="btn-icon" onclick="copyToClipboard('{{ rtsp_url_hostname }}')" data-i18n-title="common.copy" title="Copier">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
                             <div class="url-row">
                                 <span class="url-badge secondary">IP</span>
                                 <code class="url-text" title="{{ rtsp_url }}">{{ rtsp_url }}</code>
-                                <button class="btn-icon" onclick="copyToClipboard('{{ rtsp_url }}')" title="Copier">
+                                <button class="btn-icon" onclick="copyToClipboard('{{ rtsp_url }}')" data-i18n-title="common.copy" title="Copier">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
@@ -122,7 +126,7 @@
                         <div class="url-display-compact">
                             <div class="url-row single">
                                 <code class="url-text" title="{{ rtsp_url }}">{{ rtsp_url }}</code>
-                                <button class="btn-icon" onclick="copyRtspUrl()" title="Copier">
+                                <button class="btn-icon" onclick="copyRtspUrl()" data-i18n-title="common.copy" title="Copier">
                                     <i class="fas fa-copy"></i>
                                 </button>
                             </div>
@@ -133,24 +137,25 @@
 
                 <!-- Service Control Card (4th) -->
                 <div class="card control-card">
-                    <h3><i class="fas fa-power-off"></i> Contrôle Services</h3>
+                    <h3><i class="fas fa-power-off"></i> <span data-i18n="dashboard.service_control">Contrôle Services</span></h3>
                     <div class="service-selector">
                         <select id="service-select" class="service-select">
-                            <option value="rpi-av-rtsp-recorder">RTSP Streaming</option>
-                            <option value="rtsp-watchdog">Watchdog</option>
-                            <option value="rpi-cam-onvif">ONVIF</option>
-                            <option value="rpi-cam-webmanager">Web Manager</option>
+                            <option value="rpi-av-rtsp-recorder" data-i18n="services.rtsp_streaming">RTSP Streaming</option>
+                            <option value="rtsp-watchdog" data-i18n="services.watchdog">Watchdog</option>
+                            <option value="rpi-cam-onvif" data-i18n="services.onvif">ONVIF</option>
+                            <option value="rpi-cam-webmanager" data-i18n="services.web_manager">Web Manager</option>
                         </select>
                     </div>
                     <div class="control-buttons">
                         <button class="btn btn-success btn-service" onclick="controlServiceAction('start')">
-                            <i class="fas fa-play"></i> Démarrer
+                            <i class="fas fa-play"></i> <span data-i18n="common.start">Démarrer</span>
                         </button>
                         <button class="btn btn-warning btn-service" onclick="controlServiceAction('restart')">
-                            <i class="fas fa-sync"></i> Redémarrer
+                            <i class="fas fa-sync"></i> <span data-i18n="common.restart">Redémarrer</span>
+                        </button>
                         </button>
                         <button class="btn btn-danger btn-service" onclick="controlServiceAction('stop')">
-                            <i class="fas fa-stop"></i> Arrêter
+                            <i class="fas fa-stop"></i> <span data-i18n="common.stop">Arrêter</span>
                         </button>
                     </div>
                 </div>
@@ -160,44 +165,44 @@
             <section class="config-section">
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="home">
-                        <i class="fas fa-home"></i> Accueil
+                        <i class="fas fa-home"></i> <span data-i18n="nav.home">Accueil</span>
                     </button>
                     <button class="tab-btn" data-tab="rtsp">
-                        <i class="fas fa-broadcast-tower"></i> RTSP
+                        <i class="fas fa-broadcast-tower"></i> <span data-i18n="nav.rtsp">RTSP</span>
                     </button>
                     <button class="tab-btn" data-tab="onvif">
-                        <i class="fas fa-eye"></i> ONVIF
+                        <i class="fas fa-eye"></i> <span data-i18n="nav.onvif">ONVIF</span>
                     </button>
                     <button class="tab-btn" data-tab="video">
-                        <i class="fas fa-video"></i> Vidéo
+                        <i class="fas fa-video"></i> <span data-i18n="nav.video">Vidéo</span>
                     </button>
                     <button class="tab-btn" data-tab="audio">
-                        <i class="fas fa-microphone"></i> Audio
+                        <i class="fas fa-microphone"></i> <span data-i18n="nav.audio">Audio</span>
                     </button>
                     <button class="tab-btn" data-tab="recording">
-                        <i class="fas fa-hdd"></i> Stockage
+                        <i class="fas fa-hdd"></i> <span data-i18n="nav.storage">Stockage</span>
                     </button>
                     <button class="tab-btn" data-tab="files">
-                        <i class="fas fa-film"></i> Enregistrements
+                        <i class="fas fa-film"></i> <span data-i18n="nav.recordings">Enregistrements</span>
                     </button>
                     <button class="tab-btn" data-tab="network">
-                        <i class="fas fa-network-wired"></i> Réseau
+                        <i class="fas fa-network-wired"></i> <span data-i18n="nav.network">Réseau</span>
                     </button>
                     <button class="tab-btn" data-tab="system">
-                        <i class="fas fa-microchip"></i> Système
+                        <i class="fas fa-microchip"></i> <span data-i18n="nav.system">Système</span>
                     </button>
                     <button class="tab-btn" data-tab="meeting">
-                        <i class="fas fa-cloud-upload-alt"></i> Meeting
+                        <i class="fas fa-cloud-upload-alt"></i> <span data-i18n="nav.meeting">Meeting</span>
                     </button>
                     <button class="tab-btn" data-tab="advanced">
-                        <i class="fas fa-cogs"></i> Avancé
+                        <i class="fas fa-cogs"></i> <span data-i18n="nav.advanced">Avancé</span>
                     </button>
                     <button class="tab-btn" data-tab="logs">
-                        <i class="fas fa-file-alt"></i> Logs
+                        <i class="fas fa-file-alt"></i> <span data-i18n="nav.logs">Logs</span>
                     </button>
                     {% if debug_enabled %}
                     <button class="tab-btn" data-tab="debug">
-                        <i class="fas fa-bug"></i> Debug
+                        <i class="fas fa-bug"></i> <span data-i18n="nav.debug">Debug</span>
                     </button>
                     {% endif %}
                 </div>
@@ -208,8 +213,8 @@
                         <div class="home-welcome">
                             <div class="welcome-header">
                                 <i class="fas fa-video fa-3x"></i>
-                                <h2>Bienvenue sur RTSP Recorder</h2>
-                                <p class="welcome-subtitle">Interface de gestion pour caméra Raspberry Pi</p>
+                                <h2 data-i18n="home.welcome_title">Bienvenue sur RTSP Recorder</h2>
+                                <p class="welcome-subtitle" data-i18n="home.welcome_subtitle">Interface de gestion pour caméra Raspberry Pi</p>
                             </div>
                             
                             <div class="home-grid">
@@ -217,35 +222,35 @@
                                 <div class="home-card">
                                     <div class="home-card-header">
                                         <i class="fas fa-heartbeat"></i>
-                                        <h3>État du système</h3>
+                                        <h3 data-i18n="home.system_status">État du système</h3>
                                     </div>
                                     <div class="home-card-content">
                                         <div class="status-row">
-                                            <span>Service RTSP</span>
+                                            <span data-i18n="home.rtsp_service">Service RTSP</span>
                                             <span class="status-badge" id="home-rtsp-status">
                                                 <span class="status-dot"></span>
-                                                <span>Chargement...</span>
+                                                <span data-i18n="common.loading">Chargement...</span>
                                             </span>
                                         </div>
                                         <div class="status-row">
-                                            <span>Service ONVIF</span>
+                                            <span data-i18n="home.onvif_service">Service ONVIF</span>
                                             <span class="status-badge" id="home-onvif-status">
                                                 <span class="status-dot"></span>
-                                                <span>Chargement...</span>
+                                                <span data-i18n="common.loading">Chargement...</span>
                                             </span>
                                         </div>
                                         <div class="status-row">
-                                            <span>Enregistrement</span>
+                                            <span data-i18n="home.recording">Enregistrement</span>
                                             <span class="status-badge" id="home-recording-status">
                                                 <span class="status-dot"></span>
-                                                <span>Chargement...</span>
+                                                <span data-i18n="common.loading">Chargement...</span>
                                             </span>
                                         </div>
                                         <div class="status-row">
-                                            <span>Meeting API</span>
+                                            <span data-i18n="home.meeting_api">Meeting API</span>
                                             <span class="status-badge" id="home-meeting-status">
                                                 <span class="status-dot"></span>
-                                                <span>Chargement...</span>
+                                                <span data-i18n="common.loading">Chargement...</span>
                                             </span>
                                         </div>
                                     </div>
@@ -255,25 +260,25 @@
                                 <div class="home-card">
                                     <div class="home-card-header">
                                         <i class="fas fa-bolt"></i>
-                                        <h3>Accès rapide</h3>
+                                        <h3 data-i18n="home.quick_access">Accès rapide</h3>
                                     </div>
                                     <div class="home-card-content">
                                         <div class="quick-actions">
                                             <button type="button" class="quick-action-btn" onclick="switchToTab('rtsp')">
                                                 <i class="fas fa-broadcast-tower"></i>
-                                                <span>Config RTSP</span>
+                                                <span data-i18n="home.config_rtsp">Config RTSP</span>
                                             </button>
                                             <button type="button" class="quick-action-btn" onclick="switchToTab('onvif')">
                                                 <i class="fas fa-eye"></i>
-                                                <span>Config ONVIF</span>
+                                                <span data-i18n="home.config_onvif">Config ONVIF</span>
                                             </button>
                                             <button type="button" class="quick-action-btn" onclick="switchToTab('video')">
                                                 <i class="fas fa-video"></i>
-                                                <span>Réglages Vidéo</span>
+                                                <span data-i18n="home.video_settings">Réglages Vidéo</span>
                                             </button>
                                             <button type="button" class="quick-action-btn" onclick="switchToTab('network')">
                                                 <i class="fas fa-network-wired"></i>
-                                                <span>Réseau</span>
+                                                <span data-i18n="home.network">Réseau</span>
                                             </button>
                                         </div>
                                     </div>
@@ -283,19 +288,19 @@
                                 <div class="home-card">
                                     <div class="home-card-header">
                                         <i class="fas fa-info-circle"></i>
-                                        <h3>Informations device</h3>
+                                        <h3 data-i18n="home.device_info">Informations device</h3>
                                     </div>
                                     <div class="home-card-content">
                                         <div class="info-row">
-                                            <span class="info-label">Nom ONVIF</span>
-                                            <span class="info-value" id="home-device-name">Chargement...</span>
+                                            <span class="info-label" data-i18n="home.onvif_name">Nom ONVIF</span>
+                                            <span class="info-value" id="home-device-name" data-i18n="common.loading">Chargement...</span>
                                         </div>
                                         <div class="info-row">
-                                            <span class="info-label">IP principale</span>
+                                            <span class="info-label" data-i18n="home.main_ip">IP principale</span>
                                             <span class="info-value" id="home-device-ip">{{ system_info.get('ip', 'N/A') }}</span>
                                         </div>
                                         <div class="info-row">
-                                            <span class="info-label">Modèle</span>
+                                            <span class="info-label" data-i18n="home.model">Modèle</span>
                                             <span class="info-value">{{ system_info.get('model', 'Raspberry Pi') }}</span>
                                         </div>
                                         <div class="info-row">
@@ -908,11 +913,14 @@
                     <!-- Video Tab -->
                     <div class="tab-content" id="tab-video">
                         <!-- Video Preview Section -->
-                        <div class="form-section preview-section">
-                            <h4><i class="fas fa-eye"></i> Aperçu en direct</h4>
+                        <div class="form-section preview-section collapsible collapsed" id="preview-section">
+                            <h4 class="collapsible-header" onclick="toggleSection('preview-section')">
+                                <i class="fas fa-eye"></i> Aperçu en direct
+                                <i class="fas fa-chevron-down collapse-icon"></i>
+                            </h4>
                             <small class="section-help">Visualisez le flux de la caméra en temps réel</small>
                             
-                            <div class="preview-container">
+                            <div class="collapsible-content preview-container">
                                 <div class="preview-wrapper" id="preview-wrapper">
                                     <div class="preview-placeholder" id="preview-placeholder">
                                         <i class="fas fa-video-slash"></i>
@@ -960,7 +968,7 @@
                             </div>
                         </div>
                         
-                        <!-- Video Device Section (first - camera selection) -->
+                        <!-- Video Device Section (camera selection) -->
                         <div class="form-section">
                             <h4><i class="fas fa-camera"></i> Périphérique vidéo</h4>
                             <small class="section-help">Sélectionnez d'abord la source vidéo (caméra USB ou CSI)</small>
@@ -981,21 +989,13 @@
                                 <div id="camera-list" class="detection-list"></div>
                             </div>
                             <div class="form-group">
-                                <label for="CAMERA_DEVICE">
-                                    <i class="fas fa-sliders-h"></i> Périphérique caméra (legacy)
-                                </label>
-                                <input type="text" id="CAMERA_DEVICE" name="CAMERA_DEVICE" 
-                                       value="{{ config.get('CAMERA_DEVICE', config.VIDEO_DEVICE) }}">
-                                <small>Ancien champ utilisé par certains scripts - laissez identique à VIDEO_DEVICE</small>
-                            </div>
-                            <div class="form-group">
                                 <label for="CAMERA_TYPE">
                                     <i class="fas fa-camera"></i> Type de Caméra
                                 </label>
                                 <div class="camera-type-toggle">
                                     <input type="radio" id="cam_usb" name="CAMERA_TYPE" value="usb" 
                                         onchange="onCameraTypeChange()"
-                                        {{ 'checked' if config.CAMERA_TYPE == 'usb' or config.CAMERA_TYPE == 'auto' }}>
+                                        {{ 'checked' if config.CAMERA_TYPE == 'usb' }}>
                                     <label for="cam_usb" class="toggle-btn" title="Caméra USB (Webcam)">
                                         <i class="fab fa-usb"></i> USB
                                     </label>
@@ -1009,31 +1009,10 @@
                                 </div>
                                 <small>Sélectionnez le type de caméra (Redémarrage requis pour appliquer)</small>
                             </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="CSI_ENABLE">
-                                        <i class="fas fa-microchip"></i> Caméra CSI
-                                    </label>
-                                    <select id="CSI_ENABLE" name="CSI_ENABLE">
-                                        <option value="auto" {{ 'selected' if config.CSI_ENABLE == 'auto' or config.CSI_ENABLE not in ['yes', 'no'] }}>Auto</option>
-                                        <option value="yes" {{ 'selected' if config.CSI_ENABLE == 'yes' }}>Activé</option>
-                                        <option value="no" {{ 'selected' if config.CSI_ENABLE == 'no' }}>Désactivé</option>
-                                    </select>
-                                    <small>Autoriser ou bloquer la caméra CSI</small>
-                                </div>
-                                <div class="form-group">
-                                    <label for="USB_ENABLE">
-                                        <i class="fab fa-usb"></i> Caméra USB
-                                    </label>
-                                    <select id="USB_ENABLE" name="USB_ENABLE">
-                                        <option value="auto" {{ 'selected' if config.USB_ENABLE == 'auto' or config.USB_ENABLE not in ['yes', 'no'] }}>Auto</option>
-                                        <option value="yes" {{ 'selected' if config.USB_ENABLE == 'yes' }}>Activé</option>
-                                        <option value="no" {{ 'selected' if config.USB_ENABLE == 'no' }}>Désactivé</option>
-                                    </select>
-                                    <small>Autoriser ou bloquer la caméra USB</small>
-                                </div>
-                            </div>
-                            <small>Utilisé uniquement quand le type de caméra est sur Auto</small>
+                            <!-- Hidden fields for backend compatibility -->
+                            <input type="hidden" id="CAMERA_DEVICE" name="CAMERA_DEVICE" value="{{ config.VIDEO_DEVICE }}">
+                            <input type="hidden" id="CSI_ENABLE" name="CSI_ENABLE" value="yes">
+                            <input type="hidden" id="USB_ENABLE" name="USB_ENABLE" value="yes">
                         </div>
                         
                         <!-- Resolution Selection (second - camera format) -->
@@ -1105,6 +1084,12 @@
                                         <small>Hauteur en pixels</small>
                                     </div>
                                 </div>
+                            </div>
+                            
+                            <div class="resolution-actions">
+                                <button type="button" class="btn btn-primary" onclick="applyResolution()">
+                                    <i class="fas fa-check"></i> Appliquer
+                                </button>
                             </div>
                         </div>
                         
@@ -2933,31 +2918,102 @@
                                     <p class="text-muted">Cliquez sur "Infos device" pour charger les données depuis Meeting</p>
                                 </div>
                             </div>
-
-                            <!-- Tunnel Request -->
+                            
+                            <!-- Services Declaration Section -->
                             <div class="form-section">
-                                <h4><i class="fas fa-project-diagram"></i> Tunnels (Services distants)</h4>
-                                <small class="section-help">Demandez l'ouverture d'un tunnel reverse pour accéder au device depuis l'extérieur</small>
+                                <h4><i class="fas fa-cubes"></i> Services déclarés</h4>
+                                <small class="section-help">Services actifs déclarés au serveur Meeting via le heartbeat</small>
                                 
-                                <div class="tunnel-controls" style="margin-top: 15px;">
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label>Service</label>
-                                            <select id="meeting-tunnel-service">
-                                                <option value="ssh">SSH</option>
-                                                <option value="http">HTTP</option>
-                                                <option value="vnc">VNC</option>
-                                                <option value="rtsp">RTSP</option>
-                                            </select>
+                                <div id="meeting-services-grid" class="services-grid" style="margin-top: 15px;">
+                                    <!-- Filled dynamically by loadMeetingServices() -->
+                                    <div class="service-item">
+                                        <span class="service-icon"><i class="fas fa-spinner fa-spin"></i></span>
+                                        <span class="service-name">Chargement...</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="button-group" style="margin-top: 15px;">
+                                    <button type="button" class="btn btn-secondary btn-small" onclick="loadMeetingServices()">
+                                        <i class="fas fa-sync"></i> Actualiser
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- SSH Key Management Section -->
+                            <div class="form-section">
+                                <h4><i class="fas fa-key"></i> Gestion des clés SSH</h4>
+                                <small class="section-help">Configuration SSH pour la connexion sécurisée au serveur Meeting</small>
+                                
+                                <!-- SSH Keys Status Indicators -->
+                                <div id="ssh-keys-status" class="ssh-keys-status-panel" style="margin-top: 15px; padding: 12px; background: var(--bg-secondary); border-radius: 8px;">
+                                    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+                                        <div class="ssh-key-indicator" id="device-key-status">
+                                            <i class="fas fa-spinner fa-spin"></i> Clé device: <span>Vérification...</span>
                                         </div>
-                                        <div class="form-group" style="display: flex; align-items: flex-end;">
-                                            <button type="button" class="btn btn-primary" onclick="requestMeetingTunnel()">
-                                                <i class="fas fa-external-link-alt"></i> Demander un tunnel
-                                            </button>
+                                        <div class="ssh-key-indicator" id="meeting-key-status">
+                                            <i class="fas fa-spinner fa-spin"></i> Clé Meeting: <span>Vérification...</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div id="meeting-tunnel-result" class="meeting-result" style="display: none; margin-top: 15px;"></div>
+                                
+                                <div id="ssh-key-info" class="ssh-key-section" style="margin-top: 15px;">
+                                    <!-- Filled dynamically by loadDeviceSshKey() -->
+                                    <i class="fas fa-spinner fa-spin"></i> Chargement...
+                                </div>
+                                
+                                <div class="ssh-key-actions" style="margin-top: 15px;">
+                                    <button type="button" class="btn btn-secondary btn-small" onclick="loadDeviceSshKey()">
+                                        <i class="fas fa-eye"></i> Voir
+                                    </button>
+                                    <button type="button" class="btn btn-primary btn-small" onclick="generateDeviceSshKey()">
+                                        <i class="fas fa-plus-circle"></i> Générer
+                                    </button>
+                                    <button type="button" class="btn btn-success btn-small" onclick="publishDeviceSshKey()">
+                                        <i class="fas fa-cloud-upload-alt"></i> Publier
+                                    </button>
+                                    <button type="button" class="btn btn-secondary btn-small" onclick="syncSshHostkey()">
+                                        <i class="fas fa-download"></i> Sync hostkeys
+                                    </button>
+                                    <button type="button" class="btn btn-warning btn-small" onclick="ensureSshKeysConfigured()">
+                                        <i class="fas fa-magic"></i> Auto-config
+                                    </button>
+                                </div>
+                                
+                                <div id="ssh-key-result" class="meeting-result" style="display: none; margin-top: 15px;"></div>
+                            </div>
+                            
+                            <!-- Tunnel Agent Section -->
+                            <div class="form-section">
+                                <h4><i class="fas fa-project-diagram"></i> Agent Tunnel</h4>
+                                <small class="section-help">Connexion tunnel inversé pour SSH/SCP distant via le proxy Meeting</small>
+                                
+                                <div class="tunnel-status-section" style="margin-top: 15px;">
+                                    <div class="status-row" style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                                        <div class="status-indicator" id="tunnel-agent-status">
+                                            <i class="fas fa-circle"></i> <span>Inconnu</span>
+                                        </div>
+                                        <div id="tunnel-agent-autostart" style="color: var(--text-muted); font-size: 0.9em;">
+                                            <!-- Auto-start status -->
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="tunnel-actions" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                        <button type="button" class="btn btn-success btn-small" onclick="startTunnelAgent()">
+                                            <i class="fas fa-play"></i> Démarrer
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-small" onclick="stopTunnelAgent()">
+                                            <i class="fas fa-stop"></i> Arrêter
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-small" onclick="loadTunnelAgentStatus()">
+                                            <i class="fas fa-sync"></i> Actualiser
+                                        </button>
+                                        <button type="button" class="btn btn-primary btn-small" onclick="toggleTunnelAgentAutostart()">
+                                            <i class="fas fa-power-off"></i> Auto-démarrage
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div id="tunnel-agent-result" class="meeting-result" style="display: none; margin-top: 15px;"></div>
                             </div>
                         </div>
                     </div>
@@ -2992,38 +3048,85 @@
 
                     <!-- Advanced Tab -->
                     <div class="tab-content" id="tab-advanced">
-                        <div class="form-group">
-                            <label for="GST_DEBUG_LEVEL">
-                                <i class="fas fa-bug"></i> Niveau de debug GStreamer
-                            </label>
-                            <select id="GST_DEBUG_LEVEL" name="GST_DEBUG_LEVEL">
-                                <option value="0" {{ 'selected' if config.GST_DEBUG_LEVEL == '0' }}>0 - Aucun</option>
-                                <option value="1" {{ 'selected' if config.GST_DEBUG_LEVEL == '1' }}>1 - Erreurs</option>
-                                <option value="2" {{ 'selected' if config.GST_DEBUG_LEVEL == '2' }}>2 - Warnings</option>
-                                <option value="3" {{ 'selected' if config.GST_DEBUG_LEVEL == '3' }}>3 - Info</option>
-                                <option value="4" {{ 'selected' if config.GST_DEBUG_LEVEL == '4' }}>4 - Debug</option>
-                                <option value="5" {{ 'selected' if config.GST_DEBUG_LEVEL == '5' }}>5 - Log</option>
-                                <option value="6" {{ 'selected' if config.GST_DEBUG_LEVEL == '6' }}>6 - Tout</option>
-                            </select>
-                            <small>Niveau de verbosité des logs GStreamer</small>
+                        <!-- Language Management Section -->
+                        <div class="form-section">
+                            <h4><i class="fas fa-globe"></i> <span data-i18n="i18n.language_settings">Paramètres de langue</span></h4>
+                            
+                            <div class="form-group">
+                                <label data-i18n="i18n.current_language">Langue actuelle</label>
+                                <div class="language-status">
+                                    <span id="current-lang-display">Français</span>
+                                    <select id="advanced-language-select" class="language-select" onchange="changeLanguageFromAdvanced(this.value)">
+                                        <!-- Options filled by JS -->
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label data-i18n="i18n.upload_translation">Charger une traduction personnalisée</label>
+                                <div class="file-upload-zone" id="translation-upload-zone">
+                                    <input type="file" id="translation-file" accept=".json" style="display: none;" onchange="handleTranslationUpload(this)">
+                                    <div class="upload-content" onclick="document.getElementById('translation-file').click()">
+                                        <i class="fas fa-cloud-upload-alt fa-2x"></i>
+                                        <p data-i18n="i18n.drop_file">Cliquez ou déposez un fichier JSON</p>
+                                    </div>
+                                </div>
+                                <small data-i18n="i18n.upload_hint">Le fichier JSON doit respecter la structure des traductions existantes. Utilisez le bouton ci-dessous pour télécharger un modèle.</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label data-i18n="i18n.translation_template">Modèle de traduction</label>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-secondary" onclick="downloadTranslationTemplate()">
+                                        <i class="fas fa-download"></i> <span data-i18n="i18n.download_template">Télécharger le modèle</span>
+                                    </button>
+                                    <button type="button" class="btn btn-info" onclick="downloadCurrentTranslation()">
+                                        <i class="fas fa-file-export"></i> <span data-i18n="i18n.export_current">Exporter actuel</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group" id="custom-translations-list" style="display: none;">
+                                <label data-i18n="i18n.custom_translations">Traductions personnalisées</label>
+                                <div id="custom-translations-container"></div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="LOG_DIR">
-                                <i class="fas fa-folder-open"></i> Répertoire des logs
-                            </label>
-                            <input type="text" id="LOG_DIR" name="LOG_DIR" 
-                                   value="{{ config.LOG_DIR }}">
-                            <small>Chemin pour stocker les fichiers de log</small>
-                        </div>
-                        <div class="form-group">
-                            <label for="LOW_LATENCY">
-                                <i class="fas fa-bolt"></i> Mode faible latence
-                            </label>
-                            <select id="LOW_LATENCY" name="LOW_LATENCY">
-                                <option value="1" {{ 'selected' if config.LOW_LATENCY == '1' }}>Activé</option>
-                                <option value="0" {{ 'selected' if config.LOW_LATENCY == '0' }}>Désactivé</option>
-                            </select>
-                            <small>Optimise pour une latence minimale du flux RTSP</small>
+                        
+                        <div class="form-section">
+                            <h4><i class="fas fa-bug"></i> <span data-i18n="advanced.gstreamer_debug">Paramètres avancés</span></h4>
+                            <div class="form-group">
+                                <label for="GST_DEBUG_LEVEL">
+                                    <i class="fas fa-bug"></i> <span data-i18n="advanced.gst_debug_level">Niveau de debug GStreamer</span>
+                                </label>
+                                <select id="GST_DEBUG_LEVEL" name="GST_DEBUG_LEVEL">
+                                    <option value="0" {{ 'selected' if config.GST_DEBUG_LEVEL == '0' }} data-i18n="advanced.gst_level_none">0 - Aucun</option>
+                                    <option value="1" {{ 'selected' if config.GST_DEBUG_LEVEL == '1' }} data-i18n="advanced.gst_level_errors">1 - Erreurs</option>
+                                    <option value="2" {{ 'selected' if config.GST_DEBUG_LEVEL == '2' }} data-i18n="advanced.gst_level_warnings">2 - Warnings</option>
+                                    <option value="3" {{ 'selected' if config.GST_DEBUG_LEVEL == '3' }} data-i18n="advanced.gst_level_info">3 - Info</option>
+                                    <option value="4" {{ 'selected' if config.GST_DEBUG_LEVEL == '4' }} data-i18n="advanced.gst_level_debug">4 - Debug</option>
+                                    <option value="5" {{ 'selected' if config.GST_DEBUG_LEVEL == '5' }} data-i18n="advanced.gst_level_log">5 - Log</option>
+                                    <option value="6" {{ 'selected' if config.GST_DEBUG_LEVEL == '6' }} data-i18n="advanced.gst_level_all">6 - Tout</option>
+                                </select>
+                                <small data-i18n="advanced.gst_debug_hint">Niveau de verbosité des logs GStreamer</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="LOG_DIR">
+                                    <i class="fas fa-folder-open"></i> <span data-i18n="advanced.log_directory">Répertoire des logs</span>
+                                </label>
+                                <input type="text" id="LOG_DIR" name="LOG_DIR" 
+                                       value="{{ config.LOG_DIR }}">
+                                <small data-i18n="advanced.log_dir_hint">Chemin pour stocker les fichiers de log</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="LOW_LATENCY">
+                                    <i class="fas fa-bolt"></i> <span data-i18n="advanced.low_latency_mode">Mode faible latence</span>
+                                </label>
+                                <select id="LOW_LATENCY" name="LOW_LATENCY">
+                                    <option value="1" {{ 'selected' if config.LOW_LATENCY == '1' }} data-i18n="common.enabled">Activé</option>
+                                    <option value="0" {{ 'selected' if config.LOW_LATENCY == '0' }} data-i18n="common.disabled">Désactivé</option>
+                                </select>
+                                <small data-i18n="advanced.low_latency_hint">Optimise pour une latence minimale du flux RTSP</small>
+                            </div>
                         </div>
                     </div>
 
@@ -3713,6 +3816,7 @@
     </div>
 
     <script>window.APP_VERSION = "{{ app_version }}";</script>
+    <script src="{{ url_for('static', filename='js/modules/i18n.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/modules/ui_utils.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/modules/utils.js') }}?v={{ app_version }}"></script>
     <script src="{{ url_for('static', filename='js/modules/navigation.js') }}?v={{ app_version }}"></script>

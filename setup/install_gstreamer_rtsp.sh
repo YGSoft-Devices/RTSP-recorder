@@ -9,8 +9,12 @@
 #   - Create folders for recordings/logs
 #   - Provide quick post-install checks (non-destructive)
 #
-# Version: 2.2.5
+# Version: 2.2.6
 # Changelog:
+#   - 2.2.6: Fix test-launch permission check
+#            - Now verifies test-launch is EXECUTABLE, not just present
+#            - Automatically fixes permissions with chmod +x if found but not executable
+#            - Prevents exit code 126 (Permission denied) crash loops
 #   - 2.2.5: RTSP transport protocols + multicast options for test-launch
 #   - 2.2.4: rpicam opencv postprocess plugin (CSI overlay annotate)
 #   - 2.2.1: Headless RTSP defaults
@@ -689,8 +693,22 @@ check_gst_plugin h264parse
 
 msg "10) Recherche du binaire test-launch (serveur RTSP):"
 TEST_LAUNCH_PATH="$(command -v test-launch 2>/dev/null || true)"
+NEED_BUILD=false
+
 if [[ -n "${TEST_LAUNCH_PATH}" ]]; then
-  msg_ok "test-launch trouvé: ${TEST_LAUNCH_PATH}"
+  # Found test-launch - ensure it's executable
+  if [[ -x "${TEST_LAUNCH_PATH}" ]]; then
+    msg_ok "test-launch trouvé et exécutable: ${TEST_LAUNCH_PATH}"
+  else
+    msg_warn "test-launch trouvé mais NON exécutable: ${TEST_LAUNCH_PATH}"
+    chmod +x "${TEST_LAUNCH_PATH}" 2>/dev/null || true
+    if [[ -x "${TEST_LAUNCH_PATH}" ]]; then
+      msg_ok "   → Permissions corrigées (chmod +x)"
+    else
+      msg_warn "   → Impossible de corriger les permissions, recompilation nécessaire"
+      NEED_BUILD=true
+    fi
+  fi
 else
   # Try common Debian/Ubuntu paths
   CANDIDATE="$(find /usr/lib -name 'test-launch' -type f 2>/dev/null | head -n 1 || true)"
@@ -698,19 +716,24 @@ else
     msg_ok "test-launch trouvé: ${CANDIDATE}"
     # Create symlink for convenience
     ln -sf "$CANDIDATE" /usr/local/bin/test-launch 2>/dev/null || true
+    chmod +x /usr/local/bin/test-launch 2>/dev/null || true
     msg "   Symlink créé: /usr/local/bin/test-launch"
   else
-    msg_warn "test-launch non trouvé dans le système"
-    msg "   Tentative de compilation depuis les sources..."
-    if build_test_launch; then
-      msg_ok "test-launch maintenant disponible"
-    else
-      msg_err "IMPORTANT: test-launch n'est pas disponible!"
-      msg "   Le service RTSP ne pourra pas démarrer sans test-launch."
-      msg "   Solutions:"
-      msg "   1) Installez gcc et libgstrtspserver-1.0-dev puis relancez ce script"
-      msg "   2) Ou installez manuellement gst-rtsp-server depuis GitHub"
-    fi
+    NEED_BUILD=true
+  fi
+fi
+
+if $NEED_BUILD; then
+  msg_warn "test-launch non trouvé ou non fonctionnel"
+  msg "   Tentative de compilation depuis les sources..."
+  if build_test_launch; then
+    msg_ok "test-launch maintenant disponible"
+  else
+    msg_err "IMPORTANT: test-launch n'est pas disponible!"
+    msg "   Le service RTSP ne pourra pas démarrer sans test-launch."
+    msg "   Solutions:"
+    msg "   1) Installez gcc et libgstrtspserver-1.0-dev puis relancez ce script"
+    msg "   2) Ou installez manuellement gst-rtsp-server depuis GitHub"
   fi
 fi
 

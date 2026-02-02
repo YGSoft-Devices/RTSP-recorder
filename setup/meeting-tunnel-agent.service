@@ -1,0 +1,29 @@
+[Unit]
+Description=Meeting Tunnel Agent for RTSP Camera
+Documentation=https://github.com/RTSP-Full/RTSP-recorder
+After=network-online.target rpi-cam-webmanager.service
+Wants=network-online.target
+PartOf=rpi-cam-webmanager.service
+
+[Service]
+Type=simple
+User=root
+Group=www-data
+WorkingDirectory=/opt/rpi-cam-webmanager
+ExecStart=/usr/bin/python3 /opt/rpi-cam-webmanager/tunnel_agent.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+# Security
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/etc/rpi-cam /var/log /tmp
+
+[Install]
+WantedBy=multi-user.target

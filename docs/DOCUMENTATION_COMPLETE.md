@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.34.00
+Version: 2.35.18
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -102,7 +102,7 @@ sudo ./setup/install.sh --gstreamer --rtsp
 sudo systemctl enable --now rpi-av-rtsp-recorder
 ```
 
-### 3.4 Installation depuis Windows (install_device.ps1 v1.4.0)
+### 3.4 Installation depuis Windows (install_device.ps1 v1.4.4)
 
 Pour une installation automatisée depuis un poste Windows vers un Pi fraîchement flashé :
 
@@ -117,12 +117,13 @@ Pour une installation automatisée depuis un poste Windows vers un Pi fraîcheme
 .\debug_tools\install_device.ps1 -IP 192.168.1.124 -CheckOnly
 ```
 
-**Fonctionnalités v1.4.0:**
+**Fonctionnalités v1.4.4:**
 - Hostname automatiquement défini sur la DeviceKey
 - Token burning automatique après installation réussie
 - Détection et configuration automatique de la caméra (USB ou CSI)
 - Provisionnement Meeting API (meeting.json + config.env)
 - Reboot automatique et vérification post-reboot
+- **Nettoyage automatique des `__pycache__` et `.pyc`** après transfert
 
 **Prérequis Windows:** WSL + sshpass (installés automatiquement si manquants)
 
@@ -213,7 +214,7 @@ Autres fichiers:
   "api_url": "https://meeting.ygsoft.fr/api",
   "device_key": "ABCDEF...",
   "token_code": "xxxxxx",
-  "heartbeat_interval": 30,     // Intervalle en secondes
+  "heartbeat_interval": 60,     // Intervalle en secondes (60s recommandé)
   "auto_connect": true,         // Envoi automatique au démarrage
   "provisioned": true           // Indique si le device est provisionné
 }
@@ -446,8 +447,18 @@ L’enregistrement se fait en dehors du pipeline RTSP (contrainte `test-launch`)
 | Variable | Défaut | Description |
 |----------|--------|-------------|
 | `MIN_FREE_DISK_MB` | 1000 | Espace minimum à maintenir (0=désactivé) |
+| `MAX_DISK_MB` | 0 | Taille max du dossier d'enregistrements en Mo (0=illimité) [v1.7.0+] |
 | `PRUNE_CHECK_INTERVAL` | 60 | Intervalle de vérification en secondes |
 | `LOG_MAX_SIZE_MB` | 10 | Taille max des logs avant troncature |
+
+**Limite MAX_DISK_MB (v1.7.0+):**
+En plus de la limite d'espace libre, une nouvelle limite `MAX_DISK_MB` permet de fixer une taille maximale pour le dossier d'enregistrements.
+- Si `MAX_DISK_MB=5000`, le dossier ne dépassera jamais 5 Go
+- Les fichiers les plus anciens sont supprimés automatiquement quand la limite est atteinte
+- L'interface web affiche un indicateur visuel :
+  - Bleu : normal
+  - Orange : warning (90% de la limite)
+  - Rouge clignotant : limite dépassée
 
 **Étape 1 - Nettoyage logs/cache (non-destructif):**
 | Cible | Seuil | Action |
@@ -1874,6 +1885,129 @@ Pour réinitialiser un device provisionné:
 | `/api/meeting/validate` | POST | Valide credentials sans provisionner |
 | `/api/meeting/provision` | POST | Provisionne le device (brûle un token) |
 | `/api/meeting/master-reset` | POST | Réinitialise la config (nécessite code) |
+| `/api/meeting/services` | GET | Retourne les services déclarés (ssh, http, etc.) |
+| `/api/meeting/ssh/key` | GET | Récupère la clé publique SSH du device |
+| `/api/meeting/ssh/key/generate` | POST | Génère une paire de clés SSH ed25519 |
+| `/api/meeting/ssh/key/publish` | POST | Publie la clé SSH sur le serveur Meeting |
+| `/api/meeting/ssh/hostkey/sync` | POST | Synchronise les hostkeys du serveur Meeting |
+| `/api/meeting/ssh/setup` | POST | Setup SSH complet (génère + sync + publie) |
+| `/api/meeting/ssh/keys/status` | GET | Status des clés SSH (device + Meeting) |
+| `/api/meeting/ssh/keys/ensure` | POST | Auto-configuration des clés SSH (v2.35.18+) |
+
+### 14.5.1 Heartbeat (implémentation conforme au guide Meeting)
+
+Le heartbeat envoie régulièrement (par défaut 60s) l'état du device au serveur Meeting.
+
+**Endpoint Meeting appelé:** `POST /api/devices/{device_key}/online`
+
+**Payload envoyé (v2.35.11+):**
+```json
+{
+    "ip_address": "192.168.1.202",
+    "ip_lan": "192.168.1.202",
+    "ip_public": "82.65.xx.xx",
+    "mac": "AA:BB:CC:DD:EE:FF",
+    "note": "RTSP Recorder - Raspberry Pi 3 Model B Rev 1.2"
+}
+```
+
+**Champs réseau (v2.35.11+):**
+- `ip_address` : IP de l'interface principale (ethernet ou WiFi actif)
+- `ip_lan` : Alias de ip_address (rétrocompatibilité)
+- `ip_public` : IP publique détectée via services externes (ipify, ipinfo, amazonaws)
+- `mac` : Adresse MAC de l'interface principale (format AA:BB:CC:DD:EE:FF)
+
+**Note:** Le champ `services` n'est plus envoyé dans le heartbeat (depuis v2.35.08). Les services sont gérés côté admin Meeting, les devices ne doivent pas les envoyer.
+
+**Services (lecture seule via API):**
+- `ssh` : actif si service SSH/SSHD démarré
+- `http` : actif si Web Manager démarré
+- `scp` : actif si SSH actif
+- `vnc` : actif si un serveur VNC tourne
+- `debug` : actif si DEBUG_MODE=yes dans config.env
+
+### 14.5.2 Gestion des clés SSH
+
+Lors du provisioning, le système effectue automatiquement:
+1. Génération d'une paire de clés SSH ed25519 (`/root/.ssh/id_ed25519`)
+2. Synchronisation des hostkeys du serveur Meeting (`GET /api/ssh-hostkey`)
+3. Publication de la clé publique sur Meeting (`PUT /api/devices/{device_key}/ssh-key`)
+4. Installation de la clé publique Meeting dans `authorized_keys` (root ET device)
+
+**Fichiers SSH:**
+- `/root/.ssh/id_ed25519` : clé privée device
+- `/root/.ssh/id_ed25519.pub` : clé publique device
+- `/root/.ssh/known_hosts` : hostkeys du serveur Meeting
+- `/root/.ssh/authorized_keys` : clé publique Meeting (pour connexion SSH entrante)
+- `/home/device/.ssh/authorized_keys` : clé publique Meeting (utilisateur SSH principal)
+
+**Auto-configuration SSH (v2.35.18+):**
+L'agent tunnel configure automatiquement les clés au démarrage:
+1. Génère la clé device si absente
+2. Installe la clé publique Meeting dans authorized_keys (root + device)
+3. Publie la clé device vers l'API Meeting
+
+**Endpoint auto-config:**
+```bash
+POST /api/meeting/ssh/keys/ensure
+# Retourne: { "success": true, "message": "...", "details": [...] }
+```
+
+**Vérification du status:**
+```bash
+GET /api/meeting/ssh/keys/status
+# Retourne: { "success": true, "device_key_exists": bool, "meeting_key_installed": bool }
+```
+
+### 14.5.3 Agent Tunnel Inversé
+
+L'agent tunnel permet des connexions SSH/SCP distantes via le proxy Meeting.
+
+**Fichiers:**
+- `/opt/rpi-cam-webmanager/tunnel_agent.py` : agent Python
+- `/etc/systemd/system/meeting-tunnel-agent.service` : service systemd
+
+**Protocole:**
+1. Connexion TCP vers `meeting.ygsoft.fr:9001`
+2. Handshake: `{"token":"<TOKEN>","name":"<device_key>"}\n`
+3. Frames multiplexées: `[type:1][streamId:4][length:4][payload:N]`
+   - `N` (New): ouvre une connexion locale vers `127.0.0.1:localPort`
+   - `D` (Data): transfère des données
+   - `C` (Close): ferme un stream
+
+**Contrôle via API:**
+```bash
+# État de l'agent
+GET /api/meeting/tunnel/agent/status
+
+# Démarrer/Arrêter
+POST /api/meeting/tunnel/agent/start
+POST /api/meeting/tunnel/agent/stop
+
+# Auto-démarrage
+POST /api/meeting/tunnel/agent/enable
+POST /api/meeting/tunnel/agent/disable
+```
+
+**Activation manuelle:**
+```bash
+sudo systemctl enable --now meeting-tunnel-agent
+sudo systemctl status meeting-tunnel-agent
+```
+
+**Configuration:**
+L'agent lit sa configuration depuis `/etc/rpi-cam/meeting.json`:
+```json
+{
+    "device_key": "ABC123...",
+    "token_code": "secret",
+    "tunnel_host": "meeting.ygsoft.fr",
+    "tunnel_port": 9001,
+    "tunnel_ssl": false
+}
+```
+
+**Note importante (v1.4.1):** Le proxy Meeting port 9001 utilise **TCP pur**, pas SSL/TLS. Le paramètre `tunnel_ssl` doit être `false` (c'est le défaut depuis v1.4.1).
 
 **Exemple validation:**
 ```json

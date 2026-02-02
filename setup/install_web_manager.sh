@@ -313,6 +313,19 @@ systemctl restart "$SERVICE_NAME" || {
     log_info "Vérifiez avec: journalctl -u $SERVICE_NAME -f"
 }
 
+# Install Meeting tunnel agent service (enabled by default)
+TUNNEL_SERVICE_FILE="$SCRIPT_DIR/meeting-tunnel-agent.service"
+if [[ -f "$TUNNEL_SERVICE_FILE" ]]; then
+    log_info "Installation du service Meeting tunnel agent..."
+    cp "$TUNNEL_SERVICE_FILE" "/etc/systemd/system/meeting-tunnel-agent.service"
+    systemctl daemon-reload
+    # Enable and start by default - user can disable via web interface
+    systemctl enable meeting-tunnel-agent 2>/dev/null || true
+    systemctl start meeting-tunnel-agent 2>/dev/null || true
+    log_info "Service meeting-tunnel-agent installé et activé"
+    log_info "Pour désactiver: sudo systemctl disable meeting-tunnel-agent"
+fi
+
 # Check if service is running
 sleep 2
 if systemctl is-active --quiet "$SERVICE_NAME"; then

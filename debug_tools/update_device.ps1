@@ -1,5 +1,5 @@
 # update_device.ps1 - Quick update of project files on a running device
-# Version: 2.0.3
+# Version: 2.0.7
 #
 # This script performs a lightweight, fast update:
 # 0. Wait for device to be reachable (with automatic retry on network/reboot issues)
@@ -319,9 +319,13 @@ foreach ($file in $filesToDeploy) {
     Write-Host "  Deploying: $fileNormalized" -ForegroundColor Yellow
     
     # Determine remote destination
+    # SPECIAL CASE: web-manager/ content should go directly to /opt/rpi-cam-webmanager/ (not /opt/rpi-cam-webmanager/web-manager/)
     $remoteDest = if ($fileNormalized -match "\.sh$" -or $fileNormalized -eq "rpi_csi_rtsp_server.py") {
         "/usr/local/bin/"
     } elseif ($fileNormalized -eq "VERSION") {
+        "/opt/rpi-cam-webmanager/"
+    } elseif ($fileNormalized -eq "web-manager") {
+        # IMPORTANT: web-manager content goes directly to /opt/rpi-cam-webmanager/ (flat structure on device)
         "/opt/rpi-cam-webmanager/"
     } else {
         "/opt/rpi-cam-webmanager/$fileNormalized/"
@@ -332,6 +336,17 @@ foreach ($file in $filesToDeploy) {
     $isDirectory = $item.PSIsContainer
     
     if ($isDirectory) {
+        # Proactive cleanup: déplacer un dossier imbriqué existant (ex: /opt/.../web-manager/web-manager) en .legacy-timestamp
+        $cleanupTemplate = @'
+if [ -d "__REMOTE____FOLDER__" ]; then
+  ts=$(date +%Y%m%d%H%M%S)
+  sudo mv "__REMOTE____FOLDER__" "__REMOTE____FOLDER__.legacy-$ts"
+  echo "Moved nested folder to __REMOTE____FOLDER__.legacy-$ts"
+fi
+'@
+        $cleanupCmd = $cleanupTemplate.Replace("__REMOTE__", $remoteDest).Replace("__FOLDER__", $fileNormalized)
+        $cleanupOut = & $runRemote -IP $deviceIp $cleanupCmd -Timeout 30 2>&1
+
         & $deployScp -Source "$fullPath\" -Dest $remoteDest -Recursive -IpEthernet $deviceIp -User $User -Password $Password -NoRestart 2>&1 | Out-Null
     } else {
         & $deployScp -Source $fullPath -Dest $remoteDest -IpEthernet $deviceIp -User $User -Password $Password -NoRestart 2>&1 | Out-Null
@@ -341,6 +356,54 @@ foreach ($file in $filesToDeploy) {
     }
 }
 Write-Host "✓ Files deployed" -ForegroundColor Green
+
+# STEP 2.1: Synchroniser les emplacements legacy (templates/static) si présents
+Write-Host ""
+Write-Host "=== STEP 2.1: Sync legacy templates/static (if present) ===" -ForegroundColor Cyan
+$syncCmd = @'
+# Sync templates from web-manager to legacy templates directory if it exists
+if [ -d /opt/rpi-cam-webmanager/web-manager/templates ] && [ -d /opt/rpi-cam-webmanager/templates ]; then
+  echo "Syncing templates -> /opt/rpi-cam-webmanager/templates"
+  sudo cp -r /opt/rpi-cam-webmanager/web-manager/templates/* /opt/rpi-cam-webmanager/templates/ || true
+  sudo chown -R root:www-data /opt/rpi-cam-webmanager/templates || true
+fi
+# Sync static assets as well
+if [ -d /opt/rpi-cam-webmanager/web-manager/static ] && [ -d /opt/rpi-cam-webmanager/static ]; then
+  echo "Syncing static -> /opt/rpi-cam-webmanager/static"
+  sudo cp -r /opt/rpi-cam-webmanager/web-manager/static/* /opt/rpi-cam-webmanager/static/ || true
+  sudo chown -R root:www-data /opt/rpi-cam-webmanager/static || true
+fi
+# Remove any leftover nested web-manager directories in legacy path
+if [ -d /opt/rpi-cam-webmanager/web-manager/web-manager ]; then
+  ts=$(date +%Y%m%d%H%M%S)
+  sudo mv /opt/rpi-cam-webmanager/web-manager/web-manager /opt/rpi-cam-webmanager/web-manager/web-manager.legacy-$ts || true
+  echo "Moved nested web-manager to web-manager.legacy-$ts"
+fi
+'@
+
+$output = & $runRemote -IP $deviceIp $syncCmd -Timeout 60 2>&1
+if ($LASTEXITCODE -ne 0) { Write-Host "⚠ Warning during legacy sync (may be OK)" -ForegroundColor Yellow }
+else { Write-Host "✓ Legacy sync completed" -ForegroundColor Green }
+
+# STEP 2.2: Fix executable permissions for scripts
+Write-Host ""
+Write-Host "=== STEP 2.2: Fixing script permissions ===" -ForegroundColor Cyan
+$chmodCmd = @'
+# Ensure all scripts in /usr/local/bin have execute permission
+echo "Fixing executable permissions..."
+sudo chmod +x /usr/local/bin/rpi_*.sh /usr/local/bin/rpi_*.py 2>/dev/null || true
+sudo chmod +x /usr/local/bin/rtsp_*.sh 2>/dev/null || true
+# CRITICAL: Ensure test-launch binary is executable (prevents exit code 126)
+sudo chmod +x /usr/local/bin/test-launch 2>/dev/null || true
+# Also fix any .sh and .py scripts in web-manager and onvif-server
+sudo find /opt/rpi-cam-webmanager -name '*.sh' -exec chmod +x {} \; 2>/dev/null || true
+sudo find /opt/rpi-cam-webmanager -name '*.py' -exec chmod +x {} \; 2>/dev/null || true
+echo "OK"
+'@
+
+$output = & $runRemote -IP $deviceIp $chmodCmd -Timeout 30 2>&1
+if ($LASTEXITCODE -ne 0) { Write-Host "⚠ Warning fixing permissions (may be OK)" -ForegroundColor Yellow }
+else { Write-Host "✓ Script permissions fixed" -ForegroundColor Green }
 
 Write-Host ""
 Write-Host "=== STEP 3: Checking Python requirements ===" -ForegroundColor Cyan
@@ -369,10 +432,19 @@ Write-Host "=== STEP 4: Restarting services ===" -ForegroundColor Cyan
 $restartCmd = @"
 echo "Restarting services..."
 sudo systemctl start rpi-cam-webmanager rpi-av-rtsp-recorder rtsp-recorder rtsp-watchdog rpi-cam-onvif 2>/dev/null || true
+
+# Ensure meeting-tunnel-agent is enabled and started (default autostart)
+if [ -f /etc/systemd/system/meeting-tunnel-agent.service ]; then
+  echo "Enabling meeting-tunnel-agent (autostart by default)..."
+  sudo systemctl enable meeting-tunnel-agent 2>/dev/null || true
+  sudo systemctl start meeting-tunnel-agent 2>/dev/null || true
+fi
+
 sleep 3
 echo "Checking status..."
 sudo systemctl is-active rpi-cam-webmanager >/dev/null && echo "✓ Web Manager running" || echo "⚠ Web Manager not running"
 sudo systemctl is-active rpi-av-rtsp-recorder >/dev/null && echo "✓ RTSP Recorder running" || echo "⚠ RTSP Recorder not running"
+sudo systemctl is-active meeting-tunnel-agent >/dev/null && echo "✓ Tunnel Agent running" || echo "⚠ Tunnel Agent not running"
 "@
 
 $output = & $runRemote -IP $deviceIp $restartCmd -Timeout 30 2>&1

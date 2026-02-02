@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Meeting/NTP/RTC functions
- * Version: 2.34.00
+ * Version: 2.35.18
  */
 
 (function () {
@@ -47,7 +47,7 @@ async function testMeetingConnection() {
             if (data.data) {
                 resultDiv.innerHTML += `<pre>${JSON.stringify(data.data, null, 2)}</pre>`;
             }
-            showToast('Connexion Meeting r?ussie', 'success');
+            showToast('Connexion Meeting réussie', 'success');
             updateMeetingStatus(true);
         } else {
             resultDiv.className = 'meeting-result error';
@@ -55,7 +55,7 @@ async function testMeetingConnection() {
             if (data.details) {
                 resultDiv.innerHTML += `<pre>${JSON.stringify(data.details, null, 2)}</pre>`;
             }
-            showToast('?chec de connexion Meeting', 'error');
+            showToast('Échec de connexion Meeting', 'error');
             updateMeetingStatus(false);
         }
     } catch (error) {
@@ -76,21 +76,46 @@ async function sendMeetingHeartbeat() {
     resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi du heartbeat...';
     
     try {
-        const response = await fetch('/api/meeting/heartbeat', { method: 'POST' });
+        // Use debug endpoint to get both payload and response
+        const response = await fetch('/api/meeting/heartbeat/debug', { method: 'POST' });
         const data = await response.json();
         
         if (data.success) {
             resultDiv.className = 'meeting-result success';
-            resultDiv.innerHTML = `<i class="fas fa-heartbeat"></i> ${data.message || 'Heartbeat envoy?'}`;
-            if (data.payload) {
-                resultDiv.innerHTML += `<pre>Donn?es envoy?es:\n${JSON.stringify(data.payload, null, 2)}</pre>`;
+            let html = `<i class="fas fa-heartbeat"></i> Heartbeat envoyé avec succès`;
+            
+            // Show endpoint
+            if (data.api_url && data.endpoint) {
+                html += `<br><small>➡️ ${data.api_url}${data.endpoint}</small>`;
             }
-            showToast('Heartbeat envoy?', 'success');
+            
+            // Show payload sent
+            if (data.payload_sent) {
+                html += `<details style="margin-top: 10px;"><summary><strong>📤 Payload envoyé</strong></summary>`;
+                html += `<pre style="background:#1a1a2e; padding:10px; border-radius:5px; overflow-x:auto; font-size:11px;">${JSON.stringify(data.payload_sent, null, 2)}</pre></details>`;
+            }
+            
+            // Show response received
+            if (data.response) {
+                html += `<details style="margin-top: 5px;"><summary><strong>📥 Réponse Meeting</strong></summary>`;
+                html += `<pre style="background:#1a1a2e; padding:10px; border-radius:5px; overflow-x:auto; font-size:11px;">${JSON.stringify(data.response, null, 2)}</pre></details>`;
+            }
+            
+            resultDiv.innerHTML = html;
+            showToast('Heartbeat envoyé', 'success');
             updateMeetingStatus(true);
         } else {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || data.message || '?chec'}`;
-            showToast('?chec du heartbeat', 'error');
+            let html = `<i class="fas fa-times-circle"></i> ${data.response?.error || data.response?.message || 'Échec'}`;
+            
+            // Still show what was attempted
+            if (data.payload_sent) {
+                html += `<details style="margin-top: 10px;"><summary><strong>📤 Payload tenté</strong></summary>`;
+                html += `<pre style="background:#1a1a2e; padding:10px; border-radius:5px; overflow-x:auto; font-size:11px;">${JSON.stringify(data.payload_sent, null, 2)}</pre></details>`;
+            }
+            
+            resultDiv.innerHTML = html;
+            showToast('Échec du heartbeat', 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
@@ -106,7 +131,7 @@ async function getMeetingAvailability() {
     const resultDiv = document.getElementById('meeting-test-result');
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> V?rification de la disponibilit?...';
+    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification de la disponibilité...';
     
     try {
         const response = await fetch('/api/meeting/availability');
@@ -118,26 +143,26 @@ async function getMeetingAvailability() {
             const isOnline = avail.online === true || avail.status === 'Available' || avail.status === 'available';
             resultDiv.className = 'meeting-result success';
             resultDiv.innerHTML = `
-                <i class="fas fa-info-circle"></i> ?tat de disponibilit?
+                <i class="fas fa-info-circle"></i> État de disponibilité
                 <div class="availability-info">
-                    <p><strong>En ligne:</strong> ${isOnline ? 'Oui ?' : 'Non ?'}</p>
+                    <p><strong>En ligne:</strong> ${isOnline ? 'Oui ✓' : 'Non ✗'}</p>
                     <p><strong>Status:</strong> ${avail.status || 'N/A'}</p>
                     ${avail.last_heartbeat ? `<p><strong>Dernier heartbeat:</strong> ${avail.last_heartbeat}</p>` : ''}
-                    ${avail.last_seen ? `<p><strong>Derni?re connexion:</strong> ${new Date(avail.last_seen).toLocaleString()}</p>` : ''}
+                    ${avail.last_seen ? `<p><strong>Dernière connexion:</strong> ${new Date(avail.last_seen).toLocaleString()}</p>` : ''}
                     ${avail.uptime ? `<p><strong>Uptime:</strong> ${avail.uptime} minutes</p>` : ''}
                     ${avail.ip ? `<p><strong>IP:</strong> ${avail.ip}</p>` : ''}
                 </div>
             `;
-            showToast('Disponibilit? r?cup?r?e', 'success');
+            showToast('Disponibilité récupérée', 'success');
         } else {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || data.message || '?chec'}`;
-            showToast('?chec r?cup?ration disponibilit?', 'error');
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || data.message || 'Échec'}`;
+            showToast('Échec récupération disponibilité', 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
         resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
-        showToast('Erreur disponibilit?', 'error');
+        showToast('Erreur disponibilité', 'error');
     }
 }
 
@@ -164,7 +189,7 @@ async function fetchMeetingDeviceInfo() {
             
             // Map API fields to expected fields
             // Name = product_serial (not device_name which is just the key)
-            const deviceName = device.product_serial || device.name || device.device_name || 'Non d?fini';
+            const deviceName = device.product_serial || device.name || device.device_name || 'Non défini';
             // IP from device info
             const deviceIp = device.ip_address || device.ip || 'N/A';
             // Online status from availability API
@@ -199,14 +224,14 @@ async function fetchMeetingDeviceInfo() {
                 
                 servicesHtml = `
                     <div class="services-section">
-                        <label><i class="fas fa-cogs"></i> Services d?clar?s</label>
+                        <label><i class="fas fa-cogs"></i> Services déclarés</label>
                         <div class="services-badges">${serviceBadges}</div>
                     </div>
                 `;
             } else {
                 servicesHtml = `
                     <div class="services-section">
-                        <label><i class="fas fa-cogs"></i> Services d?clar?s</label>
+                        <label><i class="fas fa-cogs"></i> Services déclarés</label>
                         <div class="services-badges"><span class="service-badge service-none">Aucun service</span></div>
                     </div>
                 `;
@@ -217,7 +242,7 @@ async function fetchMeetingDeviceInfo() {
             if (device.ap_ssid || device.ap_password) {
                 wifiApHtml = `
                     <div class="wifi-ap-section">
-                        <label><i class="fas fa-wifi"></i> Point d'acc?s WiFi</label>
+                        <label><i class="fas fa-wifi"></i> Point d'accès WiFi</label>
                         <div class="wifi-ap-info">
                             <div class="wifi-ap-item">
                                 <span class="wifi-label">SSID</span>
@@ -262,7 +287,7 @@ async function fetchMeetingDeviceInfo() {
                         <span class="mono">${deviceIp}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-clock"></i> Derni?re activit?</label>
+                        <label><i class="fas fa-clock"></i> Dernière activité</label>
                         <span>${lastSeenStr}</span>
                     </div>
                     <div class="info-item">
@@ -270,7 +295,7 @@ async function fetchMeetingDeviceInfo() {
                         <span>${device.token_count !== undefined ? device.token_count : 'N/A'}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-check-circle ${device.authorized ? 'text-success' : 'text-danger'}"></i> Autoris?</label>
+                        <label><i class="fas fa-check-circle ${device.authorized ? 'text-success' : 'text-danger'}"></i> Autorisé</label>
                         <span>${device.authorized ? 'Oui' : 'Non'}</span>
                     </div>
                 </div>
@@ -278,10 +303,10 @@ async function fetchMeetingDeviceInfo() {
                 ${wifiApHtml}
                 ${servicesHtml}
             `;
-            showToast('Informations du device charg?es', 'success');
+            showToast('Informations du device chargées', 'success');
         } else {
             infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-circle"></i> ${data.error || data.message || 'Impossible de charger les informations'}</p>`;
-            showToast('?chec chargement device info', 'error');
+            showToast('Échec chargement device info', 'error');
         }
     } catch (error) {
         infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}</p>`;
@@ -324,19 +349,527 @@ async function requestMeetingTunnel() {
                 }
             }
             resultDiv.innerHTML = html;
-            showToast(`Tunnel ${service} cr??`, 'success');
+            showToast(`Tunnel ${service} créé`, 'success');
         } else {
             resultDiv.className = 'meeting-result error';
             resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.message}`;
             if (data.details) {
                 resultDiv.innerHTML += `<pre>${JSON.stringify(data.details, null, 2)}</pre>`;
             }
-            showToast('?chec cr?ation tunnel', 'error');
+            showToast('Échec création tunnel', 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
         resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
         showToast('Erreur tunnel', 'error');
+    }
+}
+
+// ============================================================================
+// Services Declaration Management
+// ============================================================================
+
+/**
+ * Load and display declared services (authorized by Meeting API)
+ */
+async function loadMeetingServices() {
+    const container = document.getElementById('meeting-services-grid');
+    if (!container) return;
+    
+    const allServices = ['ssh', 'http', 'vnc', 'scp', 'debug'];
+    
+    try {
+        // Fetch services authorized by Meeting API
+        const response = await fetch('/api/meeting/services?source=meeting');
+        const data = await response.json();
+        
+        // services is a dict {serviceName: bool}, convert to array of enabled services
+        const servicesDict = data.success ? (data.services || {}) : {};
+        const enabledServices = Object.keys(servicesDict).filter(k => servicesDict[k]);
+        
+        container.innerHTML = allServices.map(service => {
+            const isEnabled = enabledServices.includes(service);
+            const icons = {
+                'ssh': 'fa-terminal',
+                'http': 'fa-globe',
+                'vnc': 'fa-desktop',
+                'scp': 'fa-file-upload',
+                'debug': 'fa-bug'
+            };
+            return `
+                <div class="service-item ${isEnabled ? 'active' : ''}">
+                    <span class="service-icon"><i class="fas ${icons[service] || 'fa-plug'}"></i></span>
+                    <span class="service-name">${service}</span>
+                    <span class="service-status ${isEnabled ? 'enabled' : 'disabled'}">
+                        ${isEnabled ? 'Actif' : 'Inactif'}
+                    </span>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        container.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}</p>`;
+    }
+}
+
+// ============================================================================
+// SSH Key Management
+// ============================================================================
+
+/**
+ * Load SSH keys status indicators
+ * Shows whether device key exists and Meeting pubkey is installed
+ */
+async function loadSshKeysStatus() {
+    const deviceKeyStatus = document.getElementById('device-key-status');
+    const meetingKeyStatus = document.getElementById('meeting-key-status');
+    
+    if (!deviceKeyStatus || !meetingKeyStatus) return;
+    
+    try {
+        const response = await fetch('/api/meeting/ssh/keys/status');
+        const data = await response.json();
+        
+        if (data.success) {
+            // Device key status
+            if (data.device_key_exists) {
+                deviceKeyStatus.innerHTML = `<i class="fas fa-check-circle text-success"></i> Clé device: <span class="text-success">Présente</span>`;
+            } else {
+                deviceKeyStatus.innerHTML = `<i class="fas fa-times-circle text-danger"></i> Clé device: <span class="text-danger">Absente</span>`;
+            }
+            
+            // Meeting key status
+            if (data.meeting_key_installed) {
+                meetingKeyStatus.innerHTML = `<i class="fas fa-check-circle text-success"></i> Clé Meeting: <span class="text-success">Installée</span>`;
+            } else {
+                meetingKeyStatus.innerHTML = `<i class="fas fa-times-circle text-danger"></i> Clé Meeting: <span class="text-danger">Non installée</span>`;
+            }
+        } else {
+            deviceKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> Clé device: <span class="text-warning">Erreur</span>`;
+            meetingKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> Clé Meeting: <span class="text-warning">Erreur</span>`;
+        }
+    } catch (error) {
+        deviceKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> Erreur vérification`;
+        meetingKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> Erreur vérification`;
+    }
+}
+
+/**
+ * Ensure SSH keys are properly configured for Meeting integration
+ * Auto-generates device key if missing and installs Meeting pubkey
+ */
+async function ensureSshKeysConfigured() {
+    const resultDiv = document.getElementById('ssh-key-result');
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'meeting-result loading';
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Auto-configuration des clés SSH...';
+    }
+    
+    try {
+        const response = await fetch('/api/meeting/ssh/keys/ensure', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result success';
+                let html = `<i class="fas fa-check-circle"></i> ${data.message || 'Clés SSH configurées'}<br><ul>`;
+                if (data.details) {
+                    for (const detail of data.details) {
+                        html += `<li>✓ ${detail}</li>`;
+                    }
+                }
+                html += '</ul>';
+                resultDiv.innerHTML = html;
+            }
+            showToast('Clés SSH configurées', 'success');
+            // Refresh status indicators
+            loadSshKeysStatus();
+            loadDeviceSshKey();
+        } else {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result error';
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de la configuration'}`;
+            }
+            showToast('Échec configuration clés SSH', 'error');
+        }
+    } catch (error) {
+        if (resultDiv) {
+            resultDiv.className = 'meeting-result error';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        }
+        showToast('Erreur configuration clés', 'error');
+    }
+}
+
+/**
+ * Load device SSH key information
+ */
+async function loadDeviceSshKey() {
+    const infoDiv = document.getElementById('ssh-key-info');
+    if (!infoDiv) return;
+    
+    infoDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement...';
+    
+    try {
+        const response = await fetch('/api/meeting/ssh/key');
+        const data = await response.json();
+        
+        if (data.success && data.pubkey) {
+            // pubkey format: "ssh-ed25519 AAAA... comment"
+            const pubkeyParts = data.pubkey.split(' ');
+            const keyType = pubkeyParts[0] || 'ed25519';
+            const pubkeyShort = data.pubkey.length > 80 ? data.pubkey.substring(0, 77) + '...' : data.pubkey;
+            infoDiv.innerHTML = `
+                <label>Type:</label>
+                <span>${keyType}</span>
+                <label>Clé publique:</label>
+                <span class="mono-truncate" title="${data.pubkey}">${pubkeyShort}</span>
+                <label>Statut:</label>
+                <span class="text-success"><i class="fas fa-check-circle"></i> Générée</span>
+            `;
+        } else {
+            infoDiv.innerHTML = `
+                <label>État:</label>
+                <span class="text-warning"><i class="fas fa-exclamation-circle"></i> Clé SSH non générée</span>
+            `;
+        }
+    } catch (error) {
+        infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> ${error.message}</p>`;
+    }
+}
+
+/**
+ * Generate a new device SSH key
+ */
+async function generateDeviceSshKey() {
+    if (!confirm('Générer une nouvelle clé SSH ? L\'ancienne clé sera écrasée.')) {
+        return;
+    }
+    
+    const resultDiv = document.getElementById('ssh-key-result');
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'meeting-result loading';
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération de la clé...';
+    }
+    
+    try {
+        const response = await fetch('/api/meeting/ssh/key/generate', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result success';
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Clé générée avec succès'}`;
+            }
+            showToast('Clé SSH générée', 'success');
+            loadDeviceSshKey();
+        } else {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result error';
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de génération'}`;
+            }
+            showToast('Échec génération clé SSH', 'error');
+        }
+    } catch (error) {
+        if (resultDiv) {
+            resultDiv.className = 'meeting-result error';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        }
+        showToast('Erreur génération clé', 'error');
+    }
+}
+
+/**
+ * Publish device SSH key to Meeting API
+ */
+async function publishDeviceSshKey() {
+    const resultDiv = document.getElementById('ssh-key-result');
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'meeting-result loading';
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publication de la clé...';
+    }
+    
+    try {
+        const response = await fetch('/api/meeting/ssh/key/publish', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result success';
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Clé publiée'}`;
+            }
+            showToast('Clé SSH publiée sur Meeting', 'success');
+            loadDeviceSshKey();
+        } else {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result error';
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de publication'}`;
+            }
+            showToast('Échec publication clé SSH', 'error');
+        }
+    } catch (error) {
+        if (resultDiv) {
+            resultDiv.className = 'meeting-result error';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        }
+        showToast('Erreur publication clé', 'error');
+    }
+}
+
+/**
+ * Sync SSH hostkey from Meeting API
+ */
+async function syncSshHostkey() {
+    const resultDiv = document.getElementById('ssh-key-result');
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'meeting-result loading';
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Synchronisation de la hostkey...';
+    }
+    
+    try {
+        const response = await fetch('/api/meeting/ssh/hostkey/sync', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result success';
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Hostkey synchronisée'}`;
+            }
+            showToast('Hostkey synchronisée', 'success');
+        } else {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result error';
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de synchronisation'}`;
+            }
+            showToast('Échec sync hostkey', 'error');
+        }
+    } catch (error) {
+        if (resultDiv) {
+            resultDiv.className = 'meeting-result error';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        }
+        showToast('Erreur sync hostkey', 'error');
+    }
+}
+
+/**
+ * Full SSH setup (generate + publish + sync)
+ */
+async function fullSshSetup() {
+    if (!confirm('Lancer la configuration SSH complète ?\n\n• Génération de clé\n• Publication sur Meeting\n• Synchronisation hostkey')) {
+        return;
+    }
+    
+    const resultDiv = document.getElementById('ssh-key-result');
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'meeting-result loading';
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Configuration SSH en cours...';
+    }
+    
+    try {
+        const response = await fetch('/api/meeting/ssh/setup', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result success';
+                let html = `<i class="fas fa-check-circle"></i> Configuration SSH complète !<br><ul>`;
+                if (data.results) {
+                    for (const [step, result] of Object.entries(data.results)) {
+                        const icon = result.success ? '✓' : '✗';
+                        html += `<li>${icon} ${step}: ${result.message || (result.success ? 'OK' : 'Échec')}</li>`;
+                    }
+                }
+                html += '</ul>';
+                resultDiv.innerHTML = html;
+            }
+            showToast('Configuration SSH complète', 'success');
+            loadDeviceSshKey();
+        } else {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result error';
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de la configuration'}`;
+            }
+            showToast('Échec configuration SSH', 'error');
+        }
+    } catch (error) {
+        if (resultDiv) {
+            resultDiv.className = 'meeting-result error';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        }
+        showToast('Erreur configuration SSH', 'error');
+    }
+}
+
+// ============================================================================
+// Tunnel Agent Management
+// ============================================================================
+
+/**
+ * Load tunnel agent status
+ */
+async function loadTunnelAgentStatus() {
+    const statusDiv = document.getElementById('tunnel-agent-status');
+    const autostartDiv = document.getElementById('tunnel-agent-autostart');
+    
+    if (!statusDiv) return;
+    
+    try {
+        const response = await fetch('/api/meeting/tunnel/agent/status');
+        const data = await response.json();
+        
+        if (data.success && data.status) {
+            const { active, enabled, state } = data.status;
+            
+            if (active) {
+                statusDiv.className = 'status-indicator connected';
+                statusDiv.innerHTML = '<i class="fas fa-circle"></i> <span>Actif</span>';
+            } else {
+                statusDiv.className = 'status-indicator disconnected';
+                statusDiv.innerHTML = '<i class="fas fa-circle"></i> <span>Arrêté</span>';
+            }
+            
+            if (autostartDiv) {
+                autostartDiv.innerHTML = enabled 
+                    ? '<i class="fas fa-check text-success"></i> Auto-démarrage activé'
+                    : '<i class="fas fa-times text-muted"></i> Auto-démarrage désactivé';
+            }
+        } else {
+            statusDiv.className = 'status-indicator disconnected';
+            statusDiv.innerHTML = '<i class="fas fa-circle"></i> <span>Non installé</span>';
+        }
+    } catch (error) {
+        statusDiv.className = 'status-indicator disconnected';
+        statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>Erreur</span>';
+    }
+}
+
+/**
+ * Start tunnel agent
+ */
+async function startTunnelAgent() {
+    const resultDiv = document.getElementById('tunnel-agent-result');
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'meeting-result loading';
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Démarrage de l\'agent tunnel...';
+    }
+    
+    try {
+        const response = await fetch('/api/meeting/tunnel/agent/start', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result success';
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Agent tunnel démarré'}`;
+            }
+            showToast('Agent tunnel démarré', 'success');
+            setTimeout(loadTunnelAgentStatus, 1000);
+        } else {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result error';
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec'}`;
+            }
+            showToast('Échec démarrage agent', 'error');
+        }
+    } catch (error) {
+        if (resultDiv) {
+            resultDiv.className = 'meeting-result error';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        }
+        showToast('Erreur démarrage agent', 'error');
+    }
+}
+
+/**
+ * Stop tunnel agent
+ */
+async function stopTunnelAgent() {
+    const resultDiv = document.getElementById('tunnel-agent-result');
+    if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.className = 'meeting-result loading';
+        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Arrêt de l\'agent tunnel...';
+    }
+    
+    try {
+        const response = await fetch('/api/meeting/tunnel/agent/stop', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result success';
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Agent tunnel arrêté'}`;
+            }
+            showToast('Agent tunnel arrêté', 'success');
+            setTimeout(loadTunnelAgentStatus, 1000);
+        } else {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result error';
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec'}`;
+            }
+            showToast('Échec arrêt agent', 'error');
+        }
+    } catch (error) {
+        if (resultDiv) {
+            resultDiv.className = 'meeting-result error';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        }
+        showToast('Erreur arrêt agent', 'error');
+    }
+}
+
+/**
+ * Toggle tunnel agent autostart
+ */
+async function toggleTunnelAgentAutostart() {
+    const resultDiv = document.getElementById('tunnel-agent-result');
+    
+    try {
+        // Check current state first
+        const statusResponse = await fetch('/api/meeting/tunnel/agent/status');
+        const statusData = await statusResponse.json();
+        const currentlyEnabled = statusData.success && statusData.status?.enabled;
+        
+        const endpoint = currentlyEnabled 
+            ? '/api/meeting/tunnel/agent/disable'
+            : '/api/meeting/tunnel/agent/enable';
+        
+        if (resultDiv) {
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'meeting-result loading';
+            resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Modification auto-démarrage...';
+        }
+        
+        const response = await fetch(endpoint, { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result success';
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message}`;
+            }
+            showToast(data.message, 'success');
+            loadTunnelAgentStatus();
+        } else {
+            if (resultDiv) {
+                resultDiv.className = 'meeting-result error';
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec'}`;
+            }
+            showToast('Échec modification auto-démarrage', 'error');
+        }
+    } catch (error) {
+        if (resultDiv) {
+            resultDiv.className = 'meeting-result error';
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        }
+        showToast('Erreur', 'error');
     }
 }
 
@@ -350,15 +883,15 @@ function updateMeetingStatus(connected) {
     if (statusEl) {
         if (connected) {
             statusEl.className = 'status-indicator connected';
-            statusEl.innerHTML = '<i class="fas fa-circle"></i> Connect?';
+            statusEl.innerHTML = '<i class="fas fa-circle"></i> Connecté';
         } else {
             statusEl.className = 'status-indicator disconnected';
-            statusEl.innerHTML = '<i class="fas fa-circle"></i> D?connect?';
+            statusEl.innerHTML = '<i class="fas fa-circle"></i> Déconnecté';
         }
     }
     
     if (detailsEl && connected) {
-        detailsEl.innerHTML = `<small>Derni?re connexion: ${new Date().toLocaleTimeString()}</small>`;
+        detailsEl.innerHTML = `<small>Dernière connexion: ${new Date().toLocaleTimeString()}</small>`;
     }
 }
 
@@ -369,10 +902,10 @@ function updateMeetingConfigStatus() {
     const autoStatus = document.getElementById('meeting-auto-connect-status');
 
     if (enabledStatus && enabledToggle) {
-        enabledStatus.textContent = enabledToggle.checked ? 'Activ?' : 'D?sactiv?';
+        enabledStatus.textContent = enabledToggle.checked ? 'Activé' : 'Désactivé';
     }
     if (autoStatus && autoToggle) {
-        autoStatus.textContent = autoToggle.checked ? 'Activ?' : 'D?sactiv?';
+        autoStatus.textContent = autoToggle.checked ? 'Activé' : 'Désactivé';
     }
 }
 
@@ -401,7 +934,7 @@ async function loadMeetingConfig() {
         if (heartbeatInput) heartbeatInput.value = config.heartbeat_interval || 30;
         if (tokenInput) {
             tokenInput.value = '';
-            tokenInput.placeholder = config.has_token ? '???????? (enregistr?)' : 'Aucun token';
+            tokenInput.placeholder = config.has_token ? '•••••••• (enregistré)' : 'Aucun token';
         }
         if (provisionedBadge) {
             if (config.provisioned) {
@@ -452,7 +985,7 @@ async function saveMeetingConfig() {
         const data = await response.json();
 
         if (data.success) {
-            showToast('Configuration Meeting enregistr?e', 'success');
+            showToast('Configuration Meeting enregistrée', 'success');
             loadMeetingStatus();
             loadMeetingConfig();
         } else {
@@ -505,7 +1038,7 @@ async function loadMeetingStatus() {
                 // Not configured
                 if (statusEl) {
                     statusEl.className = 'status-indicator disconnected';
-                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Non provisionn?';
+                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Non provisionné';
                 }
                 if (detailsEl) {
                     detailsEl.innerHTML = '<small>Entrez vos credentials pour provisionner ce device</small>';
@@ -514,15 +1047,15 @@ async function loadMeetingStatus() {
                 // Connected and heartbeat working
                 if (statusEl) {
                     statusEl.className = 'status-indicator connected';
-                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Connect?';
+                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Connecté';
                 }
                 if (detailsEl) {
                     let details = `<small>Device: ${status.device_key}`;
                     if (status.last_heartbeat_ago !== null) {
-                        details += ` ? Dernier heartbeat: il y a ${status.last_heartbeat_ago}s`;
+                        details += ` • Dernier heartbeat: il y a ${status.last_heartbeat_ago}s`;
                     }
                     if (status.heartbeat_thread_running) {
-                        details += ` ? Intervalle: ${status.heartbeat_interval}s`;
+                        details += ` • Intervalle: ${status.heartbeat_interval}s`;
                     }
                     details += '</small>';
                     detailsEl.innerHTML = details;
@@ -540,23 +1073,32 @@ async function loadMeetingStatus() {
                 }
                 if (detailsEl) {
                     if (status.last_error) {
-                        detailsEl.innerHTML = `<small>Device: ${status.device_key} ? ${status.last_error}</small>`;
+                        detailsEl.innerHTML = `<small>Device: ${status.device_key} • ${status.last_error}</small>`;
                     } else {
-                        detailsEl.innerHTML = `<small>Device: ${status.device_key} ? En attente du premier heartbeat</small>`;
+                        detailsEl.innerHTML = `<small>Device: ${status.device_key} • En attente du premier heartbeat</small>`;
                     }
                 }
             } else {
                 // Configured but disabled
                 if (statusEl) {
                     statusEl.className = 'status-indicator disconnected';
-                    statusEl.innerHTML = '<i class="fas fa-circle"></i> D?sactiv?';
+                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Désactivé';
                 }
                 if (detailsEl) {
-                    detailsEl.innerHTML = `<small>Device: ${status.device_key} ? Meeting d?sactiv?</small>`;
+                    detailsEl.innerHTML = `<small>Device: ${status.device_key} • Meeting désactivé</small>`;
                 }
             }
 
+            // Load config form values
             loadMeetingConfig();
+            
+            // If provisioned, also load the additional sections
+            if (status.provisioned) {
+                loadMeetingServices();
+                loadSshKeysStatus();
+                loadDeviceSshKey();
+                loadTunnelAgentStatus();
+            }
         }
     } catch (error) {
         console.error('Error loading Meeting status:', error);
@@ -609,11 +1151,11 @@ async function validateMeetingCredentials() {
             let tokenWarning = '';
             if (device.token_count === 0) {
                 tokenClass = 'danger';
-                tokenWarning = '<br><strong style="color: var(--danger-color);">?? Aucun token disponible ! Provisioning impossible.</strong>';
+                tokenWarning = '<br><strong style="color: var(--danger-color);">⚠️ Aucun token disponible ! Provisioning impossible.</strong>';
                 if (provisionBtn) provisionBtn.disabled = true;
             } else if (device.token_count === 1) {
                 tokenClass = 'warning';
-                tokenWarning = '<br><small style="color: var(--warning-color);">?? Dernier token disponible</small>';
+                tokenWarning = '<br><small style="color: var(--warning-color);">⚠️ Dernier token disponible</small>';
                 if (provisionBtn) provisionBtn.disabled = false;
             } else {
                 if (provisionBtn) provisionBtn.disabled = false;
@@ -627,8 +1169,8 @@ async function validateMeetingCredentials() {
                         <span class="value">${device.name || 'Sans nom'}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">Autoris?</span>
-                        <span class="value ${device.authorized ? 'success' : 'danger'}">${device.authorized ? 'Oui ?' : 'Non ?'}</span>
+                        <span class="label">Autorisé</span>
+                        <span class="value ${device.authorized ? 'success' : 'danger'}">${device.authorized ? 'Oui ✓' : 'Non ✗'}</span>
                     </div>
                     <div class="provision-info-item">
                         <span class="label">Tokens disponibles</span>
@@ -640,18 +1182,18 @@ async function validateMeetingCredentials() {
                     </div>
                 </div>
                 ${tokenWarning}
-                ${device.token_count > 0 && device.authorized ? '<p style="margin-top: 10px;"><i class="fas fa-info-circle"></i> Cliquez sur "Provisionner le device" pour continuer. Cette op?ration consommera 1 token.</p>' : ''}
+                ${device.token_count > 0 && device.authorized ? '<p style="margin-top: 10px;"><i class="fas fa-info-circle"></i> Cliquez sur "Provisionner le device" pour continuer. Cette opération consommera 1 token.</p>' : ''}
             `;
             
             if (!device.authorized) {
-                resultDiv.innerHTML += '<p style="color: var(--danger-color); margin-top: 10px;"><i class="fas fa-ban"></i> Ce device n\'est pas autoris? dans Meeting.</p>';
+                resultDiv.innerHTML += '<p style="color: var(--danger-color); margin-top: 10px;"><i class="fas fa-ban"></i> Ce device n\'est pas autorisé dans Meeting.</p>';
                 if (provisionBtn) provisionBtn.disabled = true;
             }
             
-            showToast('Credentials valid?s', 'success');
+            showToast('Credentials validés', 'success');
         } else {
             resultDiv.className = 'meeting-result validation-error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>Validation ?chou?e</strong><br>${data.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>Validation échouée</strong><br>${data.message}`;
             if (provisionBtn) provisionBtn.disabled = true;
             showToast('Credentials invalides', 'error');
         }
@@ -674,7 +1216,7 @@ async function provisionDevice() {
     const resultDiv = document.getElementById('provision-validation-result');
     const provisionBtn = document.getElementById('btn-provision');
     
-    if (!confirm('?tes-vous s?r de vouloir provisionner ce device ?\n\nCette action va :\n- Consommer 1 token de provisioning\n- Changer le hostname du device\n- Verrouiller la configuration Meeting')) {
+    if (!confirm('Êtes-vous sûr de vouloir provisionner ce device ?\n\nCette action va :\n- Consommer 1 token de provisioning\n- Changer le hostname du device\n- Verrouiller la configuration Meeting')) {
         return;
     }
     
@@ -699,24 +1241,24 @@ async function provisionDevice() {
         if (data.success) {
             resultDiv.className = 'meeting-result validation-success';
             resultDiv.innerHTML = `
-                <i class="fas fa-check-circle"></i> <strong>Provisioning r?ussi !</strong>
+                <i class="fas fa-check-circle"></i> <strong>Provisioning réussi !</strong>
                 <div class="provision-info">
                     <div class="provision-info-item">
                         <span class="label">Nouveau hostname</span>
                         <span class="value">${data.hostname}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">Token consomm?</span>
+                        <span class="label">Token consommé</span>
                         <span class="value success">Oui</span>
                     </div>
                 </div>
                 <p style="margin-top: 15px; color: var(--warning-color);">
-                    <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> Le hostname a chang?. 
-                    Apr?s quelques secondes, vous pourrez acc?der ? l'interface via:
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> Le hostname a changé. 
+                    Après quelques secondes, vous pourrez accéder à l'interface via:
                     <br><code>http://${data.hostname}.local</code>
                 </p>
             `;
-            showToast('Device provisionn? avec succ?s!', 'success');
+            showToast('Device provisionné avec succès!', 'success');
             
             // Reload status after a short delay
             setTimeout(() => {
@@ -724,9 +1266,9 @@ async function provisionDevice() {
             }, 2000);
         } else {
             resultDiv.className = 'meeting-result validation-error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>?chec du provisioning</strong><br>${data.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>Échec du provisioning</strong><br>${data.message}`;
             if (provisionBtn) provisionBtn.disabled = false;
-            showToast('?chec du provisioning', 'error');
+            showToast('Échec du provisioning', 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result validation-error';
@@ -770,7 +1312,7 @@ async function executeMasterReset() {
     }
     
     try {
-        showToast('R?initialisation en cours...', 'info');
+        showToast('Réinitialisation en cours...', 'info');
         
         const response = await fetch('/api/meeting/master-reset', {
             method: 'POST',
@@ -782,14 +1324,14 @@ async function executeMasterReset() {
         
         if (data.success) {
             closeMasterResetModal();
-            showToast('Configuration Meeting r?initialis?e', 'success');
+            showToast('Configuration Meeting réinitialisée', 'success');
             loadMeetingStatus();
             // Reload page to refresh all config
             setTimeout(() => {
                 window.location.reload();
             }, 1500);
         } else {
-            showToast(data.message || '?chec de la r?initialisation', 'error');
+            showToast(data.message || 'Échec de la réinitialisation', 'error');
         }
     } catch (error) {
         showToast('Erreur: ' + error.message, 'error');
@@ -920,7 +1462,7 @@ function updateNtpStatus(data) {
     
     let html = `<div class="status-indicator ${data.synchronized ? 'synced' : 'not-synced'}">`;
     html += `<i class="fas fa-${data.synchronized ? 'check-circle' : 'exclamation-triangle'}"></i>`;
-    html += `<span>${data.synchronized ? 'Synchronis?' : 'Non synchronis?'}</span>`;
+    html += `<span>${data.synchronized ? 'Synchronisé' : 'Non synchronisé'}</span>`;
     html += `</div>`;
     
     if (data.error) {
@@ -928,7 +1470,7 @@ function updateNtpStatus(data) {
     } else if (data.server || data.current_time) {
         html += `<div class="ntp-details">`;
         if (data.server) html += `<span><strong>Serveur:</strong> ${data.server}</span>`;
-        if (data.current_time) html += `<span><strong>Heure syst?me:</strong> ${data.current_time}</span>`;
+        if (data.current_time) html += `<span><strong>Heure système:</strong> ${data.current_time}</span>`;
         if (data.timezone) html += `<span><strong>Fuseau:</strong> ${data.timezone}</span>`;
         html += `</div>`;
     }
@@ -959,7 +1501,7 @@ async function saveNtpConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Serveur NTP configur?', 'success');
+            showToast('Serveur NTP configuré', 'success');
             loadNtpConfig();
         } else {
             showToast(`Erreur: ${data.message}`, 'error');
@@ -983,7 +1525,7 @@ async function syncNtpNow() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Heure synchronis?e', 'success');
+            showToast('Heure synchronisée', 'success');
             loadNtpConfig();
         } else {
             showToast(`Erreur: ${data.message}`, 'error');
@@ -1058,14 +1600,14 @@ function updateRtcStatus(data) {
     html += `</div>`;
     html += `<div class="rtc-details">`;
     html += `<span><strong>Mode:</strong> ${modeLabel}</span>`;
-    html += `<span><strong>D?tect?:</strong> ${detected ? 'Oui' : 'Non'}${detected ? viaLabel : ''}</span>`;
-    html += `<span><strong>Overlay:</strong> ${data.overlay_configured ? 'Configur?' : 'Non configur?'}</span>`;
-    html += `<span><strong>I2C:</strong> ${data.i2c_enabled ? 'Activ?' : 'D?sactiv?'}</span>`;
+    html += `<span><strong>Détecté:</strong> ${detected ? 'Oui' : 'Non'}${detected ? viaLabel : ''}</span>`;
+    html += `<span><strong>Overlay:</strong> ${data.overlay_configured ? 'Configuré' : 'Non configuré'}</span>`;
+    html += `<span><strong>I2C:</strong> ${data.i2c_enabled ? 'Activé' : 'Désactivé'}</span>`;
     if (data.auto_pending) {
         if (!data.i2c_enabled) {
-            html += `<span><strong>Auto:</strong> I2C d?sactiv?, appliquez pour activer</span>`;
+            html += `<span><strong>Auto:</strong> I2C désactivé, appliquez pour activer</span>`;
         } else {
-            html += `<span><strong>Auto:</strong> Module d?tect?, appliquez pour activer</span>`;
+            html += `<span><strong>Auto:</strong> Module détecté, appliquez pour activer</span>`;
         }
     }
     html += `</div>`;
@@ -1091,7 +1633,7 @@ async function saveRtcConfig() {
         const data = await response.json();
 
         if (data.success) {
-            showToast(data.message || 'RTC configur?', 'success');
+            showToast(data.message || 'RTC configuré', 'success');
             loadRtcConfig();
             if (data.reboot_required) {
                 setTimeout(() => {
@@ -1206,7 +1748,7 @@ async function saveRebootSchedule() {
         });
         const data = await response.json();
         if (data.success) {
-            showToast('Schedule reboot enregistr?', 'success');
+            showToast('Schedule reboot enregistré', 'success');
             loadRebootSchedule();
         } else {
             showToast(`Erreur: ${data.message || 'Impossible de sauvegarder'}`, 'error');
@@ -1250,7 +1792,7 @@ async function saveSnmpConfig() {
         });
         const data = await response.json();
         if (data.success) {
-            showToast('Configuration SNMP appliqu?e', 'success');
+            showToast('Configuration SNMP appliquée', 'success');
             loadSnmpConfig();
         } else {
             showToast(`Erreur: ${data.message || 'Impossible de sauvegarder'}`, 'error');
@@ -1276,7 +1818,7 @@ async function testSnmpConfig() {
         if (data.success) {
             showToast(data.message || 'SNMP OK', 'success');
         } else {
-            showToast(`Erreur: ${data.message || 'Test SNMP ?chou?'}`, 'error');
+            showToast(`Erreur: ${data.message || 'Test SNMP échoué'}`, 'error');
         }
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');
@@ -1471,7 +2013,7 @@ async function loadOnvifStatus() {
                 if (usernameInput) usernameInput.value = data.config.username || '';
                 if (passwordInput) {
                     passwordInput.value = '';
-                    passwordInput.placeholder = data.config.has_password ? '???????? (enregistr?)' : 'Aucun mot de passe';
+                    passwordInput.placeholder = data.config.has_password ? '•••••••• (enregistré)' : 'Aucun mot de passe';
                 }
                 if (rtspPortInput) rtspPortInput.value = data.config.rtsp_port || 8554;
                 if (rtspPathInput) rtspPathInput.value = data.config.rtsp_path || '/stream';
@@ -1480,10 +2022,10 @@ async function loadOnvifStatus() {
                 if (nameSourceBadge) {
                     if (data.config.name_from_meeting) {
                         nameSourceBadge.style.display = 'inline';
-                        if (nameHint) nameHint.textContent = 'Nom r?cup?r? automatiquement depuis Meeting API (product_serial)';
+                        if (nameHint) nameHint.textContent = 'Nom récupéré automatiquement depuis Meeting API (product_serial)';
                     } else {
                         nameSourceBadge.style.display = 'none';
-                        if (nameHint) nameHint.textContent = 'Meeting API non configur?e - nom par d?faut utilis?';
+                        if (nameHint) nameHint.textContent = 'Meeting API non configurée - nom par défaut utilisé';
                     }
                 }
                 
@@ -1543,14 +2085,14 @@ function updateOnvifStatusDisplay(data) {
         html = `
             <div class="status-indicator not-synced">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>Service ONVIF arr?t?</span>
+                <span>Service ONVIF arrêté</span>
             </div>
         `;
     } else {
         html = `
             <div class="status-indicator">
                 <i class="fas fa-power-off"></i>
-                <span>Service ONVIF d?sactiv?</span>
+                <span>Service ONVIF désactivé</span>
             </div>
         `;
     }
@@ -1598,7 +2140,7 @@ async function saveOnvifConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Configuration ONVIF enregistr?e', 'success');
+            showToast('Configuration ONVIF enregistrée', 'success');
             loadOnvifStatus();
         } else {
             showToast(`Erreur: ${data.message}`, 'error');
@@ -1613,7 +2155,7 @@ async function saveOnvifConfig() {
  */
 async function restartOnvifService() {
     try {
-        showToast('Red?marrage du service ONVIF...', 'info');
+        showToast('Redémarrage du service ONVIF...', 'info');
         
         const response = await fetch('/api/onvif/restart', {
             method: 'POST'
@@ -1622,7 +2164,7 @@ async function restartOnvifService() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Service ONVIF red?marr?', 'success');
+            showToast('Service ONVIF redémarré', 'success');
             setTimeout(loadOnvifStatus, 2000);
         } else {
             showToast(`Erreur: ${data.message}`, 'error');
@@ -1650,8 +2192,8 @@ async function checkFirmwareUpdate() {
     const updateBtn = document.getElementById('btn-update-firmware');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> V?rification...';
-    statusText.textContent = 'V?rification en cours...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
+    statusText.textContent = 'Vérification en cours...';
     statusText.className = 'status-value checking';
     
     try {
@@ -1664,7 +2206,7 @@ async function checkFirmwareUpdate() {
         // Show method badge
         if (data.method) {
             methodDiv.style.display = 'block';
-            methodBadge.textContent = `${data.model} ? ${data.method}`;
+            methodBadge.textContent = `${data.model} • ${data.method}`;
             // Store method for update confirmation
             updateBtn.dataset.method = data.method;
         }
@@ -1674,22 +2216,22 @@ async function checkFirmwareUpdate() {
             if (data.can_update === false || data.use_apt === true) {
                 statusText.textContent = 'Utiliser apt upgrade';
                 statusText.className = 'status-value use-apt';
-                details.innerHTML = `<small>Kernel: ${data.current_version}<br>?? initramfs d?tect? - rpi-update non support?</small>`;
+                details.innerHTML = `<small>Kernel: ${data.current_version}<br>⚠️ initramfs détecté - rpi-update non supporté</small>`;
                 updateBtn.disabled = true;
-                updateBtn.title = 'initramfs d?tect? - utilisez apt upgrade ci-dessous';
+                updateBtn.title = 'initramfs détecté - utilisez apt upgrade ci-dessous';
             } else if (data.update_available) {
-                statusText.textContent = 'Mise ? jour disponible';
+                statusText.textContent = 'Mise à jour disponible';
                 statusText.className = 'status-value update-available';
                 details.innerHTML = `<small>Version actuelle: ${data.current_version}</small>`;
                 updateBtn.disabled = false;
             } else {
-                statusText.textContent = '? jour';
+                statusText.textContent = 'À jour';
                 statusText.className = 'status-value up-to-date';
                 details.innerHTML = `<small>Version: ${data.current_version}</small>`;
                 updateBtn.disabled = true;
             }
             // Update last check date
-            document.getElementById('firmware-last-date').textContent = '? l\'instant';
+            document.getElementById('firmware-last-date').textContent = 'à l\'instant';
         } else {
             statusText.textContent = 'Erreur';
             statusText.className = 'status-value error';
@@ -1703,7 +2245,7 @@ async function checkFirmwareUpdate() {
         showToast(`Erreur: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-search"></i> V?rifier';
+        btn.innerHTML = '<i class="fas fa-search"></i> Vérifier';
     }
 }
 
@@ -1715,10 +2257,10 @@ async function runFirmwareUpdate() {
     const method = updateBtn.dataset.method || 'unknown';
     
     // Different warning for rpi-update (experimental firmware)
-    let confirmMessage = 'Voulez-vous mettre ? jour le firmware?\n\nUn red?marrage sera n?cessaire apr?s la mise ? jour.';
+    let confirmMessage = 'Voulez-vous mettre à jour le firmware?\n\nUn redémarrage sera nécessaire après la mise à jour.';
     if (method === 'rpi-update') {
-        confirmMessage = '?? ATTENTION: rpi-update installe un firmware EXP?RIMENTAL!\n\n' +
-            'Cela peut causer des instabilit?s syst?me.\n' +
+        confirmMessage = '⚠️ ATTENTION: rpi-update installe un firmware EXPÉRIMENTAL!\n\n' +
+            'Cela peut causer des instabilités système.\n' +
             'Utilisez uniquement si vous savez ce que vous faites.\n\n' +
             'Voulez-vous continuer?';
     }
@@ -1732,10 +2274,10 @@ async function runFirmwareUpdate() {
     const output = document.getElementById('firmware-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise ? jour...';
-    statusText.textContent = 'Mise ? jour en cours...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise à jour...';
+    statusText.textContent = 'Mise à jour en cours...';
     statusText.className = 'status-value updating';
-    output.textContent = 'T?l?chargement et installation du firmware...\nCela peut prendre plusieurs minutes, veuillez patienter...';
+    output.textContent = 'Téléchargement et installation du firmware...\nCela peut prendre plusieurs minutes, veuillez patienter...';
     
     try {
         const response = await fetch('/api/debug/firmware/update', { method: 'POST' });
@@ -1745,13 +2287,13 @@ async function runFirmwareUpdate() {
         
         // Show warning if present
         if (data.warning) {
-            output.textContent += '\n\n?? ' + data.warning;
+            output.textContent += '\n\n⚠️ ' + data.warning;
         }
         
         if (data.success) {
-            statusText.textContent = 'Red?marrage requis';
+            statusText.textContent = 'Redémarrage requis';
             statusText.className = 'status-value reboot-required';
-            showToast('Firmware mis ? jour! Red?marrez pour finaliser.', 'success');
+            showToast('Firmware mis à jour! Redémarrez pour finaliser.', 'success');
             
             if (data.reboot_required) {
                 setTimeout(() => {
@@ -1769,7 +2311,7 @@ async function runFirmwareUpdate() {
         showToast(`Erreur: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-download"></i> Mettre ? jour';
+        btn.innerHTML = '<i class="fas fa-download"></i> Mettre à jour';
     }
 }
 
@@ -1784,11 +2326,11 @@ async function runAptUpdate() {
     const output = document.getElementById('apt-update-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ex?cution...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exécution...';
     statusText.textContent = 'En cours...';
     statusText.className = 'status-value running';
     outputContainer.style.display = 'block';
-    output.textContent = 'Rafra?chissement des listes de paquets...\nCela peut prendre quelques minutes...';
+    output.textContent = 'Rafraîchissement des listes de paquets...\nCela peut prendre quelques minutes...';
     
     try {
         const response = await fetch('/api/debug/apt/update', { method: 'POST' });
@@ -1797,10 +2339,10 @@ async function runAptUpdate() {
         output.textContent = data.output || data.message;
         
         if (data.success) {
-            statusText.textContent = 'Termin?';
+            statusText.textContent = 'Terminé';
             statusText.className = 'status-value success';
-            details.innerHTML = `<small>${data.hit_count} sources, ${data.get_count} mises ? jour</small>`;
-            document.getElementById('apt-update-last-date').textContent = '? l\'instant';
+            details.innerHTML = `<small>${data.hit_count} sources, ${data.get_count} mises à jour</small>`;
+            document.getElementById('apt-update-last-date').textContent = 'à l\'instant';
             showToast(data.message, 'success');
         } else {
             statusText.textContent = 'Erreur';
@@ -1815,7 +2357,7 @@ async function runAptUpdate() {
         showToast(`Erreur: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sync"></i> Ex?cuter apt update';
+        btn.innerHTML = '<i class="fas fa-sync"></i> Exécuter apt update';
     }
 }
 
@@ -1830,8 +2372,8 @@ async function checkAptUpgradable() {
     const output = document.getElementById('apt-upgrade-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> V?rification...';
-    statusText.textContent = 'V?rification...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
+    statusText.textContent = 'Vérification...';
     statusText.className = 'status-value checking';
     
     try {
@@ -1842,21 +2384,21 @@ async function checkAptUpgradable() {
         
         if (data.success) {
             if (data.count > 0) {
-                statusText.textContent = `${data.count} mises ? jour`;
+                statusText.textContent = `${data.count} mises à jour`;
                 statusText.className = 'status-value update-available';
-                details.innerHTML = `<small>${data.count} paquets peuvent ?tre mis ? jour</small>`;
+                details.innerHTML = `<small>${data.count} paquets peuvent être mis à jour</small>`;
                 
                 // Format output nicely
-                let formattedOutput = `=== ${data.count} paquets peuvent ?tre mis ? jour ===\n\n`;
+                let formattedOutput = `=== ${data.count} paquets peuvent être mis à jour ===\n\n`;
                 data.packages.forEach(pkg => {
-                    formattedOutput += `? ${pkg.name} ? ${pkg.version}\n`;
+                    formattedOutput += `• ${pkg.name} → ${pkg.version}\n`;
                 });
                 output.textContent = formattedOutput;
             } else {
-                statusText.textContent = '? jour';
+                statusText.textContent = 'À jour';
                 statusText.className = 'status-value up-to-date';
-                details.innerHTML = '<small>Tous les paquets sont ? jour</small>';
-                output.textContent = 'Aucune mise ? jour disponible.';
+                details.innerHTML = '<small>Tous les paquets sont à jour</small>';
+                output.textContent = 'Aucune mise à jour disponible.';
             }
         } else {
             statusText.textContent = 'Erreur';
@@ -1878,7 +2420,7 @@ async function checkAptUpgradable() {
  * Run apt upgrade
  */
 async function runAptUpgrade() {
-    if (!confirm('Voulez-vous mettre ? jour tous les paquets?\n\nCette op?ration peut prendre plusieurs minutes.')) {
+    if (!confirm('Voulez-vous mettre à jour tous les paquets?\n\nCette opération peut prendre plusieurs minutes.')) {
         return;
     }
     
@@ -1889,11 +2431,11 @@ async function runAptUpgrade() {
     const output = document.getElementById('apt-upgrade-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise ? jour...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise à jour...';
     statusText.textContent = 'En cours...';
     statusText.className = 'status-value running';
     outputContainer.style.display = 'block';
-    output.textContent = 'Installation des mises ? jour en cours...\nCela peut prendre plusieurs minutes, veuillez patienter...';
+    output.textContent = 'Installation des mises à jour en cours...\nCela peut prendre plusieurs minutes, veuillez patienter...';
     
     try {
         const response = await fetch('/api/debug/apt/upgrade', { method: 'POST' });
@@ -1902,10 +2444,10 @@ async function runAptUpgrade() {
         output.textContent = data.output || data.message;
         
         if (data.success) {
-            statusText.textContent = 'Termin?';
+            statusText.textContent = 'Terminé';
             statusText.className = 'status-value success';
-            details.innerHTML = `<small>${data.upgraded} paquets mis ? jour, ${data.newly_installed} nouveaux</small>`;
-            document.getElementById('apt-upgrade-last-date').textContent = '? l\'instant';
+            details.innerHTML = `<small>${data.upgraded} paquets mis à jour, ${data.newly_installed} nouveaux</small>`;
+            document.getElementById('apt-upgrade-last-date').textContent = 'à l\'instant';
             showToast(data.message, 'success');
         } else {
             statusText.textContent = 'Erreur';
@@ -1920,7 +2462,7 @@ async function runAptUpgrade() {
         showToast(`Erreur: ${error.message}`, 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-arrow-up"></i> Mettre ? jour';
+        btn.innerHTML = '<i class="fas fa-arrow-up"></i> Mettre à jour';
     }
 }
 
@@ -1992,9 +2534,9 @@ async function loadRtcDebug() {
             statusText.textContent = enabled ? 'Actif' : 'Inactif';
             statusText.className = `status-value ${enabled ? 'synced' : 'not-synced'}`;
 
-            const detected = data.status.detected ? 'd?tect?' : 'non d?tect?';
+            const detected = data.status.detected ? 'détecté' : 'non détecté';
             const mode = data.status.mode || 'auto';
-            details.innerHTML = `<small>Mode: ${mode} ? RTC ${detected} ? Overlay: ${data.status.overlay_configured ? 'ok' : 'absent'}</small>`;
+            details.innerHTML = `<small>Mode: ${mode} • RTC ${detected} • Overlay: ${data.status.overlay_configured ? 'ok' : 'absent'}</small>`;
         } else {
             statusText.textContent = 'Erreur';
             statusText.className = 'status-value warning';
@@ -2056,7 +2598,7 @@ function formatLastActionDate(dateStr) {
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
         
-        if (diffMins < 1) return '? l\'instant';
+        if (diffMins < 1) return 'à l\'instant';
         if (diffMins < 60) return `il y a ${diffMins} min`;
         if (diffHours < 24) return `il y a ${diffHours}h`;
         if (diffDays < 7) return `il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
@@ -2091,7 +2633,7 @@ async function loadAptScheduler() {
             
             // Update status text
             const statusText = document.getElementById('scheduler-status-text');
-            statusText.textContent = scheduler.enabled ? 'Activ?' : 'D?sactiv?';
+            statusText.textContent = scheduler.enabled ? 'Activé' : 'Désactivé';
             
             // Show/hide config
             document.getElementById('scheduler-config').style.display = scheduler.enabled ? 'block' : 'none';
@@ -2120,7 +2662,7 @@ function toggleAptScheduler() {
     const statusText = document.getElementById('scheduler-status-text');
     
     configDiv.style.display = enabled ? 'block' : 'none';
-    statusText.textContent = enabled ? 'Configuration...' : 'D?sactiv?';
+    statusText.textContent = enabled ? 'Configuration...' : 'Désactivé';
     
     // If disabling, save immediately
     if (!enabled) {
@@ -2165,8 +2707,8 @@ async function saveAptScheduler() {
         const data = await response.json();
         
         if (data.success) {
-            statusText.textContent = config.enabled ? 'Activ?' : 'D?sactiv?';
-            showToast(data.message || 'Planification enregistr?e', 'success');
+            statusText.textContent = config.enabled ? 'Activé' : 'Désactivé';
+            showToast(data.message || 'Planification enregistrée', 'success');
         } else {
             showToast(data.message || 'Erreur', 'error');
         }
@@ -2253,8 +2795,8 @@ async function executeTerminalCommand() {
         const data = await response.json();
         
         if (response.status === 403) {
-            appendTerminalLine(`Commande non autoris?e: ${command.split(' ')[0]}`, 'terminal-error');
-            appendTerminalLine('Tapez "help" pour voir les commandes autoris?es.', 'terminal-info');
+            appendTerminalLine(`Commande non autorisée: ${command.split(' ')[0]}`, 'terminal-error');
+            appendTerminalLine('Tapez "help" pour voir les commandes autorisées.', 'terminal-info');
         } else if (data.success) {
             if (data.stdout) {
                 appendTerminalLine(data.stdout, 'terminal-stdout');
@@ -2263,13 +2805,13 @@ async function executeTerminalCommand() {
                 appendTerminalLine(data.stderr, 'terminal-stderr');
             }
             if (data.returncode !== 0 && !data.stdout && !data.stderr) {
-                appendTerminalLine(`Commande termin?e avec code ${data.returncode}`, 'terminal-info');
+                appendTerminalLine(`Commande terminée avec code ${data.returncode}`, 'terminal-info');
             }
         } else {
             appendTerminalLine(`Erreur: ${data.error}`, 'terminal-error');
         }
     } catch (error) {
-        appendTerminalLine(`Erreur r?seau: ${error.message}`, 'terminal-error');
+        appendTerminalLine(`Erreur réseau: ${error.message}`, 'terminal-error');
     }
     
     // Scroll to bottom
@@ -2294,30 +2836,30 @@ function appendTerminalLine(text, className = '') {
 function clearTerminal() {
     const output = document.getElementById('terminal-output');
     output.innerHTML = '';
-    appendTerminalLine('Terminal effac?.', 'terminal-info');
+    appendTerminalLine('Terminal effacé.', 'terminal-info');
 }
 
 /**
  * Show allowed commands
  */
 async function showAllowedCommands() {
-    appendTerminalLine('Chargement des commandes autoris?es...', 'terminal-info');
+    appendTerminalLine('Chargement des commandes autorisées...', 'terminal-info');
     
     try {
         const response = await fetch('/api/debug/terminal/allowed');
         const data = await response.json();
         
         if (data.success) {
-            appendTerminalLine('=== Commandes autoris?es ===', 'terminal-success');
+            appendTerminalLine('=== Commandes autorisées ===', 'terminal-success');
             
             // Group commands by category
             const categories = {
-                'Syst?me': ['ls', 'cat', 'head', 'tail', 'grep', 'find', 'df', 'du', 'free', 'top', 'ps', 'uptime', 'date', 'hostname', 'uname', 'whoami', 'id', 'pwd'],
+                'Système': ['ls', 'cat', 'head', 'tail', 'grep', 'find', 'df', 'du', 'free', 'top', 'ps', 'uptime', 'date', 'hostname', 'uname', 'whoami', 'id', 'pwd'],
                 'Journaux': ['journalctl', 'dmesg'],
                 'Services': ['systemctl', 'service'],
-                'R?seau': ['ip', 'ifconfig', 'iwconfig', 'nmcli', 'netstat', 'ss', 'ping', 'traceroute', 'curl', 'wget'],
-                'Mat?riel': ['vcgencmd', 'pinctrl', 'lsusb', 'lspci', 'lsblk', 'lscpu', 'lshw', 'lsmod', 'v4l2-ctl'],
-                'M?dia': ['ffprobe', 'ffmpeg', 'gst-launch-1.0', 'gst-inspect-1.0', 'test-launch'],
+                'Réseau': ['ip', 'ifconfig', 'iwconfig', 'nmcli', 'netstat', 'ss', 'ping', 'traceroute', 'curl', 'wget'],
+                'Matériel': ['vcgencmd', 'pinctrl', 'lsusb', 'lspci', 'lsblk', 'lscpu', 'lshw', 'lsmod', 'v4l2-ctl'],
+                'Média': ['ffprobe', 'ffmpeg', 'gst-launch-1.0', 'gst-inspect-1.0', 'test-launch'],
                 'Paquets': ['apt', 'apt-get', 'apt-cache', 'dpkg'],
                 'Utilitaires': ['echo', 'which', 'whereis', 'file', 'stat', 'wc', 'sort', 'uniq', 'awk', 'sed', 'cut', 'tr', 'tee']
             };
@@ -2364,6 +2906,18 @@ document.addEventListener('DOMContentLoaded', () => {
     window.getMeetingAvailability = getMeetingAvailability;
     window.fetchMeetingDeviceInfo = fetchMeetingDeviceInfo;
     window.requestMeetingTunnel = requestMeetingTunnel;
+    window.loadMeetingServices = loadMeetingServices;
+    window.loadSshKeysStatus = loadSshKeysStatus;
+    window.ensureSshKeysConfigured = ensureSshKeysConfigured;
+    window.loadDeviceSshKey = loadDeviceSshKey;
+    window.generateDeviceSshKey = generateDeviceSshKey;
+    window.publishDeviceSshKey = publishDeviceSshKey;
+    window.syncSshHostkey = syncSshHostkey;
+    window.fullSshSetup = fullSshSetup;
+    window.loadTunnelAgentStatus = loadTunnelAgentStatus;
+    window.startTunnelAgent = startTunnelAgent;
+    window.stopTunnelAgent = stopTunnelAgent;
+    window.toggleTunnelAgentAutostart = toggleTunnelAgentAutostart;
     window.updateMeetingStatus = updateMeetingStatus;
     window.updateMeetingConfigStatus = updateMeetingConfigStatus;
     window.loadMeetingConfig = loadMeetingConfig;
