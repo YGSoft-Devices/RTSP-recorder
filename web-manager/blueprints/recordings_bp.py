@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """
 Recordings Blueprint - Recording management routes
-Version: 2.30.6
+Version: 2.30.7
+
+Changelog:
+  - 2.30.7: Added /thumbnail/notify endpoint for immediate thumbnail generation
 """
 
 import os
@@ -561,4 +564,93 @@ def cleanup_cache():
             **results
         })
     except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================================================
+# RECORDING COMPLETION NOTIFICATION
+# ============================================================================
+
+@recordings_bp.route('/thumbnail/notify', methods=['POST'])
+def notify_recording_complete():
+    """
+    Notify that a new recording file is complete.
+    
+    Called by rtsp_recorder.sh when a new segment is created.
+    Generates thumbnail immediately (high priority) instead of on-demand.
+    
+    Request body:
+        {"filepath": "/var/cache/rpi-cam/recordings/rec_20260122_143000.ts"}
+    
+    Returns:
+        - 200: Thumbnail generated successfully
+        - 202: Thumbnail generation queued (file too new, will retry)
+        - 400: Invalid request
+        - 404: File not found
+        - 500: Error
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        filepath = data.get('filepath', '')
+        
+        if not filepath:
+            return jsonify({'success': False, 'message': 'Missing filepath'}), 400
+        
+        # Security: validate path is in recordings directory
+        config = load_config()
+        record_dir = get_recording_dir(config)
+        
+        # Normalize paths for comparison
+        filepath = os.path.abspath(filepath)
+        record_dir = os.path.abspath(record_dir)
+        
+        if not filepath.startswith(record_dir):
+            return jsonify({'success': False, 'message': 'Path outside recordings directory'}), 400
+        
+        if not os.path.exists(filepath):
+            return jsonify({'success': False, 'message': 'File not found'}), 404
+        
+        filename = os.path.basename(filepath)
+        if not is_valid_recording_filename(filename):
+            return jsonify({'success': False, 'message': 'Invalid filename'}), 400
+        
+        # Wait a moment for file to be fully written (ffmpeg may still be flushing)
+        import time
+        file_age = time.time() - os.path.getmtime(filepath)
+        if file_age < 2:
+            # File is very new, wait a bit
+            time.sleep(2)
+        
+        # Generate thumbnail immediately (synchronous, high priority)
+        thumb_path = media_cache_service.get_thumbnail_path(filename)
+        
+        # Generate thumbnail
+        success = media_cache_service.generate_thumbnail(filepath, thumb_path)
+        
+        if success:
+            # Also extract and cache metadata
+            metadata = media_cache_service.extract_video_metadata(filepath)
+            if metadata:
+                media_cache_service.cache_metadata(filepath, metadata)
+            
+            print(f"[Recordings] Thumbnail generated for new recording: {filename}")
+            return jsonify({
+                'success': True,
+                'message': 'Thumbnail generated',
+                'filepath': filepath,
+                'thumbnail': thumb_path
+            })
+        else:
+            # Queue for background generation (fallback)
+            worker = media_cache_service.get_thumbnail_worker()
+            worker.enqueue(filepath)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Thumbnail queued for generation',
+                'filepath': filepath
+            }), 202
+            
+    except Exception as e:
+        print(f"[Recordings] Error in notify_recording_complete: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500

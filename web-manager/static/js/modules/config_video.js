@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.35.01
+ * Version: 2.36.02
  */
 
 (function () {
@@ -181,7 +181,7 @@ async function detectCameras() {
  */
 function selectCamera(device, type) {
     if (device !== 'CSI') {
-        document.getElementById('VIDEO_DEVICE').value = device;
+        document.getElementById('VIDEOIN_DEVICE').value = device;
     }
     // Auto-set camera type if provided
     if (type) {
@@ -330,7 +330,7 @@ async function loadResolutions() {
         select.innerHTML = '<option value="">⏳ Détection en cours...</option>';
         select.disabled = true;
         
-        const device = document.getElementById('VIDEO_DEVICE')?.value || '/dev/video0';
+        const device = document.getElementById('VIDEOIN_DEVICE')?.value || '/dev/video0';
         const response = await fetch(`/api/camera/formats?device=${encodeURIComponent(device)}`);
         const data = await response.json();
         
@@ -342,9 +342,9 @@ async function loadResolutions() {
             const encoderCaps = data.encoder || {};
             
             // Get current values to pre-select
-            const currentWidth = parseInt(document.getElementById('VIDEO_WIDTH')?.value) || 0;
-            const currentHeight = parseInt(document.getElementById('VIDEO_HEIGHT')?.value) || 0;
-            const currentFormat = (document.getElementById('VIDEO_FORMAT')?.value || '').toUpperCase();
+            const currentWidth = parseInt(document.getElementById('VIDEOIN_WIDTH')?.value) || 0;
+            const currentHeight = parseInt(document.getElementById('VIDEOIN_HEIGHT')?.value) || 0;
+            const currentFormat = (document.getElementById('VIDEOIN_FORMAT')?.value || '').toUpperCase();
             let selectedKey = '';
             let fallbackKey = '';
             
@@ -439,8 +439,14 @@ function onResolutionSelectChange(userTriggered = false) {
     }
     
     // Update hidden/manual fields with selected values
-    document.getElementById('VIDEO_WIDTH').value = res.width;
-    document.getElementById('VIDEO_HEIGHT').value = res.height;
+    const widthInput = document.getElementById('VIDEOIN_WIDTH');
+    const heightInput = document.getElementById('VIDEOIN_HEIGHT');
+    const formatInput = document.getElementById('VIDEOIN_FORMAT');
+    const fpsInput = document.getElementById('VIDEOIN_FPS');
+    
+    if (widthInput) widthInput.value = res.width;
+    if (heightInput) heightInput.value = res.height;
+    
     let formatValue = res.format || 'auto';
     if (currentCameraType === 'libcamera' || currentCameraType === 'csi') {
         formatValue = 'auto';
@@ -448,19 +454,20 @@ function onResolutionSelectChange(userTriggered = false) {
     if (!ALLOWED_VIDEO_FORMATS.includes(String(formatValue).toUpperCase())) {
         formatValue = 'auto';
     }
-    document.getElementById('VIDEO_FORMAT').value = formatValue;
+    if (formatInput) formatInput.value = formatValue;
     
     // Only set FPS if user manually changed resolution (not on page load)
     // This preserves user's custom FPS value when page loads
-    const fpsInput = document.getElementById('VIDEO_FPS');
-    const currentFps = parseInt(fpsInput.value) || 0;
-    if (userTriggered || currentFps <= 0) {
-        // User changed resolution or FPS is invalid -> set to max FPS
-        fpsInput.value = res.fps;
-    } else if (currentFps > res.fps) {
-        // Current FPS exceeds resolution's max -> cap it
-        fpsInput.value = res.fps;
-        console.log(`VIDEO_FPS capped from ${currentFps} to ${res.fps} (resolution max)`);
+    const currentFps = fpsInput ? (parseInt(fpsInput.value) || 0) : 0;
+    if (fpsInput) {
+        if (userTriggered || currentFps <= 0) {
+            // User changed resolution or FPS is invalid -> set to max FPS
+            fpsInput.value = res.fps;
+        } else if (currentFps > res.fps) {
+            // Current FPS exceeds resolution's max -> cap it
+            fpsInput.value = res.fps;
+            console.log(`VIDEO_FPS capped from ${currentFps} to ${res.fps} (resolution max)`);
+        }
     }
     // Otherwise keep user's configured FPS value
     
@@ -489,7 +496,7 @@ function toggleManualResolution() {
         if (detailsDiv) detailsDiv.style.display = 'none';
         if (selectContainer) selectContainer.style.opacity = '0.5';
         document.getElementById('resolution-select').disabled = true;
-        const formatInput = document.getElementById('VIDEO_FORMAT');
+        const formatInput = document.getElementById('VIDEOIN_FORMAT');
         if (formatInput) formatInput.value = 'auto';
     } else {
         // Hide manual fields, enable dropdown
@@ -502,41 +509,11 @@ function toggleManualResolution() {
 }
 
 /**
- * Apply video settings (save and restart)
+ * Helper: Save config then restart RTSP service
  */
-async function applyVideoSettings() {
+async function saveConfigAndRestartRtsp(config, description) {
     try {
-        showToast('Application des paramètres vidéo...', 'info');
-        
-        let formatValue = document.getElementById('VIDEO_FORMAT')?.value || 'auto';
-        if (!ALLOWED_VIDEO_FORMATS.includes(String(formatValue).toUpperCase())) {
-            formatValue = 'auto';
-        }
-        const config = {
-            VIDEO_WIDTH: document.getElementById('VIDEO_WIDTH').value,
-            VIDEO_HEIGHT: document.getElementById('VIDEO_HEIGHT').value,
-            VIDEO_FPS: document.getElementById('VIDEO_FPS').value,
-            VIDEO_FORMAT: formatValue,
-            VIDEO_OVERLAY_ENABLE: document.getElementById('VIDEO_OVERLAY_ENABLE')?.value || 'no',
-            VIDEO_OVERLAY_TEXT: document.getElementById('VIDEO_OVERLAY_TEXT')?.value || '',
-            VIDEO_OVERLAY_POSITION: document.getElementById('VIDEO_OVERLAY_POSITION')?.value || 'top-left',
-            VIDEO_OVERLAY_SHOW_DATETIME: document.getElementById('VIDEO_OVERLAY_SHOW_DATETIME')?.value || 'no',
-            VIDEO_OVERLAY_DATETIME_FORMAT: document.getElementById('VIDEO_OVERLAY_DATETIME_FORMAT')?.value || '%Y-%m-%d %H:%M:%S',
-            VIDEO_OVERLAY_CLOCK_POSITION: document.getElementById('VIDEO_OVERLAY_CLOCK_POSITION')?.value || 'bottom-right',
-            VIDEO_OVERLAY_FONT_SIZE: document.getElementById('VIDEO_OVERLAY_FONT_SIZE')?.value || '24',
-            CSI_OVERLAY_MODE: document.getElementById('CSI_OVERLAY_MODE')?.value || 'software',
-            H264_BITRATE_KBPS: document.getElementById('H264_BITRATE_KBPS').value,
-            H264_KEYINT: document.getElementById('H264_KEYINT').value,
-            H264_PROFILE: document.getElementById('H264_PROFILE').value,
-            H264_QP: document.getElementById('H264_QP').value,
-            STREAM_SOURCE_MODE: document.getElementById('STREAM_SOURCE_MODE')?.value || 'camera',
-            STREAM_SOURCE_URL: document.getElementById('STREAM_SOURCE_URL')?.value || '',
-            RTSP_PROXY_TRANSPORT: document.getElementById('RTSP_PROXY_TRANSPORT')?.value || 'auto',
-            RTSP_PROXY_AUDIO: document.getElementById('RTSP_PROXY_AUDIO')?.value || 'auto',
-            RTSP_PROXY_LATENCY_MS: document.getElementById('RTSP_PROXY_LATENCY_MS')?.value || '100',
-            SCREEN_DISPLAY: document.getElementById('SCREEN_DISPLAY')?.value || ':0.0',
-            RTSP_PROTOCOLS: document.getElementById('RTSP_PROTOCOLS')?.value || 'udp,tcp'
-        };
+        showToast(`Application: ${description}...`, 'info');
         
         // Save config
         const response = await fetch('/api/config', {
@@ -548,7 +525,7 @@ async function applyVideoSettings() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Paramètres vidéo sauvegardés! Redémarrage du service...', 'success');
+            showToast('Paramètres sauvegardés! Redémarrage du service...', 'success');
             
             // Restart RTSP service to apply changes
             try {
@@ -558,47 +535,241 @@ async function applyVideoSettings() {
                 const restartData = await restartResponse.json();
                 if (restartData.success) {
                     showToast('Service RTSP redémarré avec succès', 'success');
+                    return true;
                 } else {
                     showToast('Config sauvée mais redémarrage échoué: ' + restartData.error, 'warning');
+                    return false;
                 }
             } catch (e) {
                 showToast('Config sauvée, redémarrage manuel requis', 'warning');
+                return false;
             }
         } else {
             const errors = Array.isArray(data.errors) ? data.errors.join(', ') : '';
             const message = data.error || data.message || errors || 'Échec de la sauvegarde';
             showToast('Erreur: ' + message, 'error');
+            return false;
         }
+    } catch (error) {
+        showToast(`Erreur: ${error.message}`, 'error');
+        return false;
+    }
+}
+
+/**
+ * Apply RTSP server configuration (port, path, protocols)
+ */
+async function applyRtspServerConfig() {
+    const config = {
+        RTSP_PORT: document.getElementById('RTSP_PORT')?.value || '8554',
+        RTSP_PATH: document.getElementById('RTSP_PATH')?.value || 'stream',
+        RTSP_PROTOCOLS: document.getElementById('RTSP_PROTOCOLS')?.value || 'udp,tcp'
+    };
+    await saveConfigAndRestartRtsp(config, 'Configuration serveur RTSP');
+}
+
+/**
+ * Apply RTSP authentication configuration (user, password)
+ */
+async function applyRtspAuthConfig() {
+    const config = {
+        RTSP_USER: document.getElementById('RTSP_USER')?.value || '',
+        RTSP_PASSWORD: document.getElementById('RTSP_PASSWORD')?.value || ''
+    };
+    await saveConfigAndRestartRtsp(config, 'Authentification RTSP');
+}
+
+/**
+ * Quality level presets (like Synology Surveillance Station)
+ * Maps quality 1-5 to bitrate/resolution combinations
+ */
+const QUALITY_PRESETS = {
+    '1': { bitrate: 400,  description: 'Très basse qualité - Économie de bande passante maximale (~400 kbps)' },
+    '2': { bitrate: 700,  description: 'Basse qualité - Pour connexions limitées (~700 kbps)' },
+    '3': { bitrate: 1200, description: 'Qualité moyenne - Équilibre qualité/bande passante (~1200 kbps)' },
+    '4': { bitrate: 2000, description: 'Haute qualité - Bonne qualité d\'image (~2000 kbps)' },
+    '5': { bitrate: 3500, description: 'Très haute qualité - Qualité maximale (~3500 kbps, peut chauffer le Pi)' },
+    'custom': { bitrate: null, description: 'Personnalisé - Configurez manuellement les paramètres ci-dessous' }
+};
+
+/**
+ * Handle quality level change
+ */
+function onQualityLevelChange() {
+    const qualitySelect = document.getElementById('STREAM_QUALITY');
+    const level = qualitySelect?.value || '3';
+    const preset = QUALITY_PRESETS[level];
+    
+    const infoDiv = document.getElementById('quality-level-info');
+    const descSpan = document.getElementById('quality-level-description');
+    
+    // Show quality description
+    if (preset && descSpan) {
+        descSpan.textContent = preset.description;
+        if (infoDiv) infoDiv.style.display = 'block';
+    }
+    
+    // If not custom, auto-fill bitrate (resolution stays as configured by user)
+    if (level !== 'custom' && preset.bitrate !== null) {
+        const bitrateInput = document.getElementById('H264_BITRATE_KBPS');
+        if (bitrateInput) {
+            bitrateInput.value = preset.bitrate;
+        }
+        // Disable manual bitrate editing when using presets
+        if (bitrateInput) bitrateInput.disabled = true;
+    } else {
+        // Custom mode - enable manual editing
+        const bitrateInput = document.getElementById('H264_BITRATE_KBPS');
+        if (bitrateInput) bitrateInput.disabled = false;
+    }
+}
+
+/**
+ * Apply video output configuration (resolution, fps, bitrate, quality)
+ */
+async function applyVideoOutputConfig() {
+    const config = {
+        STREAM_QUALITY: document.getElementById('STREAM_QUALITY')?.value || '3',
+        VIDEOOUT_WIDTH: document.getElementById('VIDEOOUT_WIDTH')?.value || '',
+        VIDEOOUT_HEIGHT: document.getElementById('VIDEOOUT_HEIGHT')?.value || '',
+        VIDEOOUT_FPS: document.getElementById('VIDEOOUT_FPS')?.value || '',
+        H264_BITRATE_MODE: document.getElementById('H264_BITRATE_MODE')?.value || 'cbr',
+        H264_BITRATE_KBPS: document.getElementById('H264_BITRATE_KBPS')?.value || '1200'
+    };
+    await saveConfigAndRestartRtsp(config, 'Paramètres vidéo de sortie');
+}
+
+/**
+ * Toggle bitrate mode (CBR/VBR) UI
+ */
+function toggleBitrateMode() {
+    const mode = document.getElementById('H264_BITRATE_MODE')?.value || 'cbr';
+    const infoDiv = document.getElementById('bitrate-vbr-info');
+    const bitrateGroup = document.getElementById('bitrate-manual-group');
+    const bitrateLabel = bitrateGroup?.querySelector('label');
+    const bitrateHelp = bitrateGroup?.querySelector('small');
+    
+    if (mode === 'vbr') {
+        if (infoDiv) infoDiv.style.display = 'block';
+        if (bitrateLabel) bitrateLabel.innerHTML = '<i class="fas fa-signal"></i> Débit max (kbps)';
+        if (bitrateHelp) bitrateHelp.textContent = 'Débit maximum en mode VBR';
+    } else {
+        if (infoDiv) infoDiv.style.display = 'none';
+        if (bitrateLabel) bitrateLabel.innerHTML = '<i class="fas fa-signal"></i> Débit H264 (kbps)';
+        if (bitrateHelp) bitrateHelp.textContent = 'Débit cible (défaut: 1200 pour Pi 3B+)';
+    }
+}
+
+/**
+ * Apply advanced video configuration (source mode, proxy, encoding)
+ */
+async function applyVideoAdvancedConfig() {
+    const config = {
+        STREAM_SOURCE_MODE: document.getElementById('STREAM_SOURCE_MODE')?.value || 'camera',
+        STREAM_SOURCE_URL: document.getElementById('STREAM_SOURCE_URL')?.value || '',
+        RTSP_PROXY_TRANSPORT: document.getElementById('RTSP_PROXY_TRANSPORT')?.value || 'auto',
+        RTSP_PROXY_AUDIO: document.getElementById('RTSP_PROXY_AUDIO')?.value || 'auto',
+        RTSP_PROXY_LATENCY_MS: document.getElementById('RTSP_PROXY_LATENCY_MS')?.value || '100',
+        SCREEN_DISPLAY: document.getElementById('SCREEN_DISPLAY')?.value || ':0.0',
+        H264_KEYINT: document.getElementById('H264_KEYINT')?.value || '30',
+        H264_PROFILE: document.getElementById('H264_PROFILE')?.value || '',
+        H264_QP: document.getElementById('H264_QP')?.value || ''
+    };
+    await saveConfigAndRestartRtsp(config, 'Paramètres vidéo avancés');
+}
+
+/**
+ * Apply overlay configuration
+ */
+async function applyOverlayConfig() {
+    const config = {
+        VIDEO_OVERLAY_ENABLE: document.getElementById('VIDEO_OVERLAY_ENABLE')?.value || 'no',
+        VIDEO_OVERLAY_TEXT: document.getElementById('VIDEO_OVERLAY_TEXT')?.value || '',
+        VIDEO_OVERLAY_POSITION: document.getElementById('VIDEO_OVERLAY_POSITION')?.value || 'top-left',
+        VIDEO_OVERLAY_SHOW_DATETIME: document.getElementById('VIDEO_OVERLAY_SHOW_DATETIME')?.value || 'no',
+        VIDEO_OVERLAY_DATETIME_FORMAT: document.getElementById('VIDEO_OVERLAY_DATETIME_FORMAT')?.value || '%Y-%m-%d %H:%M:%S',
+        VIDEO_OVERLAY_CLOCK_POSITION: document.getElementById('VIDEO_OVERLAY_CLOCK_POSITION')?.value || 'bottom-right',
+        VIDEO_OVERLAY_FONT_SIZE: document.getElementById('VIDEO_OVERLAY_FONT_SIZE')?.value || '24',
+        CSI_OVERLAY_MODE: document.getElementById('CSI_OVERLAY_MODE')?.value || 'software'
+    };
+    await saveConfigAndRestartRtsp(config, 'Paramètres overlay');
+}
+
+/**
+ * Apply all video settings (legacy - saves everything and restarts)
+ */
+async function applyVideoSettings() {
+    try {
+        showToast('Application des paramètres vidéo...', 'info');
+        
+        let formatValue = document.getElementById('VIDEOIN_FORMAT')?.value || 'auto';
+        if (!ALLOWED_VIDEO_FORMATS.includes(String(formatValue).toUpperCase())) {
+            formatValue = 'auto';
+        }
+        const config = {
+            VIDEOIN_WIDTH: document.getElementById('VIDEOIN_WIDTH')?.value || '',
+            VIDEOIN_HEIGHT: document.getElementById('VIDEOIN_HEIGHT')?.value || '',
+            VIDEOIN_FPS: document.getElementById('VIDEOIN_FPS')?.value || '',
+            VIDEOIN_FORMAT: formatValue,
+            VIDEO_OVERLAY_ENABLE: document.getElementById('VIDEO_OVERLAY_ENABLE')?.value || 'no',
+            VIDEO_OVERLAY_TEXT: document.getElementById('VIDEO_OVERLAY_TEXT')?.value || '',
+            VIDEO_OVERLAY_POSITION: document.getElementById('VIDEO_OVERLAY_POSITION')?.value || 'top-left',
+            VIDEO_OVERLAY_SHOW_DATETIME: document.getElementById('VIDEO_OVERLAY_SHOW_DATETIME')?.value || 'no',
+            VIDEO_OVERLAY_DATETIME_FORMAT: document.getElementById('VIDEO_OVERLAY_DATETIME_FORMAT')?.value || '%Y-%m-%d %H:%M:%S',
+            VIDEO_OVERLAY_CLOCK_POSITION: document.getElementById('VIDEO_OVERLAY_CLOCK_POSITION')?.value || 'bottom-right',
+            VIDEO_OVERLAY_FONT_SIZE: document.getElementById('VIDEO_OVERLAY_FONT_SIZE')?.value || '24',
+            CSI_OVERLAY_MODE: document.getElementById('CSI_OVERLAY_MODE')?.value || 'software',
+            H264_BITRATE_KBPS: document.getElementById('H264_BITRATE_KBPS')?.value || '1200',
+            H264_KEYINT: document.getElementById('H264_KEYINT')?.value || '30',
+            H264_PROFILE: document.getElementById('H264_PROFILE')?.value || '',
+            H264_QP: document.getElementById('H264_QP')?.value || '',
+            STREAM_SOURCE_MODE: document.getElementById('STREAM_SOURCE_MODE')?.value || 'camera',
+            STREAM_SOURCE_URL: document.getElementById('STREAM_SOURCE_URL')?.value || '',
+            RTSP_PROXY_TRANSPORT: document.getElementById('RTSP_PROXY_TRANSPORT')?.value || 'auto',
+            RTSP_PROXY_AUDIO: document.getElementById('RTSP_PROXY_AUDIO')?.value || 'auto',
+            RTSP_PROXY_LATENCY_MS: document.getElementById('RTSP_PROXY_LATENCY_MS')?.value || '100',
+            SCREEN_DISPLAY: document.getElementById('SCREEN_DISPLAY')?.value || ':0.0',
+            RTSP_PROTOCOLS: document.getElementById('RTSP_PROTOCOLS')?.value || 'udp,tcp'
+        };
+        
+        await saveConfigAndRestartRtsp(config, 'tous les paramètres vidéo');
     } catch (error) {
         showToast(`Erreur: ${error.message}`, 'error');
     }
 }
 
 // ============================================================================
+// Expose functions to global scope
+// ============================================================================
 
-    window.detectedResolutions = detectedResolutions;
-    window.initForm = initForm;
-    window.saveConfig = saveConfig;
-    window.applyAudioConfig = applyAudioConfig;
-    window.resetForm = resetForm;
-    window.detectCameras = detectCameras;
-    window.selectCamera = selectCamera;
-    window.onCameraTypeChange = onCameraTypeChange;
-    window.updateConfigField = updateConfigField;
-    window.detectAudio = detectAudio;
-    window.selectAudio = selectAudio;
-    window.updateAudioGainDisplay = updateAudioGainDisplay;
-    window.loadResolutions = loadResolutions;
-    window.onResolutionSelectChange = onResolutionSelectChange;
-    window.toggleManualResolution = toggleManualResolution;
-    window.applyVideoSettings = applyVideoSettings;
+window.detectedResolutions = detectedResolutions;
+window.initForm = initForm;
+window.saveConfig = saveConfig;
+window.applyAudioConfig = applyAudioConfig;
+window.resetForm = resetForm;
+window.detectCameras = detectCameras;
+window.selectCamera = selectCamera;
+window.onCameraTypeChange = onCameraTypeChange;
+window.updateConfigField = updateConfigField;
+window.detectAudio = detectAudio;
+window.selectAudio = selectAudio;
+window.updateAudioGainDisplay = updateAudioGainDisplay;
+window.loadResolutions = loadResolutions;
+window.onResolutionSelectChange = onResolutionSelectChange;
+window.toggleManualResolution = toggleManualResolution;
+window.applyVideoSettings = applyVideoSettings;
+// New RTSP section-specific apply functions (v2.36.01)
+window.applyRtspServerConfig = applyRtspServerConfig;
+window.applyRtspAuthConfig = applyRtspAuthConfig;
+window.applyVideoOutputConfig = applyVideoOutputConfig;
+window.applyVideoAdvancedConfig = applyVideoAdvancedConfig;
+window.applyOverlayConfig = applyOverlayConfig;
+// Bitrate mode toggle (v2.36.02)
+window.toggleBitrateMode = toggleBitrateMode;
+// Quality level selector (v2.36.03)
+window.onQualityLevelChange = onQualityLevelChange;
+
 })();
-
-
-
-
-
-
 
 
 

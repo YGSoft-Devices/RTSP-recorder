@@ -7,6 +7,262 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.36.05] - Fix critique chargement configuration vidéo RTSP
+
+### Fixed (rpi_av_rtsp_recorder.sh v2.15.2)
+- **BUG CRITIQUE** : Les paramètres VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS de config.env étaient ignorés
+  - Symptôme : Le stream RTSP utilisait toujours 640x480@15fps malgré config.env à 1280x720@30fps
+  - Cause : Les défauts `VIDEOIN_*` étaient définis AVANT `source "$CONFIG_FILE"`
+  - La syntaxe bash `: "${VAR:=default}"` n'écrase pas une variable déjà définie
+- **Solution** : Déplacer `source "$CONFIG_FILE"` AVANT la définition des défauts
+  - Le fichier config est maintenant chargé au tout début du script
+  - Les défauts sont ensuite appliqués uniquement si la variable n'est pas définie
+  - Les variables legacy `VIDEO_*` sont correctement utilisées comme fallback pour `VIDEOIN_*`
+
+### Changed
+- Réorganisation de la structure d'initialisation du script RTSP
+- Défaut FPS changé de 15 à 30 (plus commun et supporté par la plupart des caméras)
+- Ajout de logging du fichier config chargé à la fin de l'initialisation
+
+### Technical Details
+```bash
+# AVANT (BUGUÉ) - Les défauts écrasaient la config
+: "${VIDEOIN_FPS:=15}"  # Définit à 15
+: "${VIDEOIN_FPS:=${VIDEO_FPS:-15}}"  # Ne fait rien car déjà défini !
+source "$CONFIG_FILE"  # Trop tard !
+
+# APRÈS (CORRIGÉ) - Config chargée en premier
+source "$CONFIG_FILE"  # Charge VIDEO_FPS=30 du config
+: "${VIDEOIN_FPS:=${VIDEO_FPS:-30}}"  # Prend VIDEO_FPS du config car VIDEOIN_FPS non défini
+```
+
+---
+
+## [2.36.04] - Génération automatique des thumbnails à la création d'enregistrements
+
+### Added (rtsp_recorder.sh v1.8.0)
+- **Watcher inotify** : Surveillance du dossier d'enregistrements via `inotifywait`
+- **Notification automatique** : Appel API vers `/api/recordings/thumbnail/notify` quand un nouveau segment `.ts` est terminé
+- **Retry logic** : 3 tentatives en cas d'échec de notification avec délai de 5s
+- **Graceful degradation** : Si `inotify-tools` n'est pas installé, le recorder continue sans notifications
+
+### Added (web-manager/blueprints/recordings_bp.py v2.30.7)
+- **Endpoint `/api/recordings/thumbnail/notify`** (POST) : Notification de création d'enregistrement
+  - Génère immédiatement le thumbnail au lieu d'attendre la consultation de la galerie
+  - Extrait et cache les métadonnées vidéo (durée, codec, résolution)
+  - Validation de sécurité : vérifie que le fichier est dans le dossier d'enregistrements
+  - Codes retour : 200 (généré), 202 (en queue), 400/404/500 (erreurs)
+
+### Added (web-manager/DEPENDENCIES.json)
+- `inotify-tools` ajouté aux dépendances APT
+
+### Changed
+- Les thumbnails sont maintenant générés proactivement dès la fin d'un enregistrement
+- Amélioration de l'UX : thumbnails disponibles immédiatement dans la galerie
+- Réduction de la charge lors de la consultation de la page enregistrements
+
+### Technical Details
+- Événement surveillé : `close_write` (fichier complètement écrit)
+- Délai de sécurité : 3s après création pour laisser ffmpeg finaliser
+- Format thumbnail : JPEG 320px de large, extraction à t=2s (ou t=0s si vidéo courte)
+
+---
+
+## [2.36.03] - Niveaux de qualité RTSP + Sélecteur format vidéo
+
+### Added (web-manager/templates/index.html v2.36.03)
+- **Sélecteur niveau de qualité (1-5)** : Compatible Synology Surveillance Station
+  - Niveau 1 : Très basse qualité (~400 kbps) - Économie bande passante
+  - Niveau 2 : Basse qualité (~700 kbps)
+  - Niveau 3 : Qualité moyenne (~1200 kbps) - Défaut
+  - Niveau 4 : Haute qualité (~2000 kbps)
+  - Niveau 5 : Très haute qualité (~3500 kbps) - Attention chaleur Pi 3B+
+  - Personnalisé : Configuration manuelle bitrate
+- **Sélecteur format vidéo en mode manuel** : MJPEG/YUYV/H264/Auto dans la section résolution manuelle
+  - MJPEG recommandé pour caméras USB (moins de charge CPU)
+  - YUYV pour raw (CPU élevé)
+  - H264 si supporté nativement par la caméra
+
+### Added (web-manager/static/js/modules/config_video.js v2.36.03)
+- `QUALITY_PRESETS` : Tableau des présets de qualité avec bitrate associé
+- `onQualityLevelChange()` : Gère le changement de niveau de qualité
+  - Auto-ajuste le bitrate selon le niveau
+  - Désactive l'édition manuelle du bitrate sauf en mode "Personnalisé"
+  - Affiche la description du niveau sélectionné
+
+### Added (web-manager/config.py v1.2.2)
+- `STREAM_QUALITY` dans DEFAULT_CONFIG (défaut: "3")
+
+### Added (onvif-server/onvif_server.py v1.9.0)
+- **Support dynamique du niveau de qualité ONVIF**
+  - Lecture de `STREAM_QUALITY` depuis config.env
+  - Réponses ONVIF (GetProfiles, GetVideoEncoderConfiguration, etc.) utilisent la qualité configurée
+  - Compatible avec le réglage qualité de Synology Surveillance Station
+
+---
+
+## [2.36.02] - Bugfix résolutions + Mode bitrate VBR
+
+### Fixed (web-manager/static/js/modules/config_video.js v2.36.02)
+- **Bug détection résolutions** : `Cannot read properties of null (reading 'value')` sur `VIDEOIN_FPS`
+- **Cause** : Le champ `VIDEOIN_FPS` n'existait pas dans le HTML
+- **Solution** : 
+  - Ajout du champ `VIDEOIN_FPS` dans la section résolution manuelle (index.html)
+  - Protection null sur tous les éléments dans `onResolutionSelectChange()`
+
+### Added (rpi_av_rtsp_recorder.sh v2.15.1)
+- **Mode bitrate VBR** : Nouvelle variable `H264_BITRATE_MODE` (cbr/vbr)
+  - `cbr` = Constant Bitrate (défaut, streaming stable)
+  - `vbr` = Variable Bitrate (meilleure qualité, compatible Synology Surveillance Station)
+- **v4l2h264enc** : Ajout du paramètre `video_bitrate_mode` (0=VBR, 1=CBR)
+- **Log informatif** : Affiche le mode bitrate au démarrage du pipeline
+
+### Added (web-manager/templates/index.html v2.36.02)
+- **Sélecteur mode bitrate** : Dropdown CBR/VBR dans "Paramètres vidéo de sortie"
+- **Info VBR** : Message explicatif quand VBR est sélectionné (compatibilité Synology)
+- **Champ VIDEOIN_FPS** : Ajouté dans la section résolution manuelle de l'onglet Caméra
+
+### Added (web-manager/config.py v1.2.1)
+- `H264_BITRATE_MODE` dans DEFAULT_CONFIG avec valeur "cbr"
+
+---
+
+## [2.36.01] - Restructuration page RTSP
+
+### Changed (web-manager/templates/index.html v2.36.01)
+- **Refonte complète de l'onglet RTSP** : Séparation en 5 cadres distincts avec boutons "Appliquer" individuels
+  - **Cadre 1** : Configuration serveur RTSP (port, path, protocols)
+  - **Cadre 2** : Authentification RTSP/ONVIF (user, password)
+  - **Cadre 3** : Paramètres vidéo de sortie (VIDEOOUT_*, bitrate)
+  - **Cadre 4** : Paramètres vidéo avancés (source mode, proxy, H264 profile/QP)
+  - **Cadre 5** : Overlay vidéo (texte, date/heure, positions)
+- **UX améliorée** : Chaque section peut être appliquée indépendamment
+- **Chaque bouton "Appliquer"** sauvegarde uniquement ses paramètres ET redémarre le service RTSP
+
+### Added (web-manager/static/js/modules/config_video.js v2.36.01)
+- `saveConfigAndRestartRtsp(config, description)` : Helper pour sauvegarder + restart RTSP
+- `applyRtspServerConfig()` : Applique port/path/protocols
+- `applyRtspAuthConfig()` : Applique user/password
+- `applyVideoOutputConfig()` : Applique VIDEOOUT_*/bitrate
+- `applyVideoAdvancedConfig()` : Applique source mode/proxy/H264 settings
+- `applyOverlayConfig()` : Applique overlay settings
+- Exports des 5 nouvelles fonctions vers window global
+
+### Fixed (debug_tools/deploy_scp.ps1 v1.4.7)
+- **Bug double-slash dans le chemin** : Le chemin de destination avait un double slash (ex: `/opt/path//*`) quand la destination se terminait par `/`
+- **Bug chown avec wildcard** : `chown root:www-data $FinalDest/*` échouait si le fichier unique existait déjà
+- **Solution** : 
+  - `TrimEnd('/')` sur `$FinalDest` pour normaliser le chemin
+  - Permissions appliquées fichier par fichier au lieu de wildcard `*`
+
+---
+
+## [2.36.00] - Refactoring VIDEOIN_* / VIDEOOUT_* - Séparation complète INPUT/OUTPUT
+
+### BREAKING CHANGE - Nouveau nommage des variables vidéo
+- **Variables d'entrée caméra (INPUT)** : `VIDEOIN_WIDTH`, `VIDEOIN_HEIGHT`, `VIDEOIN_FPS`, `VIDEOIN_DEVICE`, `VIDEOIN_FORMAT`
+- **Variables de sortie RTSP (OUTPUT)** : `VIDEOOUT_WIDTH`, `VIDEOOUT_HEIGHT`, `VIDEOOUT_FPS`
+- **Compatibilité** : Les anciennes variables `VIDEO_*` et `OUTPUT_*` restent supportées via fallback
+
+### Contexte du problème
+- Synology Surveillance Station via ONVIF définissait 1920x1080@30fps
+- Le système écrivait ces valeurs dans `VIDEO_*` (paramètres caméra)
+- La caméra USB (LifeCam HD-5000) ne supporte pas 1920x1080 → crash du flux RTSP
+- **Solution** : ONVIF écrit maintenant UNIQUEMENT dans `VIDEOOUT_*`, la caméra capture dans `VIDEOIN_*`
+
+### Modifications principales
+
+#### rpi_av_rtsp_recorder.sh (v2.15.0)
+- Nouvelles variables `VIDEOIN_*` pour capture caméra avec fallback sur `VIDEO_*`
+- Nouvelles variables `VIDEOOUT_*` pour sortie RTSP avec fallback sur `OUTPUT_*`
+- `resolve_output_params()` : Utilise VIDEOIN_* comme base, VIDEOOUT_* pour scaling
+- `build_output_scaler()` : Compare VIDEOIN_* vs VIDEOOUT_* pour décider du scaling
+- Toutes les fonctions pipeline utilisent `${VIDEOIN_*}` pour la capture
+
+#### onvif-server/onvif_server.py (v1.8.0)
+- `SetVideoEncoderConfiguration` : Écrit dans `VIDEOOUT_*` (plus VIDEO_*)
+- `load_video_settings()` : Lit `VIDEOIN_*` avec fallback sur `VIDEO_*`
+- La caméra physique est maintenant protégée des modifications ONVIF
+
+#### web-manager/config.py (v1.2.0)
+- `DEFAULT_CONFIG` : Ajout des entrées `VIDEOIN_*` et `VIDEOOUT_*`
+- `CONFIG_METADATA` : Métadonnées complètes pour validation UI
+- Variables legacy `VIDEO_*` maintenues pour rétro-compatibilité
+
+#### web-manager/services/config_service.py (v2.31.0)
+- Nouveau mapping `VIDEOIN_LEGACY_MAP` : VIDEOIN_* ↔ VIDEO_*
+- Nouveau mapping `VIDEOOUT_LEGACY_MAP` : VIDEOOUT_* ↔ OUTPUT_*
+- `load_config()` : Expose automatiquement VIDEO_* depuis VIDEOIN_* pour templates
+
+#### web-manager/static/js/app.js (v2.36.00)
+- `applyResolution()` : Envoie `VIDEOIN_WIDTH`, `VIDEOIN_HEIGHT`, `VIDEOIN_FPS`, `VIDEOIN_FORMAT`
+
+#### web-manager/static/js/modules/config_video.js
+- Tous les `getElementById()` mis à jour pour `VIDEOIN_*`
+
+#### web-manager/templates/index.html (v2.36.00)
+- Attributs `id` et `name` mis à jour vers `VIDEOIN_*`
+- Valeurs Jinja : `{{ config.VIDEOIN_* or config.VIDEO_* }}` pour fallback
+
+### Résultat attendu
+- L'utilisateur configure la caméra via le frontend → `VIDEOIN_*` dans config.env
+- Synology configure le flux via ONVIF → `VIDEOOUT_*` dans config.env
+- Le script RTSP capture en `VIDEOIN_*` et scale vers `VIDEOOUT_*` si différent
+- La caméra ne crashe plus quand NVR demande une résolution non supportée
+
+---
+
+## [2.35.20] - Fix applyResolution() FPS bug
+
+### Corrections
+- **Bug CRITIQUE : VIDEO_FPS toujours défini à 20 au lieu de la valeur choisie**
+  - `applyResolution()` dans app.js cherchait `document.getElementById('video-fps')` (avec tiret)
+  - L'élément HTML réel s'appelle `VIDEO_FPS` (avec underscore)
+  - Résultat: `fpsInput` était toujours `null`, fallback hardcodé à `'20'`
+  - Fix: Corriger l'ID de `'video-fps'` → `'VIDEO_FPS'`
+  - Default fallback changé de `'20'` → `'30'` (plus compatible USB caméras)
+
+### Modifications
+- **web-manager/static/js/app.js** (v2.35.20)
+  - Ligne 342: `getElementById('VIDEO_FPS')` au lieu de `'video-fps'`
+  - Ligne 370: Default FPS `'30'` au lieu de `'20'`
+
+---
+
+## [2.35.19] - Séparation INPUT/OUTPUT pour les paramètres vidéo
+
+### Fonctionnalités
+- **Architecture INPUT/OUTPUT séparée pour les flux vidéo**
+  - Nouvelles variables `OUTPUT_WIDTH`, `OUTPUT_HEIGHT`, `OUTPUT_FPS` pour le flux RTSP
+  - Les variables `VIDEO_*` contrôlent maintenant UNIQUEMENT la capture caméra
+  - Si `OUTPUT_*` non défini, utilise `VIDEO_*` par défaut (rétro-compatible)
+  - Permet scaling/framerate conversion automatique si output ≠ input
+
+### Corrections
+- **Bug CRITIQUE : ONVIF cassait le flux RTSP en modifiant les paramètres caméra**
+  - Synology via ONVIF pouvait définir un FPS non supporté par la caméra (ex: 20fps sur 720p)
+  - La caméra USB ne supportait que 30fps à 1280x720 → erreur "not-negotiated"
+  - Fix: ONVIF écrit maintenant sur `OUTPUT_*` (pas `VIDEO_*`)
+  - La caméra capture en natif, le serveur RTSP scale si nécessaire
+
+### Modifications
+- **rpi_av_rtsp_recorder.sh** (v2.14.0)
+  - Ajout variables `OUTPUT_WIDTH`, `OUTPUT_HEIGHT`, `OUTPUT_FPS`
+  - Nouvelle fonction `resolve_output_params()` pour fallback sur VIDEO_*
+  - Nouvelle fonction `build_output_scaler()` pour videoscale/videorate si nécessaire
+  - Logs distincts pour "Camera input" et "Stream output"
+
+- **onvif-server/onvif_server.py** (v1.7.0)
+  - `SetVideoEncoderConfiguration` écrit sur OUTPUT_* au lieu de VIDEO_*
+  - `SetVideoSourceConfiguration` est maintenant un NO-OP (protège la caméra)
+  - Logs explicites quand ONVIF modifie les paramètres output
+
+- **setup/install_web_manager.sh** (v2.4.3)
+  - Template config.env mis à jour avec VIDEO_FPS=30 (compatible USB)
+  - Documentation des variables OUTPUT_* dans le template
+
+---
+
 ## [2.35.18] - SSH Keys Auto-Configuration pour Meeting
 
 ### Fonctionnalités

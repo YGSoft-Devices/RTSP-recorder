@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.35.18
+Version: 2.36.05
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -543,16 +543,62 @@ Champs principaux:
 
 **Note:** Le champ `name` dans `onvif.conf` est ignoré depuis la v1.5.0. Le nom est récupéré depuis l'API Meeting (voir section 8.4).
 
-Le serveur lit aussi `VIDEO_WIDTH/HEIGHT/FPS` et `H264_BITRATE_KBPS` depuis `/etc/rpi-cam/config.env` pour annoncer des settings cohérents.
+Le serveur lit aussi les paramètres vidéo depuis `/etc/rpi-cam/config.env` pour annoncer des settings cohérents.
 
-#### 8.2.1 Contrôle caméra via ONVIF (SetVideoEncoderConfiguration)
+#### 8.2.1 Séparation INPUT/OUTPUT (v2.36.00+)
 
-Depuis v1.6.0, les modifications ONVIF des paramètres vidéo sont appliquées **réellement** :
-- `SetVideoEncoderConfiguration` met à jour `VIDEO_WIDTH/HEIGHT/FPS` et `H264_BITRATE_KBPS`
-- `H264_KEYINT` est mis à jour via `GovLength`
+**Architecture VIDEOIN_* / VIDEOOUT_* :**
+
+| Variables | Rôle | Contrôlable par | Alias legacy |
+|-----------|------|-----------------|--------------|
+| `VIDEOIN_WIDTH/HEIGHT/FPS` | Capture caméra (input) | Frontend uniquement | VIDEO_* |
+| `VIDEOIN_DEVICE/FORMAT` | Device et format caméra | Frontend uniquement | VIDEO_* |
+| `VIDEOOUT_WIDTH/HEIGHT/FPS` | Stream RTSP (output) | ONVIF + Frontend | OUTPUT_* |
+
+**Compatibilité :**
+- Les variables `VIDEO_*` et `OUTPUT_*` restent supportées via fallback automatique
+- `config_service.py` expose les deux noms pour la rétro-compatibilité des templates
+
+**Comportement :**
+- Si `VIDEOOUT_*` non défini → utilise `VIDEOIN_*` (rétro-compatible)
+- Si `VIDEOOUT_*` défini et différent de `VIDEOIN_*` → scaling/conversion automatique via `videoscale`/`videorate`
+
+**Exemple concret :**
+```bash
+# Caméra capture en 1280x720@30fps (seul format supporté par la caméra USB)
+VIDEOIN_WIDTH=1280
+VIDEOIN_HEIGHT=720
+VIDEOIN_FPS=30
+VIDEOIN_DEVICE=/dev/video0
+VIDEOIN_FORMAT=MJPG
+
+# ONVIF/Synology configure la sortie à 20fps (le scaler s'active automatiquement)
+VIDEOOUT_FPS=20
+```
+
+**Logs de démarrage :**
+```
+Input (camera):  1280x720@30fps
+Output (stream): 1280x720@20fps
+Output framerate differs from input - will convert
+Output scaler: videoconvert ! videorate ! video/x-raw,framerate=20/1
+```
+
+**Pourquoi cette séparation ?**
+- Les caméras USB supportent souvent UN SEUL framerate à une résolution donnée (ex: 30fps only à 720p)
+- Sans cette séparation, ONVIF pouvait définir un FPS invalide → crash GStreamer (`not-negotiated`)
+- Maintenant, la caméra capture en mode natif, et le stream est converti si nécessaire
+
+#### 8.2.2 Contrôle caméra via ONVIF (SetVideoEncoderConfiguration)
+
+Depuis v1.8.0, `SetVideoEncoderConfiguration` écrit sur `VIDEOOUT_*` (pas `VIDEOIN_*`) :
+- `VIDEOOUT_WIDTH/HEIGHT/FPS` contrôle la sortie RTSP
+- `H264_BITRATE_KBPS` et `H264_KEYINT` sont mis à jour
 - Le service RTSP est redémarré pour appliquer les changements
 
-#### 8.2.2 Imaging (Brightness / Focus)
+**Note:** `SetVideoSourceConfiguration` est maintenant un NO-OP (protège la caméra).
+
+#### 8.2.3 Imaging (Brightness / Focus)
 
 Le service Imaging est exposé (Profile T minimal) :
 - `GetImagingSettings`, `SetImagingSettings`, `GetImagingOptions`
@@ -1468,6 +1514,93 @@ POST /api/recordings/cache/cleanup
 ```
 Nettoie uniquement les entrées orphelines (fichiers supprimés).
 
+### 9.4.2 Génération automatique des thumbnails (v2.36.04+)
+
+Depuis la version 2.36.04, les miniatures sont générées **automatiquement** dès qu'un nouvel enregistrement est terminé, au lieu d'être générées à la demande lors de la consultation de la galerie.
+
+#### Fonctionnement
+
+1. **Watcher inotify** : Le script `rtsp_recorder.sh` utilise `inotifywait` pour surveiller le dossier d'enregistrements
+2. **Détection** : Quand un fichier `.ts` est complètement écrit (événement `close_write`)
+3. **Notification** : Le recorder appelle l'API `/api/recordings/thumbnail/notify`
+4. **Génération** : L'API génère immédiatement le thumbnail et l'ajoute au cache SQLite
+
+#### Architecture
+
+```
+rtsp_recorder.sh
+    │
+    ├── ffmpeg (enregistrement RTSP → segments .ts)
+    │
+    └── inotifywait (surveillance dossier)
+            │
+            └── notify_new_recording()
+                    │
+                    └── curl → /api/recordings/thumbnail/notify
+                                │
+                                └── generate_thumbnail() + cache_metadata()
+```
+
+#### API Notification
+
+```
+POST /api/recordings/thumbnail/notify
+```
+Notifie la création d'un nouvel enregistrement pour génération immédiate du thumbnail.
+
+**Body:**
+```json
+{
+  "filepath": "/var/cache/rpi-cam/recordings/rec_20260202_164200.ts"
+}
+```
+
+**Réponse (succès):**
+```json
+{
+  "success": true,
+  "message": "Thumbnail generated",
+  "filepath": "/var/cache/rpi-cam/recordings/rec_20260202_164200.ts",
+  "thumbnail": "/var/cache/rpi-cam/thumbnails/rec_20260202_164200.jpg"
+}
+```
+
+**Réponse (file en queue):**
+```json
+{
+  "success": true,
+  "message": "Thumbnail queued for generation",
+  "filepath": "/var/cache/rpi-cam/recordings/rec_20260202_164200.ts"
+}
+```
+HTTP 202 - Le fichier est trop récent ou la génération synchrone a échoué, mais il est en queue pour traitement background.
+
+**Codes d'erreur:**
+- 400 : Chemin manquant ou invalide
+- 404 : Fichier non trouvé
+- 500 : Erreur interne
+
+#### Prérequis
+
+Le paquet `inotify-tools` doit être installé :
+```bash
+sudo apt install inotify-tools
+```
+
+Si non installé, le recorder fonctionne normalement mais les thumbnails seront générés à la demande (comportement classique).
+
+#### Logs
+
+Les notifications sont loguées dans `/var/log/rpi-cam/rtsp_recorder.log` :
+```
+[2026-02-02 16:43:29] Thumbnail notification sent for: rec_20260202_164230.ts
+```
+
+En cas d'échec :
+```
+[2026-02-02 16:43:35] ERROR: Failed to notify thumbnail generation for: rec_20260202_164230.ts
+```
+
 #### Optimisations techniques
 
 - **ffprobe optimisé** : `-read_intervals %+5` (ne lit que les 5 premières secondes)
@@ -1617,8 +1750,16 @@ RTSP / vidéo:
 - `RTSP_PORT`, `RTSP_PATH`
 - `RTSP_PROTOCOLS` (`udp,tcp,udp-mcast`) - transports RTSP côté client
 - `RTSP_USER`, `RTSP_PASSWORD` (authentification, optionnel - les deux requis pour activer)
-- `VIDEO_WIDTH`, `VIDEO_HEIGHT`, `VIDEO_FPS`, `VIDEO_DEVICE`
-- `VIDEO_FORMAT` (`auto|MJPG|YUYV|H264`) - format USB préféré
+
+Paramètres d'entrée caméra (VIDEOIN_*) - **contrôlés par l'utilisateur uniquement** :
+- `VIDEOIN_WIDTH`, `VIDEOIN_HEIGHT`, `VIDEOIN_FPS`, `VIDEOIN_DEVICE`
+- `VIDEOIN_FORMAT` (`auto|MJPG|YUYV|H264`) - format USB préféré
+- Alias legacy: `VIDEO_WIDTH`, `VIDEO_HEIGHT`, `VIDEO_FPS`, `VIDEO_DEVICE`, `VIDEO_FORMAT`
+
+Paramètres de sortie RTSP (VIDEOOUT_*) - **contrôlables par ONVIF** (v2.36.00+) :
+- `VIDEOOUT_WIDTH`, `VIDEOOUT_HEIGHT`, `VIDEOOUT_FPS` (optionnels, fallback sur VIDEOIN_*)
+- Alias legacy: `OUTPUT_WIDTH`, `OUTPUT_HEIGHT`, `OUTPUT_FPS`
+- Si définis et différents de VIDEOIN_*, le pipeline ajoute `videoscale`/`videorate`
 - `STREAM_SOURCE_MODE` (`camera|rtsp|mjpeg|screen`)
 - `STREAM_SOURCE_URL` (URL source RTSP/MJPEG)
 - `RTSP_PROXY_TRANSPORT` (`auto|tcp|udp`)
@@ -1816,8 +1957,15 @@ RTSP ne démarre pas:
 - vérifier les plugins: `gst-inspect-1.0 rtph264pay h264parse`
 - vérifier caméra: `/dev/video0` et `v4l2-ctl -d /dev/video0 --all`
 
+**Configuration vidéo non appliquée (CORRIGÉ v2.15.2):**
+- **Symptôme** : Le stream RTSP utilise 640x480@15fps malgré config.env à 1280x720@30fps
+- **Cause** : Bug d'ordre de chargement dans `rpi_av_rtsp_recorder.sh` < v2.15.2
+- **Vérification** : `ps aux | grep test-launch` doit montrer les bonnes valeurs width/height/framerate
+- **Solution** : Mettre à jour `rpi_av_rtsp_recorder.sh` vers v2.15.2+
+- **Note** : Le fichier config.env doit utiliser `VIDEO_WIDTH/HEIGHT/FPS` (pas `VIDEOIN_*`)
+
 CPU trop élevé (Pi 3B+):
-- réduire `VIDEO_WIDTH/HEIGHT/FPS` (ex: `640x480@15`)
+- réduire `VIDEOIN_WIDTH/HEIGHT/FPS` (ex: `640x480@15`)
 - préférer une caméra USB MJPEG
 - si `v4l2h264enc` est cassé, rester sur paramètres “safe” pour `x264enc`
 

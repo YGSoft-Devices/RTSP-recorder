@@ -42,11 +42,14 @@ Le projet RTSP-Full a été conçu et sera TOUJOURS conçu pour supporter ces 3 
    - toujours agir comme si un novice allait reinstaller le projet sur un nouvel appareil dans la seconde from scratch: les fichiers d'installations doivent etre constamment a jour, et doivent permettre egalement la mise a jour et le check.
    - les scripts obsoletes DOIVENT etre deplacés dans le dossier "backups" pour archivage. Garder la structure globale propre et coherente, prête à etre installée proprement.
    - PAS DE MONOLYTHE ! IL FAUT PENSER à LA MAINTENABILITé !
+   - le projet devra rester au maximum universel sur le support des cameras (chaque device a une camera differente !) ainsi que sur la compatibilité entre pi3 et pi4. On ne fait pas de bugfix qui ne serait pas fonctionnel avec d'autre materiel, ou qui provoquerait des regressions.
    - Si une difficulté récurrente est reperée, conserver une trace de la solution dans AGENTS.md
+   - si on rencontre une difficulté, on verifie que la réponse ne soit pas deja presente dans AGENTS.md
    - toujours mettre a jour les numeros de versions, frontend inclus a chaque mise a jour.
    - toujours se faire un TODO.
    - on code en local, pas sur le device de test !
    - on evite les valeurs hardcodées.
+   - on ne conserve pas du code legacy.
    - toujours deployer sur le device et tester.
    - si un bug est trouvé, on corrige le bug à la source, on ne contourne pas, on ne fait pas de modifications exceptionnelles sur le device.
    - il faut toujours s'assurer que les fichiers setups soient complets, et ne reimplemente pas des bugs deja corrigés. Tout doit toujours etre pret pour une installation propre, complete, et sans deboggage a faire derriere.
@@ -293,6 +296,24 @@ RTSP-Full/
 ### Fichiers Windows → Linux
 - Toujours supprimer les BOM UTF-8: `sed -i '1s/^\xEF\xBB\xBF//' fichier`
 - Convertir CRLF → LF: `sed -i 's/\r$//' fichier`
+
+### Configuration VIDEO_* non appliquée au démarrage RTSP (CORRIGÉ v2.15.2)
+- **Problème** : Les paramètres vidéo de config.env (VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS) ignorés
+- **Symptôme** : test-launch utilise toujours 640x480@15fps malgré config.env à 1280x720@30fps
+- **Cause racine** : Dans `rpi_av_rtsp_recorder.sh`, les défauts étaient définis AVANT `source "$CONFIG_FILE"` :
+  ```bash
+  : "${VIDEOIN_FPS:=15}"               # Définit à 15
+  : "${VIDEOIN_FPS:=${VIDEO_FPS:-15}}" # NE FAIT RIEN car déjà défini !
+  # ... puis ...
+  source "$CONFIG_FILE"  # Trop tard, VIDEOIN_* déjà fixés
+  ```
+- **Solution v2.15.2** : Déplacer `source "$CONFIG_FILE"` AVANT la définition des défauts
+  ```bash
+  source "$CONFIG_FILE"  # Charge VIDEO_WIDTH=1280, VIDEO_HEIGHT=720, VIDEO_FPS=30
+  # PUIS appliquer les défauts avec fallback
+  : "${VIDEOIN_WIDTH:=${VIDEO_WIDTH:-640}}"  # Prend VIDEO_WIDTH=1280 du config
+  ```
+- **Fichier** : [rpi_av_rtsp_recorder.sh](rpi_av_rtsp_recorder.sh) v2.15.2
 
 ### Saturation USB sur Pi 3B+ avec Audio (CORRIGÉ v2.7.0)
 - **Problème** : Frame drops constants à 30fps avec audio + vidéo USB + Ethernet
@@ -601,14 +622,14 @@ RTSP-Full/
 
 | Fichier | Version Actuelle |
 |---------|------------------|
-| VERSION | 2.35.17 (source unique) |
-| rpi_av_rtsp_recorder.sh | 2.13.0 |
-| rtsp_recorder.sh | 1.6.0 |
+| VERSION | 2.36.05 (source unique) |
+| rpi_av_rtsp_recorder.sh | 2.15.2 |
+| rtsp_recorder.sh | 1.8.0 |
 | rtsp_watchdog.sh | 1.2.0 |
-| onvif-server/onvif_server.py | 1.6.0 |
+| onvif-server/onvif_server.py | 1.9.0 |
 | rpi_csi_rtsp_server.py | 1.4.14 |
 | web-manager/app.py | 2.35.03 |
-| web-manager/config.py | 1.1.6 |
+| web-manager/config.py | 1.2.2 |
 | web-manager/tunnel_agent.py | 1.4.2 |
 | esp32/firmware (PlatformIO) | 0.1.2 |
 | web-manager/services/camera_service.py | 2.30.9 |
@@ -620,7 +641,7 @@ RTSP-Full/
 | web-manager/services/system_service.py | 2.30.25 |
 | web-manager/services/watchdog_service.py | 2.30.7 |
 | web-manager/services/__init__.py | 2.30.9 |
-| web-manager/services/config_service.py | 2.30.15 |
+| web-manager/services/config_service.py | 2.31.0 |
 | web-manager/services/network_service.py | 2.30.16 |
 | web-manager/services/power_service.py | 2.30.7 |
 | web-manager/services/platform_service.py | 2.30.1 |
@@ -632,15 +653,16 @@ RTSP-Full/
 | web-manager/blueprints/meeting_bp.py | 2.30.12 |
 | web-manager/blueprints/network_bp.py | 2.30.8 |
 | web-manager/blueprints/power_bp.py | 2.30.4 |
-| web-manager/blueprints/recordings_bp.py | 2.30.6 |
+| web-manager/blueprints/recordings_bp.py | 2.30.7 |
 | web-manager/blueprints/system_bp.py | 2.30.12 |
 | web-manager/blueprints/logs_bp.py | 2.30.6 |
 | web-manager/blueprints/wifi_bp.py | 2.30.8 |
 | web-manager/blueprints/debug_bp.py | 2.30.9 |
 | web-manager/blueprints/legacy_bp.py | 2.30.2 |
 | web-manager/blueprints/*.py (autres) | 2.30.5 |
-| web-manager/templates/index.html | 2.35.03 |
-| web-manager/static/js/app.js | 2.35.00 |
+| web-manager/templates/index.html | 2.36.03 |
+| web-manager/static/js/app.js | 2.36.00 |
+| web-manager/static/js/modules/config_video.js | 2.36.03 |
 | web-manager/static/js/modules/meeting.js | 2.35.03 |
 | web-manager/static/js/modules/i18n.js | 2.35.00 |
 | web-manager/static/css/style.css | 2.35.03 |
@@ -660,10 +682,10 @@ RTSP-Full/
 | debug_tools/run_remote.ps1 | 1.3.1 |
 | debug_tools/update_device.ps1 | 2.0.4 |
 | debug_tools/ssh_device.ps1 | 1.0.0 |
-| debug_tools/deploy_scp.ps1 | 1.4.5 |
+| debug_tools/deploy_scp.ps1 | 1.4.7 |
 | debug_tools/Get-DeviceIP.ps1 | 1.0.0 |
 | debug_tools/stop_services.sh | 1.0.0 |
-| docs/DOCUMENTATION_COMPLETE.md | 2.35.18 |
+| docs/DOCUMENTATION_COMPLETE.md | 2.36.00 |
 | debug_tools/package_update.ps1 | 1.0.1 |
 
 

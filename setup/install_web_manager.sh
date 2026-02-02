@@ -193,12 +193,19 @@ RTSP_PORT="8554"
 RTSP_PATH="stream"
 RTSP_PROTOCOLS="udp,tcp"
 
-# Video Settings
+# Video Settings (Camera Input - user-controlled only)
 VIDEO_WIDTH="1280"
-VIDEO_HEIGHT="960"
-VIDEO_FPS="20"
+VIDEO_HEIGHT="720"
+VIDEO_FPS="30"
 VIDEO_DEVICE="/dev/video0"
 VIDEO_FORMAT="auto"
+
+# Output Settings (RTSP Stream - ONVIF can modify these)
+# If not set, defaults to VIDEO_* values (same as camera input)
+# OUTPUT_WIDTH=""
+# OUTPUT_HEIGHT=""
+# OUTPUT_FPS=""
+
 STREAM_SOURCE_MODE="camera"
 STREAM_SOURCE_URL=""
 RTSP_PROXY_TRANSPORT="auto"

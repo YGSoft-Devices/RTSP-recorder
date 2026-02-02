@@ -3,10 +3,23 @@
 Simple ONVIF Server for RTSP Cameras
 Provides ONVIF device discovery and media service for RTSP streams
 
-Version: 1.6.0
+Version: 1.9.0
 Target: Raspberry Pi OS Trixie (64-bit)
 
 Changelog:
+  1.9.0 - Dynamic Quality level support (1-5 like Synology)
+        - Read STREAM_QUALITY from config.env
+        - Report quality level in GetProfiles, GetVideoEncoderConfiguration
+        - Compatible with Synology Surveillance Station quality settings
+  1.8.0 - Complete INPUT/OUTPUT separation with VIDEOIN_*/VIDEOOUT_*
+        - SetVideoEncoderConfiguration now writes VIDEOOUT_* (not OUTPUT_*)
+        - load_video_settings reads VIDEOIN_* with fallback to legacy VIDEO_*
+        - This properly separates camera input from RTSP stream output
+        - ONVIF clients can now safely change stream params without camera breakage
+  1.7.0 - Separate INPUT (camera) from OUTPUT (RTSP stream) parameters
+        - SetVideoEncoderConfiguration now writes OUTPUT_* instead of VIDEO_*
+        - This allows ONVIF to control stream output without breaking camera input
+        - SetVideoSourceConfiguration is now a NO-OP (camera input unchanged)
   1.6.0 - ONVIF camera control + Imaging + Relay support
         - Apply SetVideoEncoderConfiguration to config.env + restart RTSP
         - Add Imaging service (Brightness/Focus) and DeviceIO relay outputs
@@ -255,6 +268,8 @@ class ONVIFConfig:
         self.video_bitrate = 2000
         self.video_device = '/dev/video0'
         self.camera_type = 'auto'
+        # Quality level (1-5, like Synology)
+        self.stream_quality = 3
         # Relay settings
         self.relay_enabled = False
         self.relay_gpio_pin = None
@@ -291,7 +306,17 @@ class ONVIFConfig:
         self.fetch_device_name_from_meeting()
     
     def load_video_settings(self):
-        """Load video settings, RTSP credentials, and Meeting API settings from main config file."""
+        """Load video settings, RTSP credentials, and Meeting API settings from main config file.
+        
+        Reads VIDEOIN_* for camera input settings (with legacy VIDEO_* fallback).
+        Also reads VIDEOOUT_* for stream output settings if present.
+        """
+        # Temporary storage for legacy vars
+        legacy_width = None
+        legacy_height = None
+        legacy_fps = None
+        legacy_device = None
+        
         try:
             if os.path.exists(self.rtsp_config_file):
                 with open(self.rtsp_config_file, 'r') as f:
@@ -303,16 +328,33 @@ class ONVIFConfig:
                         key = key.strip()
                         value = value.strip().strip('"').strip("'")
                         
-                        if key == 'VIDEO_WIDTH' and value:
+                        # New VIDEOIN_* variables (camera input)
+                        if key == 'VIDEOIN_WIDTH' and value:
                             self.video_width = int(value)
-                        elif key == 'VIDEO_HEIGHT' and value:
+                        elif key == 'VIDEOIN_HEIGHT' and value:
                             self.video_height = int(value)
-                        elif key == 'VIDEO_FPS' and value:
+                        elif key == 'VIDEOIN_FPS' and value:
                             self.video_fps = int(value)
+                        elif key == 'VIDEOIN_DEVICE' and value:
+                            self.video_device = value
+                        # Legacy VIDEO_* variables (fallback)
+                        elif key == 'VIDEO_WIDTH' and value:
+                            legacy_width = int(value)
+                        elif key == 'VIDEO_HEIGHT' and value:
+                            legacy_height = int(value)
+                        elif key == 'VIDEO_FPS' and value:
+                            legacy_fps = int(value)
+                        elif key == 'VIDEO_DEVICE' and value:
+                            legacy_device = value
+                        # Other settings
                         elif key == 'H264_BITRATE_KBPS' and value:
                             self.video_bitrate = int(value)
-                        elif key == 'VIDEO_DEVICE' and value:
-                            self.video_device = value
+                        elif key == 'STREAM_QUALITY' and value:
+                            # Quality 1-5 or 'custom'
+                            if value.isdigit():
+                                self.stream_quality = max(1, min(5, int(value)))
+                            else:
+                                self.stream_quality = 3  # Default to medium for 'custom'
                         elif key == 'RTSP_PORT' and value:
                             self.rtsp_port = int(value)
                         elif key == 'RTSP_PATH' and value:
@@ -328,12 +370,11 @@ class ONVIFConfig:
                             if value.lower() == 'yes':
                                 self.camera_type = 'usb'
                         # RTSP authentication credentials - sync with RTSP server
-                        # If set, these will be used for ONVIF authentication
                         elif key == 'RTSP_USER' and value:
-                            if not self.username:  # Don't override if set in onvif.conf
+                            if not self.username:
                                 self.username = value
                         elif key == 'RTSP_PASSWORD' and value:
-                            if not self.password:  # Don't override if set in onvif.conf
+                            if not self.password:
                                 self.password = value
                         # Meeting API settings
                         elif key == 'MEETING_API_URL' and value:
@@ -342,6 +383,17 @@ class ONVIFConfig:
                             self.meeting_device_key = value
                         elif key == 'MEETING_TOKEN_CODE' and value:
                             self.meeting_token_code = value
+                
+                # Apply legacy fallback if VIDEOIN_* not set
+                if self.video_width == 640 and legacy_width:
+                    self.video_width = legacy_width
+                if self.video_height == 480 and legacy_height:
+                    self.video_height = legacy_height
+                if self.video_fps == 15 and legacy_fps:
+                    self.video_fps = legacy_fps
+                if self.video_device == '/dev/video0' and legacy_device:
+                    self.video_device = legacy_device
+                    
                 print(f"[ONVIF] Loaded video settings: {self.video_width}x{self.video_height}@{self.video_fps}fps")
                 if self.username:
                     print(f"[ONVIF] RTSP authentication: user={self.username}")
@@ -986,6 +1038,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         h = self.config.video_height
         fps = self.config.video_fps
         bitrate = self.config.video_bitrate
+        quality = self.config.stream_quality
         
         content = f'''<trt:GetProfilesResponse>
             <trt:Profiles token="MainProfile" fixed="true">
@@ -1004,7 +1057,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                         <tt:Width>{w}</tt:Width>
                         <tt:Height>{h}</tt:Height>
                     </tt:Resolution>
-                    <tt:Quality>5</tt:Quality>
+                    <tt:Quality>{quality}</tt:Quality>
                     <tt:RateControl>
                         <tt:FrameRateLimit>{fps}</tt:FrameRateLimit>
                         <tt:EncodingInterval>1</tt:EncodingInterval>
@@ -1103,6 +1156,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         h = self.config.video_height
         fps = self.config.video_fps
         bitrate = self.config.video_bitrate
+        quality = self.config.stream_quality
         
         content = f'''<trt:GetVideoEncoderConfigurationsResponse>
             <trt:Configurations token="VideoEncoderConfig">
@@ -1113,7 +1167,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                     <tt:Width>{w}</tt:Width>
                     <tt:Height>{h}</tt:Height>
                 </tt:Resolution>
-                <tt:Quality>5</tt:Quality>
+                <tt:Quality>{quality}</tt:Quality>
                 <tt:RateControl>
                     <tt:FrameRateLimit>{fps}</tt:FrameRateLimit>
                     <tt:EncodingInterval>1</tt:EncodingInterval>
@@ -1145,6 +1199,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         h = self.config.video_height
         fps = self.config.video_fps
         bitrate = self.config.video_bitrate
+        quality = self.config.stream_quality
         
         content = f'''<trt:GetVideoEncoderConfigurationResponse>
             <trt:Configuration token="VideoEncoderConfig">
@@ -1155,7 +1210,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                     <tt:Width>{w}</tt:Width>
                     <tt:Height>{h}</tt:Height>
                 </tt:Resolution>
-                <tt:Quality>5</tt:Quality>
+                <tt:Quality>{quality}</tt:Quality>
                 <tt:RateControl>
                     <tt:FrameRateLimit>{fps}</tt:FrameRateLimit>
                     <tt:EncodingInterval>1</tt:EncodingInterval>
@@ -1181,7 +1236,13 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         return self.wrap_soap_response(content)
     
     def set_video_encoder_configuration(self, request):
-        """Handle SetVideoEncoderConfiguration request - apply to config.env."""
+        """Handle SetVideoEncoderConfiguration request - apply VIDEOOUT_* to config.env.
+        
+        NOTE: We write to VIDEOOUT_* (not VIDEOIN_*) to separate stream output from camera input.
+        This allows clients like Synology to configure the RTSP stream resolution/fps
+        without breaking the camera's native capture settings.
+        The RTSP server will scale/convert if VIDEOOUT differs from camera input.
+        """
         width = _parse_int(_find_text_any_ns(request, 'Width'), None)
         height = _parse_int(_find_text_any_ns(request, 'Height'), None)
         fps = _parse_int(_find_text_any_ns(request, 'FrameRateLimit'), None)
@@ -1190,12 +1251,17 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         profile = _find_text_any_ns(request, 'H264Profile')
 
         updates = {}
+        # VIDEOOUT_* variables control RTSP stream output (not camera input)
         if width and width > 0:
-            updates['VIDEO_WIDTH'] = width
+            updates['VIDEOOUT_WIDTH'] = width
+            print(f"[ONVIF] Setting VIDEOOUT_WIDTH={width} (stream output, not camera)")
         if height and height > 0:
-            updates['VIDEO_HEIGHT'] = height
+            updates['VIDEOOUT_HEIGHT'] = height
+            print(f"[ONVIF] Setting VIDEOOUT_HEIGHT={height} (stream output, not camera)")
         if fps and fps > 0:
-            updates['VIDEO_FPS'] = fps
+            updates['VIDEOOUT_FPS'] = fps
+            print(f"[ONVIF] Setting VIDEOOUT_FPS={fps} (stream output, not camera)")
+        # H264 encoding settings apply to output
         if bitrate and bitrate > 0:
             updates['H264_BITRATE_KBPS'] = bitrate
         if gov_length and gov_length > 0:
@@ -1221,21 +1287,18 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         return self.wrap_soap_response(content)
 
     def set_video_source_configuration(self, request):
-        """Handle SetVideoSourceConfiguration request - apply bounds to config.env."""
+        """Handle SetVideoSourceConfiguration request - NO-OP.
+        
+        NOTE: This is intentionally a NO-OP. Camera input (VIDEOIN_*) should not
+        be changed via ONVIF to avoid breaking the camera with invalid settings.
+        Clients should use SetVideoEncoderConfiguration to control VIDEOOUT_* instead.
+        """
         width = _parse_int(_find_text_any_ns(request, 'Width'), None)
         height = _parse_int(_find_text_any_ns(request, 'Height'), None)
-        updates = {}
-        if width and width > 0:
-            updates['VIDEO_WIDTH'] = width
-        if height and height > 0:
-            updates['VIDEO_HEIGHT'] = height
-        if updates:
-            try:
-                _update_config_env(self.config.rtsp_config_file, updates)
-                self.config.load_video_settings()
-                _run_cmd(['systemctl', 'restart', 'rpi-av-rtsp-recorder'], timeout=10)
-            except Exception as e:
-                print(f"[ONVIF] Failed to apply source config: {e}")
+        if width or height:
+            print(f"[ONVIF] SetVideoSourceConfiguration ignored (width={width}, height={height})")
+            print(f"[ONVIF] Camera input params are protected. Use SetVideoEncoderConfiguration for output.")
+        # Return success without making changes (camera input is user-controlled only)
         content = '''<trt:SetVideoSourceConfigurationResponse></trt:SetVideoSourceConfigurationResponse>'''
         return self.wrap_soap_response(content)
     
@@ -1724,6 +1787,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         h = self.config.video_height
         fps = self.config.video_fps
         bitrate = self.config.video_bitrate
+        quality = self.config.stream_quality
         
         content = f'''<trt:CreateProfileResponse>
             <trt:Profile token="MainProfile" fixed="true">
@@ -1742,7 +1806,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                         <tt:Width>{w}</tt:Width>
                         <tt:Height>{h}</tt:Height>
                     </tt:Resolution>
-                    <tt:Quality>5</tt:Quality>
+                    <tt:Quality>{quality}</tt:Quality>
                     <tt:RateControl>
                         <tt:FrameRateLimit>{fps}</tt:FrameRateLimit>
                         <tt:EncodingInterval>1</tt:EncodingInterval>
@@ -1837,6 +1901,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
         h = self.config.video_height
         fps = self.config.video_fps
         bitrate = self.config.video_bitrate
+        quality = self.config.stream_quality
         
         content = f'''<trt:GetCompatibleVideoEncoderConfigurationsResponse>
             <trt:Configurations token="VideoEncoderConfig">
@@ -1847,7 +1912,7 @@ class ONVIFHandler(BaseHTTPRequestHandler):
                     <tt:Width>{w}</tt:Width>
                     <tt:Height>{h}</tt:Height>
                 </tt:Resolution>
-                <tt:Quality>5</tt:Quality>
+                <tt:Quality>{quality}</tt:Quality>
                 <tt:RateControl>
                     <tt:FrameRateLimit>{fps}</tt:FrameRateLimit>
                     <tt:EncodingInterval>1</tt:EncodingInterval>

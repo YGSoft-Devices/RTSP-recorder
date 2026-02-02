@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Frontend JavaScript
- * Version: 2.35.18
+ * Version: 2.36.00
  */
 
 let backupFileAction = null;
@@ -336,10 +336,11 @@ function toggleSection(sectionId) {
 
 /**
  * Apply resolution settings (save to config)
+ * Uses VIDEOIN_* for camera input parameters
  */
 async function applyResolution() {
     const resolutionSelect = document.getElementById('resolution-select');
-    const fpsInput = document.getElementById('video-fps');
+    const fpsInput = document.getElementById('VIDEOIN_FPS') || document.getElementById('VIDEO_FPS');
     const manualWidth = document.getElementById('manual-video-width');
     const manualHeight = document.getElementById('manual-video-height');
     const manualFormat = document.getElementById('manual-video-format');
@@ -360,24 +361,25 @@ async function applyResolution() {
                 const dims = parts[0].split('x');
                 width = dims[0];
                 height = dims[1];
-                format = parts[1] || 'MJPEG';
+                format = parts[1] || 'MJPG';
             }
         }
     }
     
-    fps = fpsInput ? fpsInput.value : '20';
+    // Get FPS from input field (set by onResolutionSelectChange or user)
+    fps = fpsInput ? fpsInput.value : '30';
     
     if (!width || !height) {
         showToast(I18n ? I18n.t('video.resolution_invalid', {}, 'Résolution invalide') : 'Résolution invalide', 'error');
         return;
     }
     
-    // Build config object
+    // Build config object - use VIDEOIN_* for camera input parameters
     const configData = {
-        VIDEO_WIDTH: width,
-        VIDEO_HEIGHT: height,
-        VIDEO_FPS: fps,
-        VIDEO_FORMAT: format
+        VIDEOIN_WIDTH: width,
+        VIDEOIN_HEIGHT: height,
+        VIDEOIN_FPS: fps,
+        VIDEOIN_FORMAT: format
     };
     
     try {

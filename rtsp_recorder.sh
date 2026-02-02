@@ -8,9 +8,11 @@
 #   - Runs as a separate service from the RTSP server
 #   - Auto-prunes old recordings to maintain minimum free disk space
 #   - Enforces maximum recordings folder size (MAX_DISK_MB)
+#   - Notifies web manager when new recordings are created (thumbnail generation)
 #
-# Version: 1.7.0
+# Version: 1.8.0
 # Changelog:
+#   - 1.8.0: Added inotify watcher for immediate thumbnail generation on new recordings
 #   - 1.7.0: Added MAX_DISK_MB support to limit recordings folder size
 #===============================================================================
 
@@ -40,9 +42,11 @@ fi
 : "${MAX_DISK_MB:=0}"          # Maximum recordings folder size (0 = no limit)
 : "${LOG_DIR:=/var/log/rpi-cam}"
 : "${PRUNE_CHECK_INTERVAL:=60}"  # Check disk space every 60 seconds
+: "${WEBMANAGER_PORT:=5000}"     # Web manager port for thumbnail notifications
 
 LOG_FILE="${LOG_DIR}/rtsp_recorder.log"
 PRUNE_PID=""
+INOTIFY_PID=""
 
 #---------------------------
 # Build RTSP URL with optional auth
@@ -280,6 +284,88 @@ stop_prune_loop() {
 }
 
 #---------------------------
+# Thumbnail notification watcher
+# Uses inotifywait to detect new recordings and notify web manager
+#---------------------------
+notify_new_recording() {
+    local filepath="$1"
+    
+    # Small delay to ensure file is completely written
+    sleep 3
+    
+    # Check if file still exists (might have been deleted by pruner)
+    if [[ ! -f "$filepath" ]]; then
+        return 0
+    fi
+    
+    # Notify web manager to generate thumbnail
+    local api_url="http://127.0.0.1:${WEBMANAGER_PORT}/api/recordings/thumbnail/notify"
+    local json_payload="{\"filepath\": \"${filepath}\"}"
+    
+    # Use curl with timeout, retry on failure
+    local retries=3
+    local retry_delay=5
+    
+    for ((i=1; i<=retries; i++)); do
+        if curl -s -X POST "$api_url" \
+            -H "Content-Type: application/json" \
+            -d "$json_payload" \
+            --connect-timeout 5 \
+            --max-time 30 \
+            >/dev/null 2>&1; then
+            log "Thumbnail notification sent for: $(basename "$filepath")"
+            return 0
+        fi
+        
+        if [[ $i -lt $retries ]]; then
+            log "Thumbnail notification failed (attempt $i/$retries), retrying in ${retry_delay}s..."
+            sleep "$retry_delay"
+        fi
+    done
+    
+    log_err "Failed to notify thumbnail generation for: $(basename "$filepath")"
+    return 1
+}
+
+start_inotify_watcher() {
+    # Check if inotifywait is available
+    if ! cmd_exists inotifywait; then
+        log "inotifywait not found - thumbnail notifications disabled"
+        log "Install with: sudo apt install inotify-tools"
+        return 0
+    fi
+    
+    # Start inotify watcher in background
+    (
+        exec </dev/null
+        log "Starting inotify watcher for: $RECORD_DIR"
+        
+        # Watch for CLOSE_WRITE events on .ts files (file completely written)
+        inotifywait -m -e close_write --format '%w%f' "$RECORD_DIR" 2>/dev/null | \
+        while read -r filepath; do
+            # Only process .ts files
+            if [[ "$filepath" == *.ts ]]; then
+                # Notify in background to not block the watcher
+                notify_new_recording "$filepath" &
+            fi
+        done
+    ) &
+    INOTIFY_PID=$!
+    log "Started inotify watcher (PID: $INOTIFY_PID)"
+}
+
+stop_inotify_watcher() {
+    if [[ -n "$INOTIFY_PID" ]] && kill -0 "$INOTIFY_PID" 2>/dev/null; then
+        kill "$INOTIFY_PID" 2>/dev/null || true
+        # Also kill any child inotifywait processes
+        pkill -P "$INOTIFY_PID" 2>/dev/null || true
+        wait "$INOTIFY_PID" 2>/dev/null || true
+        log "Stopped inotify watcher"
+    fi
+    INOTIFY_PID=""
+}
+
+#---------------------------
 # Wait for RTSP server
 #---------------------------
 wait_for_rtsp() {
@@ -377,7 +463,7 @@ main() {
     setup_fs
     
     log "=========================================="
-    log "RTSP Recorder v1.6.0"
+    log "RTSP Recorder v1.8.0"
     log "=========================================="
     
     # Check if recording is enabled
@@ -396,6 +482,7 @@ main() {
     log "Config: RECORD_DIR=${RECORD_DIR}"
     log "Config: SEGMENT_SECONDS=${SEGMENT_SECONDS}"
     log "Config: MIN_FREE_DISK_MB=${MIN_FREE_DISK_MB}"
+    log "Config: MAX_DISK_MB=${MAX_DISK_MB}"
     log "Config: PRUNE_CHECK_INTERVAL=${PRUNE_CHECK_INTERVAL}s"
 
     # Wait for RTSP server
@@ -408,6 +495,9 @@ main() {
     
     # Start background pruning loop
     start_prune_loop
+    
+    # Start inotify watcher for thumbnail notifications
+    start_inotify_watcher
 
     # Main recording loop - restart on failure
     while true; do
@@ -427,9 +517,9 @@ main() {
 # Handle signals for clean shutdown
 cleanup() {
     log "Received shutdown signal, stopping..."
+    stop_inotify_watcher
     stop_prune_loop
     exit 0
 }
 trap cleanup SIGTERM SIGINT
-
 main "$@"

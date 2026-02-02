@@ -1,5 +1,5 @@
 # deploy_scp.ps1 - Déploiement SCP vers le device
-# Version: 1.4.5
+# Version: 1.4.7
 #
 # SECURITY: Requires explicit IP address or DeviceKey. No hardcoded defaults.
 # Validates IP against Meeting API when available.
@@ -156,7 +156,8 @@ if (-not $DeviceIP) {
 # Détecter si la destination nécessite sudo (ex: /opt/*)
 $NeedsSudo = $Dest -match "^/opt/" -or $Dest -match "^/etc/" -or $Dest -match "^/usr/"
 $TempDest = "/tmp/"
-$FinalDest = $Dest
+# Normalize destination - remove trailing slash to avoid double-slash issues (e.g., /opt/path//* -> /opt/path/*)
+$FinalDest = $Dest.TrimEnd('/')
 
 Write-Host "=== SCP Deployment ===" -ForegroundColor Cyan
 Write-Host "Source: $Source" -ForegroundColor Gray
@@ -288,9 +289,11 @@ if ($exitCode -eq 0 -and $NeedsSudo) {
     } else {
         # Pour les fichiers: copier chaque fichier puis corriger les permissions
         # Ajouter chmod +x pour les scripts .sh et .py
-        $CopyCommands = $FileNames | ForEach-Object { "sudo mkdir -p $FinalDest && sudo cp /tmp/$_ $FinalDest" }
+        $CopyCommands = $FileNames | ForEach-Object { "sudo mkdir -p $FinalDest && sudo cp /tmp/$_ $FinalDest/" }
+        $ChownCommands = $FileNames | ForEach-Object { "sudo chown root:www-data $FinalDest/$_" }
+        $ChmodCommands = $FileNames | ForEach-Object { "sudo chmod 640 $FinalDest/$_" }
         $ChmodExec = $FileNames | Where-Object { $_ -match '\.(sh|py)$' } | ForEach-Object { "sudo chmod +x $FinalDest/$_" }
-        $CopyCmd = ($CopyCommands -join " && ") + " && sudo chown root:www-data $FinalDest/* && sudo chmod 640 $FinalDest/*"
+        $CopyCmd = ($CopyCommands -join " && ") + " && " + ($ChownCommands -join " && ") + " && " + ($ChmodCommands -join " && ")
         if ($ChmodExec) {
             $CopyCmd += " && " + ($ChmodExec -join " && ")
         }

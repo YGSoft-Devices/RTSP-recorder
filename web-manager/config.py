@@ -3,7 +3,7 @@
 RTSP Recorder Web Manager - Configuration
 Central configuration file for constants, defaults, and metadata.
 
-Version: 1.1.6
+Version: 1.2.0
 """
 
 import os
@@ -140,7 +140,22 @@ DEFAULT_CONFIG = {
     "RTSP_USER": "",
     "RTSP_PASSWORD": "",
     
-    # Video Settings (optimized for Pi 3B+ with software encoding)
+    # Camera INPUT Settings (VIDEOIN_* - what the camera captures)
+    # These are the physical camera parameters and should NOT be modified by ONVIF/NVR
+    "VIDEOIN_WIDTH": "640",
+    "VIDEOIN_HEIGHT": "480",
+    "VIDEOIN_FPS": "15",
+    "VIDEOIN_DEVICE": "/dev/video0",
+    "VIDEOIN_FORMAT": "auto",
+    
+    # RTSP OUTPUT Settings (VIDEOOUT_* - what the stream outputs)
+    # These can be modified by ONVIF/NVR to scale/transcode the output
+    "VIDEOOUT_WIDTH": "",   # Empty = same as input
+    "VIDEOOUT_HEIGHT": "",  # Empty = same as input  
+    "VIDEOOUT_FPS": "",     # Empty = same as input
+    
+    # Legacy aliases (for backwards compatibility with old configs)
+    # Prefer VIDEOIN_* for input, VIDEOOUT_* for output
     "VIDEO_WIDTH": "640",
     "VIDEO_HEIGHT": "480",
     "VIDEO_FPS": "15",
@@ -172,9 +187,13 @@ DEFAULT_CONFIG = {
     
     # H264 Encoding Settings (for x264enc on Pi 3B+)
     "H264_BITRATE_KBPS": "1200",
+    "H264_BITRATE_MODE": "cbr",  # cbr = constant, vbr = variable (for Synology)
     "H264_KEYINT": "30",
     "H264_PROFILE": "",
     "H264_QP": "",
+    
+    # Stream Quality Level (1-5 like Synology, or 'custom')
+    "STREAM_QUALITY": "3",  # 1=very low, 2=low, 3=medium, 4=high, 5=very high, custom=manual
 
     # Relay / GPIO
     "RELAY_ENABLE": "no",
@@ -282,41 +301,99 @@ CONFIG_METADATA = {
         "help": "Mot de passe pour l'authentification RTSP (optionnel)",
         "category": "rtsp"
     },
-    "VIDEO_WIDTH": {
-        "label": "Largeur vidéo",
+    # Camera INPUT settings (VIDEOIN_*) - physical camera capture parameters
+    "VIDEOIN_WIDTH": {
+        "label": "Largeur entrée caméra",
         "type": "number",
         "min": 320,
         "max": 4096,
-        "help": "Largeur en pixels",
+        "help": "Largeur en pixels capturée par la caméra",
         "category": "video"
     },
-    "VIDEO_HEIGHT": {
-        "label": "Hauteur vidéo",
+    "VIDEOIN_HEIGHT": {
+        "label": "Hauteur entrée caméra",
         "type": "number",
         "min": 240,
         "max": 2160,
-        "help": "Hauteur en pixels",
+        "help": "Hauteur en pixels capturée par la caméra",
         "category": "video"
     },
-    "VIDEO_FPS": {
-        "label": "Images par seconde",
+    "VIDEOIN_FPS": {
+        "label": "FPS entrée caméra",
         "type": "number",
         "min": 1,
         "max": 60,
-        "help": "Nombre d'images par seconde",
+        "help": "Images par seconde capturées par la caméra",
         "category": "video"
     },
-    "VIDEO_DEVICE": {
-        "label": "Périphérique vidéo",
+    "VIDEOIN_DEVICE": {
+        "label": "Périphérique caméra",
         "type": "text",
         "help": "Chemin du périphérique USB (ex: /dev/video0)",
         "category": "video"
     },
-    "VIDEO_FORMAT": {
-        "label": "Format vidéo",
+    "VIDEOIN_FORMAT": {
+        "label": "Format entrée caméra",
         "type": "select",
         "options": ["auto", "MJPG", "YUYV", "H264"],
         "help": "Format préféré pour les caméras USB (auto = sélection automatique)",
+        "category": "video"
+    },
+    # RTSP OUTPUT settings (VIDEOOUT_*) - stream output parameters (can be modified by ONVIF/NVR)
+    "VIDEOOUT_WIDTH": {
+        "label": "Largeur sortie RTSP",
+        "type": "text",
+        "help": "Largeur de sortie du flux RTSP (vide = même que l'entrée). Peut être modifié par ONVIF/NVR.",
+        "category": "video"
+    },
+    "VIDEOOUT_HEIGHT": {
+        "label": "Hauteur sortie RTSP",
+        "type": "text",
+        "help": "Hauteur de sortie du flux RTSP (vide = même que l'entrée). Peut être modifié par ONVIF/NVR.",
+        "category": "video"
+    },
+    "VIDEOOUT_FPS": {
+        "label": "FPS sortie RTSP",
+        "type": "text",
+        "help": "FPS de sortie du flux RTSP (vide = même que l'entrée). Peut être modifié par ONVIF/NVR.",
+        "category": "video"
+    },
+    # Legacy aliases for backwards compatibility
+    "VIDEO_WIDTH": {
+        "label": "Largeur vidéo (legacy)",
+        "type": "number",
+        "min": 320,
+        "max": 4096,
+        "help": "Alias pour VIDEOIN_WIDTH",
+        "category": "video"
+    },
+    "VIDEO_HEIGHT": {
+        "label": "Hauteur vidéo (legacy)",
+        "type": "number",
+        "min": 240,
+        "max": 2160,
+        "help": "Alias pour VIDEOIN_HEIGHT",
+        "category": "video"
+    },
+    "VIDEO_FPS": {
+        "label": "Images par seconde (legacy)",
+        "type": "number",
+        "min": 1,
+        "max": 60,
+        "help": "Alias pour VIDEOIN_FPS",
+        "category": "video"
+    },
+    "VIDEO_DEVICE": {
+        "label": "Périphérique vidéo (legacy)",
+        "type": "text",
+        "help": "Alias pour VIDEOIN_DEVICE",
+        "category": "video"
+    },
+    "VIDEO_FORMAT": {
+        "label": "Format vidéo (legacy)",
+        "type": "select",
+        "options": ["auto", "MJPG", "YUYV", "H264"],
+        "help": "Alias pour VIDEOIN_FORMAT",
         "category": "video"
     },
     "STREAM_SOURCE_MODE": {
@@ -537,7 +614,7 @@ CONFIG_METADATA = {
     "H264_KEYINT": {
         "label": "Intervalle keyframes",
         "type": "number",
-        "min": 10,
+        "min": 1,
         "max": 120,
         "help": "Intervalle entre images clés (défaut: 30)",
         "category": "video"

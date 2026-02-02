@@ -11,8 +11,14 @@
 #   - Serve RTSP stream (H264 video + optional AAC audio)
 #   - Record locally in segments (robust against power loss)
 #
-# Version: 2.13.0
+# Version: 2.15.3
 # Changelog:
+#   - 2.15.0: Complete INPUT/OUTPUT separation with VIDEOIN_*/VIDEOOUT_*
+#            - VIDEOIN_* controls camera capture (width, height, fps, device, format)
+#            - VIDEOOUT_* controls RTSP stream output (can differ from input)
+#            - Legacy VIDEO_*/OUTPUT_* still supported for backwards compatibility
+#            - ONVIF/Synology now only affects VIDEOOUT_*, camera stays untouched
+#   - 2.14.0: Added OUTPUT_WIDTH/HEIGHT/FPS for ONVIF-controlled scaling
 #   - 2.13.0: Stream source proxy modes + RTSP protocol controls
 #            - New STREAM_SOURCE_MODE: camera|rtsp|mjpeg|screen
 #            - RTSP proxy pipeline (rtspsrc) with optional audio passthrough
@@ -83,7 +89,20 @@
 set -euo pipefail
 
 #---------------------------
-# Defaults (override via env or /etc/rpi-cam/recorder.conf)
+# Load config file FIRST (before defaults)
+# This allows config values to override script defaults
+#---------------------------
+CONFIG_FILE="/etc/rpi-cam/config.env"
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  CONFIG_FILE="/etc/rpi-cam/recorder.conf"
+fi
+if [[ -f "$CONFIG_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$CONFIG_FILE"
+fi
+
+#---------------------------
+# Defaults (override via env or config file loaded above)
 #---------------------------
 : "${RTSP_PORT:=8554}"
 : "${RTSP_PATH:=stream}"
@@ -93,14 +112,30 @@ set -euo pipefail
 : "${RTSP_USER:=}"
 : "${RTSP_PASSWORD:=}"
 
-# Default to safe resolution for software encoding (Pi 3B+)
-# If hardware encoding works, you can increase to 1280x720@20fps
-: "${VIDEO_WIDTH:=640}"
-: "${VIDEO_HEIGHT:=480}"
-: "${VIDEO_FPS:=15}"
-: "${VIDEO_DEVICE:=/dev/video0}"
-# Preferred USB format: auto, MJPG, YUYV, H264 (optional)
-: "${VIDEO_FORMAT:=auto}"
+# ============================================================================
+# VIDEO INPUT (Camera capture) - VIDEOIN_*
+# These control what the camera captures. Set by frontend/user only.
+# ============================================================================
+# First, apply legacy VIDEO_* to VIDEOIN_* if set in config (backwards compatibility)
+: "${VIDEOIN_WIDTH:=${VIDEO_WIDTH:-640}}"
+: "${VIDEOIN_HEIGHT:=${VIDEO_HEIGHT:-480}}"
+: "${VIDEOIN_FPS:=${VIDEO_FPS:-30}}"
+: "${VIDEOIN_DEVICE:=${VIDEO_DEVICE:-/dev/video0}}"
+: "${VIDEOIN_FORMAT:=${VIDEO_FORMAT:-auto}}"
+
+# ============================================================================
+# VIDEO OUTPUT (RTSP stream) - VIDEOOUT_*
+# These control the RTSP stream output. Can differ from input (scaling/fps).
+# Set by ONVIF/Synology clients. If not set, defaults to VIDEOIN_* values.
+# ============================================================================
+: "${VIDEOOUT_WIDTH:=}"
+: "${VIDEOOUT_HEIGHT:=}"
+: "${VIDEOOUT_FPS:=}"
+
+# Legacy compatibility: if old OUTPUT_* vars are set, use them
+: "${VIDEOOUT_WIDTH:=${OUTPUT_WIDTH:-}}"
+: "${VIDEOOUT_HEIGHT:=${OUTPUT_HEIGHT:-}}"
+: "${VIDEOOUT_FPS:=${OUTPUT_FPS:-}}"
 
 # Source mode: camera (default), rtsp, mjpeg, screen
 : "${STREAM_SOURCE_MODE:=camera}"
@@ -151,6 +186,7 @@ OVERLAY_SUPPORTED=1
 # H264 software encoding settings (x264enc)
 # Optimized for Pi 3B+ - keep bitrate low to reduce CPU load
 : "${H264_BITRATE_KBPS:=1200}"
+: "${H264_BITRATE_MODE:=cbr}"  # cbr = constant, vbr = variable
 : "${H264_KEYINT:=30}"
 : "${H264_PROFILE:=}"
 : "${H264_QP:=}"
@@ -169,15 +205,8 @@ die() { log_err "$*"; exit 1; }
 
 cmd_exists() { command -v "$1" >/dev/null 2>&1; }
 
-# Load config file if exists (try both locations)
-# Priority: config.env (web manager) > recorder.conf (legacy)
-CONFIG_FILE="/etc/rpi-cam/config.env"
-if [[ ! -f "$CONFIG_FILE" ]]; then
-  CONFIG_FILE="/etc/rpi-cam/recorder.conf"
-fi
+# Log config file that was loaded at startup
 if [[ -f "$CONFIG_FILE" ]]; then
-  # shellcheck disable=SC1090
-  source "$CONFIG_FILE"
   log "Loaded config from: $CONFIG_FILE"
 fi
 
@@ -196,6 +225,60 @@ overlay_alignment_from_position() {
     bottom-right) echo "bottom right" ;;
     *) echo "top left" ;;
   esac
+}
+
+# Resolve effective VIDEOOUT_* values (fallback to VIDEOIN_* if not set)
+# This allows ONVIF to control output stream while camera input stays fixed
+resolve_output_params() {
+  # Use VIDEOIN_* as defaults if VIDEOOUT_* not explicitly set
+  EFFECTIVE_OUTPUT_WIDTH="${VIDEOOUT_WIDTH:-$VIDEOIN_WIDTH}"
+  EFFECTIVE_OUTPUT_HEIGHT="${VIDEOOUT_HEIGHT:-$VIDEOIN_HEIGHT}"
+  EFFECTIVE_OUTPUT_FPS="${VIDEOOUT_FPS:-$VIDEOIN_FPS}"
+  
+  # Export for use in build functions
+  export EFFECTIVE_OUTPUT_WIDTH
+  export EFFECTIVE_OUTPUT_HEIGHT
+  export EFFECTIVE_OUTPUT_FPS
+  
+  log "Input (camera):  ${VIDEOIN_WIDTH}x${VIDEOIN_HEIGHT}@${VIDEOIN_FPS}fps [${VIDEOIN_FORMAT}]"
+  log "Output (stream): ${EFFECTIVE_OUTPUT_WIDTH}x${EFFECTIVE_OUTPUT_HEIGHT}@${EFFECTIVE_OUTPUT_FPS}fps"
+}
+
+# Build scaling/framerate conversion if output differs from input
+# Returns empty string if no scaling needed
+build_output_scaler() {
+  local need_scale=0
+  local need_rate=0
+  local scaler_chain=""
+  
+  # Check if resolution differs
+  if [[ "$EFFECTIVE_OUTPUT_WIDTH" != "$VIDEOIN_WIDTH" ]] || [[ "$EFFECTIVE_OUTPUT_HEIGHT" != "$VIDEOIN_HEIGHT" ]]; then
+    need_scale=1
+    log "Output resolution differs from input - will scale" >&2
+  fi
+  
+  # Check if framerate differs
+  if [[ "$EFFECTIVE_OUTPUT_FPS" != "$VIDEOIN_FPS" ]]; then
+    need_rate=1
+    log "Output framerate differs from input - will convert" >&2
+  fi
+  
+  # Build scaler chain if needed
+  if [[ $need_scale -eq 1 ]] || [[ $need_rate -eq 1 ]]; then
+    scaler_chain="videoconvert"
+    
+    if [[ $need_scale -eq 1 ]]; then
+      scaler_chain="${scaler_chain} ! videoscale ! video/x-raw,width=${EFFECTIVE_OUTPUT_WIDTH},height=${EFFECTIVE_OUTPUT_HEIGHT}"
+    fi
+    
+    if [[ $need_rate -eq 1 ]]; then
+      scaler_chain="${scaler_chain} ! videorate ! video/x-raw,framerate=${EFFECTIVE_OUTPUT_FPS}/1"
+    fi
+    
+    log "Output scaler: ${scaler_chain}" >&2
+  fi
+  
+  echo "$scaler_chain"
 }
 
 build_video_overlay() {
@@ -228,10 +311,10 @@ build_video_overlay() {
       log "Overlay textoverlay not available; text overlay disabled" >&2
     else
       overlay_text="${overlay_text//\{CAMERA_TYPE\}/${CAM_MODE}}"
-      overlay_text="${overlay_text//\{VIDEO_DEVICE\}/${VIDEO_DEVICE}}"
-      overlay_text="${overlay_text//\{VIDEO_RESOLUTION\}/${VIDEO_WIDTH}x${VIDEO_HEIGHT}}"
-      overlay_text="${overlay_text//\{VIDEO_FPS\}/${VIDEO_FPS}}"
-      overlay_text="${overlay_text//\{VIDEO_FORMAT\}/${VIDEO_FORMAT}}"
+      overlay_text="${overlay_text//\{VIDEO_DEVICE\}/${VIDEOIN_DEVICE}}"
+      overlay_text="${overlay_text//\{VIDEO_RESOLUTION\}/${VIDEOIN_WIDTH}x${VIDEOIN_HEIGHT}}"
+      overlay_text="${overlay_text//\{VIDEO_FPS\}/${VIDEOIN_FPS}}"
+      overlay_text="${overlay_text//\{VIDEO_FORMAT\}/${VIDEOIN_FORMAT}}"
       overlay_text="${overlay_text//\"/ }"
       overlay_text="${overlay_text//\'/ }"
       read -r text_valign text_halign <<<"$(overlay_alignment_from_position "${VIDEO_OVERLAY_POSITION}")"
@@ -297,12 +380,12 @@ cleanup_logs() {
 # Check if USB camera is present and working (NOT CSI/unicam)
 usb_cam_present() {
   # First check if device exists
-  [[ ! -e "$VIDEO_DEVICE" ]] && return 1
+  [[ ! -e "$VIDEOIN_DEVICE" ]] && return 1
   
   # Check the driver - unicam/bcm2835-* are CSI, not USB
   # Use head -1 because v4l2-ctl can output multiple "Driver name" lines
   local driver
-  driver=$(v4l2-ctl -d "$VIDEO_DEVICE" --info 2>/dev/null | grep "Driver name" | head -1 | awk -F: '{print $2}' | tr -d ' ')
+  driver=$(v4l2-ctl -d "$VIDEOIN_DEVICE" --info 2>/dev/null | grep "Driver name" | head -1 | awk -F: '{print $2}' | tr -d ' ')
   
   case "$driver" in
     unicam|bcm2835-isp|bcm2835-codec)
@@ -347,7 +430,7 @@ csi_cam_possible() {
 
 # Get camera formats
 get_camera_formats() {
-  v4l2-ctl -d "$VIDEO_DEVICE" --list-formats-ext 2>/dev/null || true
+  v4l2-ctl -d "$VIDEOIN_DEVICE" --list-formats-ext 2>/dev/null || true
 }
 
 # Check if camera supports specific format
@@ -532,15 +615,15 @@ build_video_source() {
     # USB camera - check supported formats
     # io-mode=2 (mmap) is more efficient for USB cameras
     # do-timestamp=true ensures proper frame timing
-    local requested_format="${VIDEO_FORMAT:-auto}"
+    local requested_format="${VIDEOIN_FORMAT:-auto}"
     requested_format=$(echo "$requested_format" | tr '[:lower:]' '[:upper:]')
 
     if [[ -n "$requested_format" && "$requested_format" != "AUTO" ]]; then
       case "$requested_format" in
         MJPG|MJPEG|MOTION-JPEG)
           if camera_supports_format "MJPG\|Motion-JPEG"; then
-            log "USB camera: forcing MJPEG format" >&2
-            echo "v4l2src device=${VIDEO_DEVICE} io-mode=2 do-timestamp=true ! image/jpeg,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! jpegdec ! videoconvert"
+            log "USB camera: forcing MJPEG format (using avdec_mjpeg for better tolerance)" >&2
+            echo "v4l2src device=${VIDEOIN_DEVICE} io-mode=2 do-timestamp=true ! image/jpeg,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1 ! avdec_mjpeg ! videoconvert"
             return 0
           fi
           log "Requested MJPEG not supported, falling back to auto" >&2
@@ -549,7 +632,7 @@ build_video_source() {
           if camera_supports_format "H264\|H.264"; then
             log "USB camera: forcing H264 format" >&2
             OVERLAY_SUPPORTED=0
-            echo "v4l2src device=${VIDEO_DEVICE} ! video/x-h264,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1"
+            echo "v4l2src device=${VIDEOIN_DEVICE} ! video/x-h264,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1"
             return 0
           fi
           log "Requested H264 not supported, falling back to auto" >&2
@@ -557,31 +640,31 @@ build_video_source() {
         YUYV|YUY2)
           if camera_supports_format "YUYV"; then
             log "USB camera: forcing YUYV format" >&2
-            echo "v4l2src device=${VIDEO_DEVICE} ! video/x-raw,format=YUY2,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! videoconvert"
+            echo "v4l2src device=${VIDEOIN_DEVICE} ! video/x-raw,format=YUY2,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1 ! videoconvert"
             return 0
           fi
           log "Requested YUYV not supported, falling back to auto" >&2
           ;;
         *)
-          log "Unknown VIDEO_FORMAT '${VIDEO_FORMAT}', falling back to auto" >&2
+          log "Unknown VIDEO_FORMAT '${VIDEOIN_FORMAT}', falling back to auto" >&2
           ;;
       esac
     fi
 
     if camera_supports_format "MJPG\|Motion-JPEG"; then
-      log "USB camera supports MJPEG - using it (recommended)" >&2
-      # MJPEG is more efficient to decode than raw YUYV
-      echo "v4l2src device=${VIDEO_DEVICE} io-mode=2 do-timestamp=true ! image/jpeg,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! jpegdec ! videoconvert"
+      log "USB camera supports MJPEG - using avdec_mjpeg (tolerant to malformed frames)" >&2
+      # avdec_mjpeg (FFmpeg) is more tolerant than jpegdec for cameras with missing EOI markers
+      echo "v4l2src device=${VIDEOIN_DEVICE} io-mode=2 do-timestamp=true ! image/jpeg,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1 ! avdec_mjpeg ! videoconvert"
     elif camera_supports_format "H264\|H.264"; then
       log "USB camera supports H264 output (best performance)" >&2
       OVERLAY_SUPPORTED=0
-      echo "v4l2src device=${VIDEO_DEVICE} ! video/x-h264,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1"
+      echo "v4l2src device=${VIDEOIN_DEVICE} ! video/x-h264,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1"
     elif camera_supports_format "YUYV"; then
       log "USB camera supports YUYV raw - using it (CPU intensive)" >&2
-      echo "v4l2src device=${VIDEO_DEVICE} ! video/x-raw,format=YUY2,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! videoconvert"
+      echo "v4l2src device=${VIDEOIN_DEVICE} ! video/x-raw,format=YUY2,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1 ! videoconvert"
     else
       log "Unknown camera format - trying auto caps" >&2
-      echo "v4l2src device=${VIDEO_DEVICE} ! videoconvert"
+      echo "v4l2src device=${VIDEOIN_DEVICE} ! videoconvert"
     fi
   elif [[ "$mode" == "csi" ]]; then
     # CSI camera via libcamera
@@ -594,9 +677,9 @@ build_video_source() {
       
       if [[ -n "$csi_opts" ]]; then
         log "Applying CSI tuning: $csi_opts" >&2
-        echo "libcamerasrc ${csi_opts} ! video/x-raw,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! videoconvert"
+        echo "libcamerasrc ${csi_opts} ! video/x-raw,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1 ! videoconvert"
       else
-        echo "libcamerasrc ! video/x-raw,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! videoconvert"
+        echo "libcamerasrc ! video/x-raw,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1 ! videoconvert"
       fi
     else
       die "CSI camera selected but libcamerasrc not available"
@@ -679,8 +762,16 @@ build_video_encoder() {
     # Force level 4 for proper caps negotiation (fixes "level too low" issues)
     # extra-controls for proper stream headers (needed for RTSP)
     # video_bitrate in bits/sec
+    # video_bitrate_mode: 0=VBR, 1=CBR (default)
     local bitrate_bps=$((H264_BITRATE_KBPS * 1000))
-    echo "video/x-raw,format=I420 ! v4l2h264enc extra-controls=\"controls,repeat_sequence_header=1,video_bitrate=${bitrate_bps}\" ! video/x-h264,level=(string)4 ! h264parse config-interval=1"
+    local bitrate_mode=1  # CBR by default
+    if [[ "${H264_BITRATE_MODE}" == "vbr" ]]; then
+      bitrate_mode=0
+      log "Bitrate mode: VBR (variable, max=${H264_BITRATE_KBPS}kbps)" >&2
+    else
+      log "Bitrate mode: CBR (constant, target=${H264_BITRATE_KBPS}kbps)" >&2
+    fi
+    echo "video/x-raw,format=I420 ! v4l2h264enc extra-controls=\"controls,repeat_sequence_header=1,video_bitrate=${bitrate_bps},video_bitrate_mode=${bitrate_mode}\" ! video/x-h264,level=(string)4 ! h264parse config-interval=1"
   elif gst-inspect-1.0 x264enc >/dev/null 2>&1; then
     log "Using x264enc (SOFTWARE) - CPU intensive on Pi 3B+" >&2
     log "Tip: For Pi 3B+, keep resolution at 640x480@15fps or lower" >&2
@@ -711,7 +802,11 @@ build_generic_h264_encoder() {
 
   if [[ $use_hw_encoder -eq 1 ]]; then
     local bitrate_bps=$((H264_BITRATE_KBPS * 1000))
-    echo "video/x-raw,format=I420 ! v4l2h264enc extra-controls=\"controls,repeat_sequence_header=1,video_bitrate=${bitrate_bps}\" ! video/x-h264,level=(string)4 ! h264parse config-interval=1"
+    local bitrate_mode=1  # CBR by default
+    if [[ "${H264_BITRATE_MODE}" == "vbr" ]]; then
+      bitrate_mode=0
+    fi
+    echo "video/x-raw,format=I420 ! v4l2h264enc extra-controls=\"controls,repeat_sequence_header=1,video_bitrate=${bitrate_bps},video_bitrate_mode=${bitrate_mode}\" ! video/x-h264,level=(string)4 ! h264parse config-interval=1"
   elif gst-inspect-1.0 x264enc >/dev/null 2>&1; then
     echo "x264enc tune=zerolatency speed-preset=ultrafast bitrate=${H264_BITRATE_KBPS} key-int-max=${H264_KEYINT} bframes=0 threads=2 ! h264parse config-interval=1"
   elif gst-inspect-1.0 openh264enc >/dev/null 2>&1; then
@@ -786,13 +881,13 @@ build_mjpeg_pipeline() {
   local url="$1"
   local encoder
   encoder="$(build_generic_h264_encoder)"
-  echo "souphttpsrc location=${url} ! multipartdemux ! jpegdec ! videoconvert ! videoscale ! video/x-raw,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! ${encoder} ! rtph264pay name=pay0 pt=96 config-interval=1"
+  echo "souphttpsrc location=${url} ! multipartdemux ! jpegdec ! videoconvert ! videoscale ! video/x-raw,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1 ! ${encoder} ! rtph264pay name=pay0 pt=96 config-interval=1"
 }
 
 build_screen_pipeline() {
   local encoder
   encoder="$(build_generic_h264_encoder)"
-  echo "ximagesrc display-name=${SCREEN_DISPLAY} use-damage=0 ! videoconvert ! videoscale ! video/x-raw,width=${VIDEO_WIDTH},height=${VIDEO_HEIGHT},framerate=${VIDEO_FPS}/1 ! ${encoder} ! rtph264pay name=pay0 pt=96 config-interval=1"
+  echo "ximagesrc display-name=${SCREEN_DISPLAY} use-damage=0 ! videoconvert ! videoscale ! video/x-raw,width=${VIDEOIN_WIDTH},height=${VIDEOIN_HEIGHT},framerate=${VIDEOIN_FPS}/1 ! ${encoder} ! rtph264pay name=pay0 pt=96 config-interval=1"
 }
 
 #---------------------------
@@ -857,10 +952,15 @@ need_root
 setup_fs
 setup_logging
 
+# Resolve effective output parameters (OUTPUT_* or fallback to VIDEO_*)
+resolve_output_params
+
 log "=========================================="
-log "Starting rpi_av_rtsp_recorder v2.13.0"
+log "Starting rpi_av_rtsp_recorder v2.14.0"
 log "=========================================="
-log "Config: RTSP=:${RTSP_PORT}/${RTSP_PATH} Video=${VIDEO_WIDTH}x${VIDEO_HEIGHT}@${VIDEO_FPS}fps"
+log "Config: RTSP=:${RTSP_PORT}/${RTSP_PATH}"
+log "  Camera input:  ${VIDEOIN_WIDTH}x${VIDEOIN_HEIGHT}@${VIDEOIN_FPS}fps"
+log "  Stream output: ${EFFECTIVE_OUTPUT_WIDTH}x${EFFECTIVE_OUTPUT_HEIGHT}@${EFFECTIVE_OUTPUT_FPS}fps"
 log "Source mode: ${STREAM_SOURCE_MODE}"
 log "Recording: ${RECORD_ENABLE} -> ${RECORD_DIR} (${SEGMENT_SECONDS}s segments)"
 log "Audio: ${AUDIO_ENABLE} device=${AUDIO_DEVICE} gain=${AUDIO_GAIN}"
@@ -949,8 +1049,8 @@ if [[ "$SOURCE_MODE" == "camera" ]]; then
 
   # Show camera info
   if [[ "$CAM_MODE" == "usb" ]]; then
-    log "Camera device: $VIDEO_DEVICE"
-    v4l2-ctl -d "$VIDEO_DEVICE" --info 2>/dev/null | grep -E "Driver|Card|Bus" || true
+    log "Camera device: $VIDEOIN_DEVICE"
+    v4l2-ctl -d "$VIDEOIN_DEVICE" --info 2>/dev/null | grep -E "Driver|Card|Bus" || true
   fi
 
   # Detect audio (camera mode only)
@@ -980,6 +1080,14 @@ if [[ "$SOURCE_MODE" == "camera" ]]; then
     log "Overlay enabled: ${VIDEO_OVERLAY}" >&2
     VIDEO_SRC="${VIDEO_SRC} ! ${VIDEO_OVERLAY}"
   fi
+  
+  # Build output scaler if output resolution/fps differs from camera input
+  OUTPUT_SCALER="$(build_output_scaler)"
+  if [[ -n "$OUTPUT_SCALER" ]]; then
+    log "Output scaling/rate conversion enabled"
+    VIDEO_SRC="${VIDEO_SRC} ! ${OUTPUT_SCALER}"
+  fi
+  
   log "Building video encoder for mode: $CAM_MODE"
   VIDEO_ENC="$(build_video_encoder "$CAM_MODE")"
   if [[ -z "$VIDEO_ENC" ]]; then

@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Diagnostic functions
- * Version: 2.33.01
+ * Version: 2.36.10
  */
 
 (function () {
@@ -1035,10 +1035,30 @@ function renderAdvancedControls(data) {
 }
 
 /**
+ * Check if a V4L2 default value is valid (not a system flag)
+ * V4L2 uses special values like 57343 (0xDFFF), -8193 (0xE001) when no real default is defined
+ */
+function isValidDefaultValue(defaultVal, min, max) {
+    if (defaultVal === null || defaultVal === undefined) return false;
+    // Known invalid V4L2 default values
+    const invalidDefaults = [57343, -8193, 32767, -32768, 65535, -1];
+    if (invalidDefaults.includes(defaultVal)) return false;
+    // If default is outside the control range, it's likely invalid
+    if (min !== null && max !== null) {
+        if (defaultVal < min || defaultVal > max) return false;
+    }
+    return true;
+}
+
+/**
  * Render a single control input based on its type
  */
 function renderControlInput(ctrl) {
     const { name, type, display_name, value, min, max, step, default: defaultVal, menu_items } = ctrl;
+    
+    // Validate the default value
+    const validDefault = isValidDefaultValue(defaultVal, min, max);
+    const displayDefault = validDefault ? defaultVal : null;
     
     let inputHtml = '';
     
@@ -1056,12 +1076,19 @@ function renderControlInput(ctrl) {
             
         case 'int':
             inputHtml = `
-                <div class="range-control">
-                    <input type="range" id="ctrl_${name}" 
-                           min="${min || 0}" max="${max || 255}" step="${step || 1}"
-                           value="${value || 0}"
-                           onchange="setAdvancedControl('${name}', parseInt(this.value))">
-                    <span class="range-value" id="val_${name}">${value || 0}</span>
+                <div class="slider-container">
+                    <div class="range-control-enhanced">
+                        <input type="range" id="ctrl_${name}" 
+                               min="${min || 0}" max="${max || 255}" step="${step || 1}"
+                               value="${value || 0}"
+                               oninput="updateSliderDisplay('${name}', this.value)"
+                               onchange="setAdvancedControl('${name}', parseInt(this.value))">
+                        <span class="range-value-box" id="val_${name}">${value || 0}</span>
+                    </div>
+                    <div class="range-limits">
+                        <span class="range-min">${min || 0}</span>
+                        <span class="range-max">${max || 255}</span>
+                    </div>
                 </div>
             `;
             break;
@@ -1081,15 +1108,30 @@ function renderControlInput(ctrl) {
                                 onchange="setAdvancedControl('${name}', parseInt(this.value))">`;
     }
     
+    // Build default hint if valid
+    const defaultHint = displayDefault !== null 
+        ? `<small class="default-hint">(défaut: ${displayDefault})</small>` 
+        : '';
+    
     return `
         <div class="control-item" data-control="${name}">
             <label for="ctrl_${name}" title="${name}">
                 ${display_name}
-                ${defaultVal !== undefined ? `<small class="default-hint">(défaut: ${defaultVal})</small>` : ''}
+                ${defaultHint}
             </label>
             ${inputHtml}
         </div>
     `;
+}
+
+/**
+ * Update slider value display in real-time
+ */
+function updateSliderDisplay(name, value) {
+    const valDisplay = document.getElementById(`val_${name}`);
+    if (valDisplay) {
+        valDisplay.textContent = value;
+    }
 }
 
 /**

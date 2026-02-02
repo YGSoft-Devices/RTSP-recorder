@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.35.04 -->
+<!-- RTSP Recorder Web Interface - Version 2.36.02 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -85,7 +85,7 @@
                                 <span class="storage-total">{{ system_info.get('disk_total', 'N/A') }}</span>
                             </div>
                             <div class="storage-bar">
-                                <div class="storage-bar-fill" style="width: {{ system_info.get('disk_percent_num', 0) }}%"></div>
+                                <div class="storage-bar-fill" style="width: {{ system_info.get('disk_percent_num', 0) }}%;"></div>
                             </div>
                             <div class="storage-details">
                                 <span><i class="fas fa-folder-open"></i> {{ system_info.get('recording_count', 0) }} <span data-i18n="dashboard.files">fichiers</span></span>
@@ -387,9 +387,10 @@
                     
                     <!-- RTSP Tab -->
                     <div class="tab-content" id="tab-rtsp">
+                        <!-- ========== CADRE 1: Configuration serveur RTSP ========== -->
                         <div class="form-section">
-                            <h4><i class="fas fa-video"></i> Configuration RTSP</h4>
-                            <small class="section-help">Paramètres du serveur de streaming RTSP</small>
+                            <h4><i class="fas fa-server"></i> Configuration serveur RTSP</h4>
+                            <small class="section-help">Paramètres réseau du serveur de streaming RTSP</small>
                             
                             <div class="form-row">
                                 <div class="form-group">
@@ -406,21 +407,28 @@
                                     </label>
                                     <input type="text" id="RTSP_PATH" name="RTSP_PATH" 
                                            value="{{ config.RTSP_PATH }}">
-                                  <small>Chemin du flux (ex: stream → rtsp://IP:port/stream)</small>
-                              </div>
-                          </div>
-                          <div class="form-row">
-                              <div class="form-group">
-                                  <label for="RTSP_PROTOCOLS">
-                                      <i class="fas fa-project-diagram"></i> Protocoles RTSP
-                                  </label>
-                                  <input type="text" id="RTSP_PROTOCOLS" name="RTSP_PROTOCOLS" 
-                                         value="{{ config.RTSP_PROTOCOLS }}">
-                                  <small>Liste séparée par virgules (udp,tcp,udp-mcast)</small>
-                              </div>
-                          </div>
-                      </div>
+                                    <small>Chemin du flux (ex: stream → rtsp://IP:port/stream)</small>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="RTSP_PROTOCOLS">
+                                        <i class="fas fa-project-diagram"></i> Protocoles RTSP
+                                    </label>
+                                    <input type="text" id="RTSP_PROTOCOLS" name="RTSP_PROTOCOLS" 
+                                           value="{{ config.RTSP_PROTOCOLS }}">
+                                    <small>Liste séparée par virgules (udp,tcp,udp-mcast)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="section-actions">
+                                <button type="button" class="btn btn-primary" onclick="applyRtspServerConfig()">
+                                    <i class="fas fa-check"></i> Appliquer
+                                </button>
+                            </div>
+                        </div>
                         
+                        <!-- ========== CADRE 2: Authentification RTSP ========== -->
                         <div class="form-section">
                             <h4><i class="fas fa-lock"></i> Authentification RTSP / ONVIF (partagée)</h4>
                             <small class="section-help">
@@ -462,18 +470,105 @@
                             </div>
                             
                             <div class="section-actions">
-                                <button type="button" class="btn btn-primary" onclick="saveConfig()">
-                                    <i class="fas fa-save"></i> Sauvegarder
-                                </button>
-                                <button type="button" class="btn btn-secondary" onclick="resetForm()">
-                                    <i class="fas fa-undo"></i> Reset
+                                <button type="button" class="btn btn-primary" onclick="applyRtspAuthConfig()">
+                                    <i class="fas fa-check"></i> Appliquer
                                 </button>
                             </div>
                         </div>
 
+                        <!-- ========== CADRE 3: Paramètres vidéo de sortie (standard) ========== -->
                         <div class="form-section">
-                            <h4><i class="fas fa-broadcast-tower"></i> Paramètres RTSP</h4>
-                            <small class="section-help">Contrôlez le flux vidéo RTSP transmis et l'enregistrement, indépendamment de la caméra</small>
+                            <h4><i class="fas fa-film"></i> Paramètres vidéo de sortie</h4>
+                            <small class="section-help">Résolution, FPS et bitrate du flux RTSP transmis</small>
+                            
+                            <!-- Quality Level Selector (like Synology) -->
+                            <div class="form-group">
+                                <label for="STREAM_QUALITY">
+                                    <i class="fas fa-star"></i> Niveau de qualité
+                                </label>
+                                <select id="STREAM_QUALITY" name="STREAM_QUALITY" onchange="onQualityLevelChange()">
+                                    <option value="1" {% if config.STREAM_QUALITY == '1' %}selected{% endif %}>1 - Très basse (Économie bande passante)</option>
+                                    <option value="2" {% if config.STREAM_QUALITY == '2' %}selected{% endif %}>2 - Basse</option>
+                                    <option value="3" {% if config.STREAM_QUALITY == '3' or not config.STREAM_QUALITY %}selected{% endif %}>3 - Moyenne (Défaut)</option>
+                                    <option value="4" {% if config.STREAM_QUALITY == '4' %}selected{% endif %}>4 - Haute</option>
+                                    <option value="5" {% if config.STREAM_QUALITY == '5' %}selected{% endif %}>5 - Très haute (Max qualité)</option>
+                                    <option value="custom" {% if config.STREAM_QUALITY == 'custom' %}selected{% endif %}>Personnalisé</option>
+                                </select>
+                                <small>Compatible Synology Surveillance Station. "Personnalisé" permet de régler manuellement ci-dessous.</small>
+                            </div>
+                            
+                            <div id="quality-level-info" class="alert alert-info" style="display: none;">
+                                <i class="fas fa-info-circle"></i>
+                                <span id="quality-level-description"></span>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="VIDEOOUT_WIDTH">
+                                        <i class="fas fa-arrows-alt-h"></i> Largeur sortie
+                                    </label>
+                                    <input type="number" id="VIDEOOUT_WIDTH" name="VIDEOOUT_WIDTH" 
+                                           value="{{ config.VIDEOOUT_WIDTH }}" min="160" max="3840" placeholder="Auto (= entrée)">
+                                    <small>Largeur en pixels (vide = même que caméra)</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="VIDEOOUT_HEIGHT">
+                                        <i class="fas fa-arrows-alt-v"></i> Hauteur sortie
+                                    </label>
+                                    <input type="number" id="VIDEOOUT_HEIGHT" name="VIDEOOUT_HEIGHT" 
+                                           value="{{ config.VIDEOOUT_HEIGHT }}" min="120" max="2160" placeholder="Auto (= entrée)">
+                                    <small>Hauteur en pixels (vide = même que caméra)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="VIDEOOUT_FPS">
+                                        <i class="fas fa-tachometer-alt"></i> FPS sortie
+                                    </label>
+                                    <input type="number" id="VIDEOOUT_FPS" name="VIDEOOUT_FPS" 
+                                           value="{{ config.VIDEOOUT_FPS }}" min="1" max="60" placeholder="Auto (= entrée)">
+                                    <small>Images/seconde (vide = même que caméra)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="H264_BITRATE_MODE">
+                                        <i class="fas fa-adjust"></i> Mode bitrate
+                                    </label>
+                                    <select id="H264_BITRATE_MODE" name="H264_BITRATE_MODE" onchange="toggleBitrateMode()">
+                                        <option value="cbr" {% if config.H264_BITRATE_MODE != 'vbr' %}selected{% endif %}>CBR (Constant)</option>
+                                        <option value="vbr" {% if config.H264_BITRATE_MODE == 'vbr' %}selected{% endif %}>VBR (Variable)</option>
+                                    </select>
+                                    <small>CBR = débit fixe (streaming stable), VBR = débit variable (meilleure qualité)</small>
+                                </div>
+                                <div class="form-group" id="bitrate-manual-group">
+                                    <label for="H264_BITRATE_KBPS">
+                                        <i class="fas fa-signal"></i> Débit H264 (kbps)
+                                    </label>
+                                    <input type="number" id="H264_BITRATE_KBPS" name="H264_BITRATE_KBPS" 
+                                           value="{{ config.H264_BITRATE_KBPS }}" min="500" max="8000">
+                                    <small>Débit cible (défaut: 1200 pour Pi 3B+)</small>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info" id="bitrate-vbr-info" style="display: {% if config.H264_BITRATE_MODE == 'vbr' %}block{% else %}none{% endif %}; ">
+                                <i class="fas fa-info-circle"></i>
+                                <span>Mode VBR : Le débit est ajusté dynamiquement selon la complexité de l'image. Compatible avec Synology Surveillance Station.</span>
+                            </div>
+                            
+                            <div class="section-actions">
+                                <button type="button" class="btn btn-primary" onclick="applyVideoOutputConfig()">
+                                    <i class="fas fa-check"></i> Appliquer
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ========== CADRE 4: Paramètres vidéo avancés ========== -->
+                        <div class="form-section">
+                            <h4><i class="fas fa-cogs"></i> Paramètres vidéo avancés</h4>
+                            <small class="section-help">Encodage H264, source du flux et paramètres proxy</small>
                             
                             <div class="form-row">
                                 <div class="form-group">
@@ -541,25 +636,6 @@
                                     <small>Display X11 pour capture écran</small>
                                 </div>
                             </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="VIDEO_FPS">
-                                        <i class="fas fa-tachometer-alt"></i> Images/seconde
-                                    </label>
-                                    <input type="number" id="VIDEO_FPS" name="VIDEO_FPS" 
-                                           value="{{ config.VIDEO_FPS }}" min="1" max="60">
-                                    <small>Nombre d'images par seconde (FPS)</small>
-                                </div>
-                                <div class="form-group">
-                                    <label for="H264_BITRATE_KBPS">
-                                        <i class="fas fa-signal"></i> Débit H264 (kbps)
-                                    </label>
-                                    <input type="number" id="H264_BITRATE_KBPS" name="H264_BITRATE_KBPS" 
-                                           value="{{ config.H264_BITRATE_KBPS }}" min="500" max="8000">
-                                    <small>Débit vidéo (défaut: 1200 pour Pi 3B+)</small>
-                                </div>
-                            </div>
                             
                             <div class="form-row">
                                 <div class="form-group">
@@ -595,11 +671,23 @@
                                     <small>QP fixe 1-51 (vide = auto)</small>
                                 </div>
                             </div>
+                            
+                            <div class="section-actions">
+                                <button type="button" class="btn btn-primary" onclick="applyVideoAdvancedConfig()">
+                                    <i class="fas fa-check"></i> Appliquer
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ========== CADRE 5: Overlay vidéo ========== -->
+                        <div class="form-section">
+                            <h4><i class="fas fa-text-height"></i> Overlay vidéo</h4>
+                            <small class="section-help">Texte et date/heure superposés sur le flux vidéo</small>
 
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="VIDEO_OVERLAY_ENABLE">
-                                        <i class="fas fa-text-height"></i> Overlay RTSP
+                                        <i class="fas fa-toggle-on"></i> Activer overlay
                                     </label>
                                     <select id="VIDEO_OVERLAY_ENABLE" name="VIDEO_OVERLAY_ENABLE">
                                         <option value="no" {% if config.VIDEO_OVERLAY_ENABLE != 'yes' %}selected{% endif %}>Désactivé</option>
@@ -616,6 +704,7 @@
                                     <small>Tokens: {CAMERA_TYPE} {VIDEO_RESOLUTION} {VIDEO_FPS} {VIDEO_FORMAT} {VIDEO_DEVICE}</small>
                                 </div>
                             </div>
+                            
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="CSI_OVERLAY_MODE">
@@ -628,6 +717,7 @@
                                     <small>Libcamera: pas de date/heure (overlay texte uniquement)</small>
                                 </div>
                             </div>
+                            
                             <div class="info-box warning" id="csi-overlay-warning" style="display: none;">
                                 <h5><i class="fas fa-exclamation-triangle"></i> Overlay CSI libcamera</h5>
                                 <div class="info-text">La date/heure n'est pas supportée en mode libcamera. Désactivez-la ou repassez en mode software.</div>
@@ -688,13 +778,12 @@
                                     <small>Taille de police (Sans)</small>
                                 </div>
                             </div>
-                        </div>
-
-                        <div class="form-group">
-                            <button type="button" class="btn btn-success btn-full" onclick="applyVideoSettings()">
-                                <i class="fas fa-check"></i> Appliquer les paramètres RTSP
-                            </button>
-                            <small class="hint">Sauvegarde et redémarre le service RTSP avec les nouveaux paramètres</small>
+                            
+                            <div class="section-actions">
+                                <button type="button" class="btn btn-primary" onclick="applyOverlayConfig()">
+                                    <i class="fas fa-check"></i> Appliquer
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -978,9 +1067,9 @@
                                     <i class="fas fa-camera"></i> Périphérique vidéo
                                 </label>
                                 <div class="input-with-button">
-                                    <input type="text" id="VIDEO_DEVICE" name="VIDEO_DEVICE" 
-                                           value="{{ config.VIDEO_DEVICE }}">
-                                    <input type="hidden" id="VIDEO_FORMAT" name="VIDEO_FORMAT" value="{{ config.VIDEO_FORMAT or 'auto' }}">
+                                    <input type="text" id="VIDEOIN_DEVICE" name="VIDEOIN_DEVICE" 
+                                           value="{{ config.VIDEOIN_DEVICE or config.VIDEO_DEVICE }}">
+                                    <input type="hidden" id="VIDEOIN_FORMAT" name="VIDEOIN_FORMAT" value="{{ config.VIDEOIN_FORMAT or config.VIDEO_FORMAT or 'auto' }}">
                                     <button type="button" class="btn btn-secondary" onclick="detectCameras()">
                                         <i class="fas fa-search"></i> Détecter
                                     </button>
@@ -1010,7 +1099,7 @@
                                 <small>Sélectionnez le type de caméra (Redémarrage requis pour appliquer)</small>
                             </div>
                             <!-- Hidden fields for backend compatibility -->
-                            <input type="hidden" id="CAMERA_DEVICE" name="CAMERA_DEVICE" value="{{ config.VIDEO_DEVICE }}">
+                            <input type="hidden" id="CAMERA_DEVICE" name="CAMERA_DEVICE" value="{{ config.VIDEOIN_DEVICE or config.VIDEO_DEVICE }}">
                             <input type="hidden" id="CSI_ENABLE" name="CSI_ENABLE" value="yes">
                             <input type="hidden" id="USB_ENABLE" name="USB_ENABLE" value="yes">
                         </div>
@@ -1068,20 +1157,42 @@
                             <div class="manual-resolution-fields" id="manual-resolution-fields" style="display: none;">
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="VIDEO_WIDTH">
+                                        <label for="VIDEOIN_WIDTH">
                                             <i class="fas fa-arrows-alt-h"></i> Largeur
                                         </label>
-                                        <input type="number" id="VIDEO_WIDTH" name="VIDEO_WIDTH" 
-                                               value="{{ config.VIDEO_WIDTH }}" min="320" max="4096">
+                                        <input type="number" id="VIDEOIN_WIDTH" name="VIDEOIN_WIDTH" 
+                                               value="{{ config.VIDEOIN_WIDTH or config.VIDEO_WIDTH }}" min="320" max="4096">
                                         <small>Largeur en pixels</small>
                                     </div>
                                     <div class="form-group">
-                                        <label for="VIDEO_HEIGHT">
+                                        <label for="VIDEOIN_HEIGHT">
                                             <i class="fas fa-arrows-alt-v"></i> Hauteur
                                         </label>
-                                        <input type="number" id="VIDEO_HEIGHT" name="VIDEO_HEIGHT" 
-                                               value="{{ config.VIDEO_HEIGHT }}" min="240" max="2160">
+                                        <input type="number" id="VIDEOIN_HEIGHT" name="VIDEOIN_HEIGHT" 
+                                               value="{{ config.VIDEOIN_HEIGHT or config.VIDEO_HEIGHT }}" min="240" max="2160">
                                         <small>Hauteur en pixels</small>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="VIDEOIN_FPS">
+                                            <i class="fas fa-tachometer-alt"></i> FPS
+                                        </label>
+                                        <input type="number" id="VIDEOIN_FPS" name="VIDEOIN_FPS" 
+                                               value="{{ config.VIDEOIN_FPS or config.VIDEO_FPS or '20' }}" min="1" max="60">
+                                        <small>Images par seconde (max selon caméra)</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="VIDEOIN_FORMAT">
+                                            <i class="fas fa-image"></i> Format vidéo
+                                        </label>
+                                        <select id="VIDEOIN_FORMAT" name="VIDEOIN_FORMAT">
+                                            <option value="auto" {% if config.VIDEOIN_FORMAT == 'auto' or not config.VIDEOIN_FORMAT %}selected{% endif %}>Auto (détection)</option>
+                                            <option value="MJPG" {% if config.VIDEOIN_FORMAT == 'MJPG' %}selected{% endif %}>MJPEG (recommandé USB)</option>
+                                            <option value="YUYV" {% if config.VIDEOIN_FORMAT == 'YUYV' %}selected{% endif %}>YUYV (raw, CPU élevé)</option>
+                                            <option value="H264" {% if config.VIDEOIN_FORMAT == 'H264' %}selected{% endif %}>H264 (si supporté)</option>
+                                        </select>
+                                        <small>Format de capture caméra. MJPEG recommandé pour USB.</small>
                                     </div>
                                 </div>
                             </div>

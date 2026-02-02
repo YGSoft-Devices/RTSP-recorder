@@ -21,6 +21,7 @@
     "gstreamer1.0-x264",
     "gpiod",
     "hostapd",
+    "inotify-tools",
     "libcamera-apps",
     "rpicam-apps-opencv-postprocess",
     "libcamera0.3",

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Config Service - Configuration management and service control
-Version: 2.30.15
+Version: 2.31.0
 """
 
 import os
@@ -20,12 +20,35 @@ from config import (
 logger = logging.getLogger(__name__)
 
 # ============================================================================
+# VIDEOIN_* / VIDEO_* COMPATIBILITY MAPPING
+# ============================================================================
+
+# Map new VIDEOIN_* variables to legacy VIDEO_* for backwards compatibility
+VIDEOIN_LEGACY_MAP = {
+    'VIDEOIN_WIDTH': 'VIDEO_WIDTH',
+    'VIDEOIN_HEIGHT': 'VIDEO_HEIGHT',
+    'VIDEOIN_FPS': 'VIDEO_FPS',
+    'VIDEOIN_DEVICE': 'VIDEO_DEVICE',
+    'VIDEOIN_FORMAT': 'VIDEO_FORMAT',
+}
+
+# Map new VIDEOOUT_* variables to legacy OUTPUT_* for backwards compatibility
+VIDEOOUT_LEGACY_MAP = {
+    'VIDEOOUT_WIDTH': 'OUTPUT_WIDTH',
+    'VIDEOOUT_HEIGHT': 'OUTPUT_HEIGHT',
+    'VIDEOOUT_FPS': 'OUTPUT_FPS',
+}
+
+# ============================================================================
 # CONFIGURATION FILE MANAGEMENT
 # ============================================================================
 
 def load_config():
     """
     Load configuration from the config file.
+    
+    Handles VIDEOIN_*/VIDEOOUT_* with fallback to legacy VIDEO_*/OUTPUT_*.
+    Also provides VIDEO_* aliases from VIDEOIN_* for template compatibility.
     
     Returns:
         dict: Configuration dictionary with all settings
@@ -57,6 +80,23 @@ def load_config():
                             config[key] = value
                     else:
                         config[key] = value
+        
+        # VIDEOIN_* / VIDEO_* compatibility: prefer VIDEOIN_*, fallback to VIDEO_*
+        for new_key, legacy_key in VIDEOIN_LEGACY_MAP.items():
+            if new_key not in config and legacy_key in config:
+                # Legacy VIDEO_* present but no VIDEOIN_* -> use legacy
+                config[new_key] = config[legacy_key]
+            elif new_key in config:
+                # VIDEOIN_* present -> also expose as VIDEO_* for templates
+                config[legacy_key] = config[new_key]
+        
+        # VIDEOOUT_* / OUTPUT_* compatibility
+        for new_key, legacy_key in VIDEOOUT_LEGACY_MAP.items():
+            if new_key not in config and legacy_key in config:
+                config[new_key] = config[legacy_key]
+            elif new_key in config:
+                config[legacy_key] = config[new_key]
+                
     except Exception as e:
         print(f"Error loading config: {e}")
     
@@ -88,6 +128,20 @@ def save_config(config):
         # Merge: update existing with new values, but keep existing keys that aren't being updated
         merged_config = existing_config.copy()
         merged_config.update(config)
+        
+        # VIDEOIN_* / VIDEO_* sync (v2.31.0): Keep both in sync when saving
+        # If VIDEOIN_* is set, also set VIDEO_* (and vice versa) for compatibility
+        for new_key, legacy_key in VIDEOIN_LEGACY_MAP.items():
+            if new_key in merged_config:
+                merged_config[legacy_key] = merged_config[new_key]
+            elif legacy_key in merged_config:
+                merged_config[new_key] = merged_config[legacy_key]
+        
+        for new_key, legacy_key in VIDEOOUT_LEGACY_MAP.items():
+            if new_key in merged_config:
+                merged_config[legacy_key] = merged_config[new_key]
+            elif legacy_key in merged_config:
+                merged_config[new_key] = merged_config[legacy_key]
         
         # Build config content from MERGED config
         lines = ["# RTSP Camera Configuration", f"# Generated: {datetime.now().isoformat()}", ""]
