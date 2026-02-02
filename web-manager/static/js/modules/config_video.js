@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Config/Audio/Video helpers
- * Version: 2.36.02
+ * Version: 2.36.11
  */
 
 (function () {
@@ -402,15 +402,21 @@ async function loadResolutions() {
                 onResolutionSelectChange();
             }
             
+            // Populate manual format dropdown with detected formats (v2.36.10)
+            populateManualFormatDropdown(data.formats, cameraType);
+            
             console.log(`Loaded ${detectedResolutions.length} resolutions`);
         } else {
             select.innerHTML = '<option value="">❌ Aucune résolution détectée</option>';
             select.disabled = true;
+            // Still try to populate formats with empty list
+            populateManualFormatDropdown([], 'unknown');
         }
     } catch (error) {
         console.error('Error loading resolutions:', error);
         select.innerHTML = '<option value="">❌ Erreur de détection</option>';
         select.disabled = true;
+        populateManualFormatDropdown([], 'unknown');
     } finally {
         if (loadingIndicator) loadingIndicator.style.display = 'none';
     }
@@ -739,6 +745,96 @@ async function applyVideoSettings() {
 }
 
 // ============================================================================
+// Dynamic Video Format Dropdown (v2.36.10)
+// ============================================================================
+
+// Store detected formats globally
+let detectedFormats = [];
+
+/**
+ * Populate the manual format dropdown with formats detected from camera hardware
+ */
+function populateManualFormatDropdown(formats, cameraType) {
+    const select = document.getElementById('manual-format-select');
+    const formatInput = document.getElementById('VIDEOIN_FORMAT');
+    const helpText = document.getElementById('format-help-text');
+    
+    if (!select) return;
+    
+    // Get current configured format
+    const currentFormat = formatInput?.value || 'auto';
+    
+    // Clear and rebuild options
+    select.innerHTML = '<option value="auto">Auto (détection automatique)</option>';
+    
+    // Extract unique formats from camera data
+    const uniqueFormats = new Set();
+    if (formats && Array.isArray(formats)) {
+        formats.forEach(f => {
+            if (f.format) {
+                uniqueFormats.add(f.format.toUpperCase());
+            }
+        });
+    }
+    
+    // Store for later use
+    detectedFormats = Array.from(uniqueFormats);
+    
+    // Format descriptions
+    const formatDescriptions = {
+        'MJPG': 'MJPEG - Compressé, faible CPU',
+        'MJPEG': 'MJPEG - Compressé, faible CPU',
+        'YUYV': 'YUYV (raw) - Non compressé, CPU élevé',
+        'YUY2': 'YUY2 (raw) - Non compressé, CPU élevé',
+        'H264': 'H.264 - Encodé hardware (si supporté)',
+        'NV12': 'NV12 - Format brut YUV 4:2:0',
+        'I420': 'I420 - Format brut YUV 4:2:0',
+        'RGB3': 'RGB24 - Format couleur non compressé',
+        'BGR3': 'BGR24 - Format couleur non compressé',
+        'GREY': 'Grayscale - Niveaux de gris'
+    };
+    
+    // Add detected formats
+    detectedFormats.forEach(format => {
+        const desc = formatDescriptions[format] || format;
+        const option = document.createElement('option');
+        option.value = format;
+        option.textContent = desc;
+        if (currentFormat.toUpperCase() === format.toUpperCase()) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    });
+    
+    // Update help text based on camera type
+    if (helpText) {
+        if (cameraType === 'libcamera' || cameraType === 'csi') {
+            helpText.textContent = 'Caméra CSI : le format est géré automatiquement par Picamera2.';
+            select.disabled = true;
+            select.value = 'auto';
+        } else if (detectedFormats.length === 0) {
+            helpText.textContent = 'Aucun format détecté. Utilisez Auto ou saisissez manuellement.';
+        } else {
+            helpText.textContent = `${detectedFormats.length} format(s) détecté(s) : ${detectedFormats.join(', ')}`;
+            select.disabled = false;
+        }
+    }
+    
+    console.log(`[config_video] Populated ${detectedFormats.length} formats from camera: ${detectedFormats.join(', ')}`);
+}
+
+/**
+ * Handle manual format dropdown change
+ */
+function onManualFormatChange(value) {
+    const formatInput = document.getElementById('VIDEOIN_FORMAT');
+    if (formatInput) {
+        formatInput.value = value;
+        console.log(`[config_video] Manual format changed to: ${value}`);
+    }
+}
+
+// ============================================================================
 // Expose functions to global scope
 // ============================================================================
 
@@ -768,6 +864,10 @@ window.applyOverlayConfig = applyOverlayConfig;
 window.toggleBitrateMode = toggleBitrateMode;
 // Quality level selector (v2.36.03)
 window.onQualityLevelChange = onQualityLevelChange;
+// Dynamic format dropdown (v2.36.10)
+window.populateManualFormatDropdown = populateManualFormatDropdown;
+window.onManualFormatChange = onManualFormatChange;
+window.detectedFormats = detectedFormats;
 
 })();
 

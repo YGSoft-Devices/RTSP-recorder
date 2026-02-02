@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Config Service - Configuration management and service control
-Version: 2.31.0
+Version: 2.36.11
 """
 
 import os
@@ -207,7 +207,16 @@ def validate_config(config):
         
         elif expected_type == 'select':
             options = meta.get('options', [])
-            if value not in options:
+            # Case-insensitive comparison for video format fields
+            # Also accept any value for dynamic formats detected from camera hardware
+            if key in ('VIDEOIN_FORMAT', 'VIDEO_FORMAT'):
+                # Accept any format - hardware detection is authoritative
+                # Common formats: auto, MJPG, MJPEG, YUYV, YUY2, H264, NV12, I420, etc.
+                continue
+            # For other select fields, do case-insensitive validation
+            value_upper = str(value).upper() if value else ''
+            options_upper = [str(o).upper() for o in options]
+            if value_upper not in options_upper and value not in options:
                 errors.append(f"{key}: '{value}' not in allowed options {options}")
     
     return {'valid': len(errors) == 0, 'errors': errors}

@@ -1183,16 +1183,16 @@
                                         <small>Images par seconde (max selon caméra)</small>
                                     </div>
                                     <div class="form-group">
-                                        <label for="VIDEOIN_FORMAT">
+                                        <label for="manual-format-select">
                                             <i class="fas fa-image"></i> Format vidéo
                                         </label>
-                                        <select id="VIDEOIN_FORMAT" name="VIDEOIN_FORMAT">
-                                            <option value="auto" {% if config.VIDEOIN_FORMAT == 'auto' or not config.VIDEOIN_FORMAT %}selected{% endif %}>Auto (détection)</option>
-                                            <option value="MJPG" {% if config.VIDEOIN_FORMAT == 'MJPG' %}selected{% endif %}>MJPEG (recommandé USB)</option>
-                                            <option value="YUYV" {% if config.VIDEOIN_FORMAT == 'YUYV' %}selected{% endif %}>YUYV (raw, CPU élevé)</option>
-                                            <option value="H264" {% if config.VIDEOIN_FORMAT == 'H264' %}selected{% endif %}>H264 (si supporté)</option>
+                                        <select id="manual-format-select" onchange="onManualFormatChange(this.value)">
+                                            <option value="auto">Auto (détection)</option>
+                                            <!-- Populated dynamically from camera detection -->
                                         </select>
-                                        <small>Format de capture caméra. MJPEG recommandé pour USB.</small>
+                                        <input type="hidden" id="VIDEOIN_FORMAT" name="VIDEOIN_FORMAT" 
+                                               value="{{ config.VIDEOIN_FORMAT or config.VIDEO_FORMAT or 'auto' }}">
+                                        <small id="format-help-text">Format de capture caméra. Chargement des formats disponibles...</small>
                                     </div>
                                 </div>
                             </div>
