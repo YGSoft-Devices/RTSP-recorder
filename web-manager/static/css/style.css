@@ -421,7 +421,8 @@ body {
     transition: width 0.3s ease;
 }
 
-.storage-bar-fill[style*="width: 8"], .storage-bar-fill[style*="width: 9"] {
+.storage-bar-fill[data-percent^="8"], .storage-bar-fill[data-percent^="9"],
+.storage-bar-fill[data-percent="100"] {
     background: linear-gradient(90deg, var(--warning-color), var(--danger-color));
 }
 

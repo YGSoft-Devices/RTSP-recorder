@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.36.02 -->
+<!-- RTSP Recorder Web Interface - Version 2.36.04 -->
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -85,7 +85,7 @@
                                 <span class="storage-total">{{ system_info.get('disk_total', 'N/A') }}</span>
                             </div>
                             <div class="storage-bar">
-                                <div class="storage-bar-fill" style="width: {{ system_info.get('disk_percent_num', 0) }}%;"></div>
+                                <div class="storage-bar-fill" data-percent="{{ system_info.get('disk_percent_num', 0) }}"></div>
                             </div>
                             <div class="storage-details">
                                 <span><i class="fas fa-folder-open"></i> {{ system_info.get('recording_count', 0) }} <span data-i18n="dashboard.files">fichiers</span></span>
@@ -553,7 +553,7 @@
                                 </div>
                             </div>
                             
-                            <div class="alert alert-info" id="bitrate-vbr-info" style="display: {% if config.H264_BITRATE_MODE == 'vbr' %}block{% else %}none{% endif %}; ">
+                            <div class="alert alert-info" id="bitrate-vbr-info"{% if config.H264_BITRATE_MODE != 'vbr' %} style="display:none"{% endif %}>
                                 <i class="fas fa-info-circle"></i>
                                 <span>Mode VBR : Le débit est ajusté dynamiquement selon la complexité de l'image. Compatible avec Synology Surveillance Station.</span>
                             </div>

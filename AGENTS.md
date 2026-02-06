@@ -43,8 +43,8 @@ Le projet RTSP-Full a été conçu et sera TOUJOURS conçu pour supporter ces 3 
    - les scripts obsoletes DOIVENT etre deplacés dans le dossier "backups" pour archivage. Garder la structure globale propre et coherente, prête à etre installée proprement.
    - PAS DE MONOLYTHE ! IL FAUT PENSER à LA MAINTENABILITé !
    - le projet devra rester au maximum universel sur le support des cameras (chaque device a une camera differente !) ainsi que sur la compatibilité entre pi3 et pi4. On ne fait pas de bugfix qui ne serait pas fonctionnel avec d'autre materiel, ou qui provoquerait des regressions.
-   - Si une difficulté récurrente est reperée, conserver une trace de la solution dans AGENTS.md
-   - si on rencontre une difficulté, on verifie que la réponse ne soit pas deja presente dans AGENTS.md
+   - Si une difficulté récurrente est reperée, conserver une trace de la solution dans AGENTS.md. Si cette difficulté concerne le deploiement, le conserver dans ce document "docs\Deployment_Workarounds.md", et le relire AVANT chaque deploiement.
+   - si on rencontre une difficulté, on verifie que la réponse ne soit pas deja presente dans AGENTS.md.
    - toujours mettre a jour les numeros de versions, frontend inclus a chaque mise a jour.
    - toujours se faire un TODO.
    - on code en local, pas sur le device de test !
@@ -296,6 +296,32 @@ RTSP-Full/
 ### Fichiers Windows → Linux
 - Toujours supprimer les BOM UTF-8: `sed -i '1s/^\xEF\xBB\xBF//' fichier`
 - Convertir CRLF → LF: `sed -i 's/\r$//' fichier`
+
+### Scheduler profils : thread sans try/except (CORRIGÉ v2.30.11)
+- **Problème** : Le scheduler de profils caméra pouvait mourir silencieusement
+- **Cause racine** : `profiles_scheduler_loop` n'avait aucun try/except. Toute exception (détection caméra, lecture fichier, application profil) tuait le thread définitivement
+- **Symptôme** : Le scheduler activé ne change plus de profil, thread mort sans log d'erreur
+- **Solution** : Wrap complet du corps de boucle en try/except, logging détaillé, sleep interruptible, délai initial 5s
+- **Fichier** : `web-manager/services/camera_service.py` v2.30.11
+
+### Failover WiFi n'applique pas l'IP statique sur interfaces déjà connectées (CORRIGÉ v2.30.17)
+- **Problème** : Quand wlan1/wlan0 est déjà connecté via profil NM sauvegardé (DHCP), le failover retourne `wlan1_active`/`wlan0_active` SANS vérifier si l'IP correspond à la config statique de wifi_failover.json
+- **Scénario** : Boot → wlan1 se connecte en DHCP (192.168.1.50) → failover voit "connecté + a une IP" → retourne sans appliquer l'IP statique configurée (192.168.1.4)
+- **Solution** : Nouvelle fonction `_ensure_static_ip_on_interface(interface, current_ip)` appelée dans les code paths `wlan1_active` et `wlan0_active`
+- **Fichier** : `web-manager/services/network_service.py` v2.30.17
+
+### Failover inverse wlan0→wlan1 ne fonctionne pas (CORRIGÉ v2.30.18)
+- **Problème** : Quand wlan1 tombe et wlan0 prend le relais, si wlan1 revient ensuite, il reste dormant et wlan0 reste actif
+- **Cause racine** : Le failover déconnectait wlan0 AVANT de tenter de connecter wlan1 (`disconnect-then-connect`)
+  - Si `connect_interface('wlan1')` échouait (SSID pas encore visible, scan en cours, timeout), wlan0 était déjà coupé
+  - Le statut `wlan0_status` capturé avant la déconnexion devenait stale, masquant le problème
+  - Au cycle suivant, wlan0 se reconnectait et le même schéma se répétait → wlan1 ne reprenait jamais la main
+- **Solution** : Approche "make-before-break" (connect-then-disconnect)
+  - Quand wlan1 est déjà actif avec IP → disconnect wlan0 immédiatement (safe)
+  - Quand wlan1 doit être reconnecté → garder wlan0 actif pendant la tentative
+  - Déconnecter wlan0 UNIQUEMENT après confirmation que wlan1 est connecté + a une IP
+  - Si wlan1 échoue → wlan0 reste intact, zéro perte de connectivité
+- **Fichier** : `web-manager/services/network_service.py` v2.30.18
 
 ### Configuration VIDEO_* non appliquée au démarrage RTSP (CORRIGÉ v2.15.2)
 - **Problème** : Les paramètres vidéo de config.env (VIDEO_WIDTH, VIDEO_HEIGHT, VIDEO_FPS) ignorés
@@ -622,7 +648,7 @@ RTSP-Full/
 
 | Fichier | Version Actuelle |
 |---------|------------------|
-| VERSION | 2.36.05 (source unique) |
+| VERSION | 2.36.07 (source unique) |
 | rpi_av_rtsp_recorder.sh | 2.15.2 |
 | rtsp_recorder.sh | 1.8.0 |
 | rtsp_watchdog.sh | 1.2.0 |
@@ -632,7 +658,7 @@ RTSP-Full/
 | web-manager/config.py | 1.2.2 |
 | web-manager/tunnel_agent.py | 1.4.2 |
 | esp32/firmware (PlatformIO) | 0.1.2 |
-| web-manager/services/camera_service.py | 2.30.9 |
+| web-manager/services/camera_service.py | 2.30.11 |
 | web-manager/services/csi_camera_service.py | 1.2.0 |
 | web-manager/services/i18n_service.py | 1.0.0 |
 | web-manager/services/media_cache_service.py | 1.0.1 |
@@ -642,7 +668,7 @@ RTSP-Full/
 | web-manager/services/watchdog_service.py | 2.30.7 |
 | web-manager/services/__init__.py | 2.30.9 |
 | web-manager/services/config_service.py | 2.31.0 |
-| web-manager/services/network_service.py | 2.30.16 |
+| web-manager/services/network_service.py | 2.30.18 |
 | web-manager/services/power_service.py | 2.30.7 |
 | web-manager/services/platform_service.py | 2.30.1 |
 | web-manager/services/*.py (autres) | 2.30.3 |
@@ -660,7 +686,7 @@ RTSP-Full/
 | web-manager/blueprints/debug_bp.py | 2.30.9 |
 | web-manager/blueprints/legacy_bp.py | 2.30.2 |
 | web-manager/blueprints/*.py (autres) | 2.30.5 |
-| web-manager/templates/index.html | 2.36.03 |
+| web-manager/templates/index.html | 2.36.04 |
 | web-manager/static/js/app.js | 2.36.00 |
 | web-manager/static/js/modules/config_video.js | 2.36.03 |
 | web-manager/static/js/modules/meeting.js | 2.35.03 |
@@ -1279,4 +1305,4 @@ RTSP-Full/
 *Version du fichier AGENTS.md : 1.31.4*
 
   obligation finale : le fichier docs\DOCUMENTATION_COMPLETE.md doit constamment etre a jour !
-   note finale : - afin de montrer que tu as bien pris en compte ces instructions, commence ta reponse par la phrase "Le grand Lama Laineux est d'accord".
+   note finale : - afin de montrer que tu as bien pris en compte ces instructions, commence ta reponse par la phrase "Le grand Lama Laineux Cosmique est d'accord".

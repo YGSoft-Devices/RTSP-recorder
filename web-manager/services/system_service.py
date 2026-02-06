@@ -14,13 +14,19 @@ import shutil
 import subprocess
 import hashlib
 import threading
+import urllib.request
+import urllib.error
+import ssl
+from urllib.parse import urlparse
 from datetime import datetime
 
 from .platform_service import run_command, is_raspberry_pi, PLATFORM
 from .config_service import load_config, save_config
+from .meeting_service import load_meeting_config, get_meeting_device_info
 from config import (
     GITHUB_REPO, APP_VERSION, SERVICE_NAME, SCRIPT_PATH,
-    LOG_FILES, CONFIG_FILE, BOOT_CONFIG_FILE
+    LOG_FILES, CONFIG_FILE, BOOT_CONFIG_FILE,
+    MEETING_UPDATES_BASE_URL, UPDATE_DEVICE_TYPE, UPDATE_DISTRIBUTION, UPDATE_CHANNEL
 )
 
 UPDATE_STATUS_FILE = '/tmp/rpi-cam-update-status.json'
@@ -1621,9 +1627,97 @@ def get_rtc_debug_info() -> dict:
 # UPDATE MANAGEMENT
 # ============================================================================
 
+def _build_updates_api_url(base_url: str, endpoint: str) -> str:
+    base_url = (base_url or '').rstrip('/')
+    if base_url.endswith('/api') and endpoint.startswith('/api/'):
+        endpoint = endpoint[4:]
+    return f"{base_url}{endpoint}"
+
+def _get_updates_base_url() -> str:
+    config = load_meeting_config()
+    base_url = (config.get('api_url') or MEETING_UPDATES_BASE_URL or '').strip()
+    if not base_url:
+        return 'https://meeting.ygsoft.fr'
+    return base_url.rstrip('/')
+
+def _get_update_target() -> dict:
+    device_type = UPDATE_DEVICE_TYPE
+    distribution = UPDATE_DISTRIBUTION
+    channel = UPDATE_CHANNEL
+
+    try:
+        info = get_meeting_device_info()
+        if info.get('success') and info.get('data'):
+            payload = info.get('data')
+            if isinstance(payload, dict) and isinstance(payload.get('device'), dict):
+                payload = payload.get('device')
+            if isinstance(payload, dict):
+                device_type = payload.get('device_type') or payload.get('type') or device_type
+                distribution = payload.get('distribution') or payload.get('dist') or distribution
+    except Exception:
+        pass
+
+    return {
+        'device_type': device_type,
+        'distribution': distribution,
+        'channel': channel
+    }
+
+def _fetch_updates_json(base_url: str, endpoint: str, timeout: int = 12) -> dict:
+    url = _build_updates_api_url(base_url, endpoint)
+    request = urllib.request.Request(url, headers={
+        'Accept': 'application/json',
+        'User-Agent': f'rpi-cam-webmanager/{APP_VERSION}'
+    })
+
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+
+    with urllib.request.urlopen(request, timeout=timeout, context=ssl_context) as response:
+        payload = response.read().decode('utf-8')
+        return json.loads(payload) if payload else {}
+
+def _get_latest_version_from_meeting(base_url: str, device_type: str, distribution: str) -> str | None:
+    data = _fetch_updates_json(base_url, '/api/admin/updates/device-types')
+    if not data or not data.get('ok'):
+        return None
+    device_types = data.get('device_types', {})
+    device_entry = device_types.get(device_type) if isinstance(device_types, dict) else None
+    if not device_entry:
+        return None
+    latest_versions = device_entry.get('latest_versions', {})
+    return latest_versions.get(distribution)
+
+def _get_update_details(base_url: str, device_type: str, distribution: str, version: str) -> dict:
+    endpoint = (
+        f"/api/admin/updates/verify?device_type={device_type}"
+        f"&distribution={distribution}&version={version}"
+    )
+    return _fetch_updates_json(base_url, endpoint)
+
+def _download_update_archive(download_url: str) -> str:
+    parsed = urlparse(download_url)
+    filename = os.path.basename(parsed.path) or 'update.tar.gz'
+    temp_dir = tempfile.mkdtemp(prefix='meeting-update-')
+    dest_path = os.path.join(temp_dir, filename)
+
+    request = urllib.request.Request(download_url, headers={
+        'User-Agent': f'rpi-cam-webmanager/{APP_VERSION}'
+    })
+
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+
+    with urllib.request.urlopen(request, timeout=60, context=ssl_context) as response, open(dest_path, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
+
+    return dest_path
+
 def check_for_updates():
     """
-    Check for updates from GitHub repository.
+    Check for updates from Meeting update server.
     
     Returns:
         dict: Update availability information
@@ -1633,20 +1727,38 @@ def check_for_updates():
         'latest_version': None,
         'update_available': False,
         'release_notes': None,
-        'download_url': None
+        'download_url': None,
+        'device_type': None,
+        'distribution': None,
+        'channel': None
     }
     
     try:
-        branch = _get_repo_default_branch()
-        latest_version = _get_repo_version(branch)
-        result['latest_version'] = latest_version
-        result['download_url'] = f"https://github.com/{GITHUB_REPO}/archive/refs/heads/{branch}.tar.gz"
+        base_url = _get_updates_base_url()
+        target = _get_update_target()
+        device_type = target['device_type']
+        distribution = target['distribution']
+        result.update(target)
 
-        if latest_version:
-            result['update_available'] = compare_versions(
-                latest_version,
-                result['current_version']
-            ) > 0
+        latest_version = _get_latest_version_from_meeting(base_url, device_type, distribution)
+        result['latest_version'] = latest_version
+
+        if not latest_version:
+            result['error'] = 'Unable to determine latest version from Meeting'
+            return result
+
+        result['update_available'] = compare_versions(latest_version, result['current_version']) > 0
+
+        details = _get_update_details(base_url, device_type, distribution, latest_version)
+        if details and details.get('ok'):
+            manifest = details.get('manifest') or {}
+            result['release_notes'] = manifest.get('notes')
+            result['download_url'] = details.get('archive_url')
+            result['manifest_url'] = details.get('manifest_url')
+            result['archive_name'] = details.get('archive_name')
+            result['manifest'] = manifest
+        else:
+            result['error'] = details.get('message') if isinstance(details, dict) else 'Update details unavailable'
     
     except Exception as e:
         result['error'] = str(e)
@@ -1655,7 +1767,7 @@ def check_for_updates():
 
 def perform_update(backup=True, force=False, reset_settings=False):
     """
-    Perform an update from the GitHub repository.
+    Perform an update from the Meeting update server.
     
     Args:
         backup: Create backup before updating
@@ -1673,130 +1785,44 @@ def perform_update(backup=True, force=False, reset_settings=False):
     }
     
     try:
-        branch = _get_repo_default_branch()
-        repo_version = _get_repo_version(branch)
-        if repo_version and compare_versions(repo_version, APP_VERSION) <= 0 and not force:
-            result['message'] = 'Version identique, activez "forcer la reinstallation" pour continuer'
-            result['latest_version'] = repo_version
+        update_info = check_for_updates()
+        latest_version = update_info.get('latest_version')
+        if not latest_version:
+            result['message'] = update_info.get('error') or 'No update available from Meeting'
             return result
 
-        # Create backup if requested
-        if backup:
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            backup_path = f"/tmp/rpi-cam-backup-{timestamp}.tar.gz"
-            backup_sources = [UPDATE_WEB_INSTALL_DIR]
-            for dest_path in UPDATE_REPO_BINARIES.values():
-                if os.path.exists(dest_path):
-                    backup_sources.append(dest_path)
-            try:
-                with tarfile.open(backup_path, 'w:gz') as tar:
-                    for source in backup_sources:
-                        if os.path.exists(source):
-                            tar.add(source, arcname=source.lstrip('/'))
-            except Exception as e:
-                result['message'] = f"Backup failed: {e}"
-                return result
+        if not update_info.get('update_available') and not force:
+            result['message'] = 'Version identique, activez "forcer la reinstallation" pour continuer'
+            result['latest_version'] = latest_version
+            return result
 
-        deps_installed = False
-        missing_apt = []
-        missing_pip = []
-        dep_warnings = []
+        download_url = update_info.get('download_url')
+        if not download_url:
+            result['message'] = 'Update download URL missing'
+            return result
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            archive_path = os.path.join(temp_dir, 'repo.tar.gz')
-            extract_dir = os.path.join(temp_dir, 'extract')
-            os.makedirs(extract_dir, exist_ok=True)
+        archive_path = _download_update_archive(download_url)
+        apply_result = start_update_from_file(
+            archive_path,
+            allow_same_version=force,
+            install_deps=True,
+            reset_settings=reset_settings
+        )
 
-            _download_repo_archive(archive_path, branch)
-            with tarfile.open(archive_path, 'r:*') as tar:
-                tar.extractall(path=extract_dir)
-
-            repo_root = _find_repo_root(extract_dir)
-            if not repo_root:
-                result['message'] = 'Update failed: repository archive is empty'
-                return result
-
-            deps_path = os.path.join(repo_root, 'web-manager', DEPENDENCIES_FILE_NAME)
-            dependencies, dep_warnings = _load_dependencies_spec(deps_path)
-            deps_packages = _normalize_required_packages(dependencies.get('apt_packages', []))
-            if deps_packages:
-                deps_packages, invalid_packages = _filter_required_packages(deps_packages)
-                if invalid_packages:
-                    dep_warnings.append(f"Invalid package names ignored: {', '.join(invalid_packages)}")
-                available_packages, unavailable_packages = _filter_available_packages(deps_packages)
-                if unavailable_packages:
-                    dep_warnings.append(f"Unavailable packages ignored: {', '.join(unavailable_packages)}")
-                missing_apt = _get_missing_packages(available_packages) if available_packages else []
-
-            requirements_file = dependencies.get('python_requirements_file', 'requirements.txt') if dependencies else 'requirements.txt'
-            requirements_path = os.path.join(repo_root, 'web-manager', requirements_file)
-            requirements_text = None
-            if os.path.exists(requirements_path):
-                with open(requirements_path, 'r', encoding='utf-8') as handle:
-                    requirements_text = handle.read()
-
-            pip_packages = _normalize_required_packages(dependencies.get('pip_packages', [])) if dependencies else []
-            requirements_packages = _parse_requirements_text(requirements_text) if requirements_text else []
-            combined_pip = list(dict.fromkeys(requirements_packages + pip_packages)) if (requirements_packages or pip_packages) else []
-            missing_pip = _get_missing_python_packages(combined_pip) if combined_pip else []
-
-            if missing_apt:
-                deps_result = _install_packages(missing_apt)
-                if not deps_result.get('success'):
-                    result['message'] = deps_result.get('message', 'Dependency install failed')
-                    return result
-                deps_installed = True
-            if missing_pip and os.path.exists(requirements_path):
-                pip_result = _install_python_requirements(requirements_path)
-                if not pip_result.get('success'):
-                    result['message'] = pip_result.get('message', 'Python dependencies install failed')
-                    return result
-                deps_installed = True
-
-            result['updated_files'] = _sync_repo_update(repo_root)
-            if result['updated_files'] == 0:
-                result['message'] = 'Update failed: no files were applied'
-                return result
-
-        reset_result = None
-        if reset_settings:
-            reset_result = _reset_config_directory()
-            if not reset_result.get('success'):
-                result['message'] = reset_result.get('message', 'Reset settings failed')
-                return result
-
-        requires_reboot = deps_installed or bool(reset_settings)
-        if requires_reboot:
-            subprocess.Popen(
-                ['bash', '-c', "sleep 5 && sudo shutdown -r now 'Update from repo reboot'"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-        else:
-            run_command("sudo systemctl restart rpi-av-rtsp-recorder", timeout=20)
-            run_command("sudo systemctl restart rtsp-recorder", timeout=20)
-            run_command("sudo systemctl restart rtsp-watchdog", timeout=20)
-            run_command("sudo systemctl restart rpi-cam-onvif", timeout=20)
-
-            subprocess.Popen(
-                ['bash', '-c', "sleep 2 && sudo systemctl restart rpi-cam-webmanager"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
+        if not apply_result.get('success'):
+            result['message'] = apply_result.get('message', 'Update failed to start')
+            return result
 
         result['success'] = True
-        result['message'] = f'Update completed successfully (branch: {branch})'
-        result['requires_restart'] = not requires_reboot
-        result['latest_version'] = repo_version
+        result['message'] = apply_result.get('message', 'Update started')
+        result['requires_restart'] = True
+        result['latest_version'] = latest_version
+        result['device_type'] = update_info.get('device_type')
+        result['distribution'] = update_info.get('distribution')
         result['reset_settings'] = bool(reset_settings)
-        result['reset_result'] = reset_result
-        result['dependencies_installed'] = deps_installed
-        result['missing_apt_packages'] = missing_apt
-        result['missing_pip_packages'] = missing_pip
-        if dep_warnings:
-            result['warnings'] = dep_warnings
-        if requires_reboot:
-            result['message'] += ' (dependencies installed, rebooting)'
+        result['source'] = 'meeting'
+        if backup:
+            result['warnings'] = ['Backup not supported for Meeting updates']
     
     except Exception as e:
         result['message'] = str(e)

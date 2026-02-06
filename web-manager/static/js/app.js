@@ -34,6 +34,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     initRtspAuthStatus(); // Initialize RTSP auth status display
     loadCameraProfiles(); // Load camera profiles for scheduler
     
+    // Initialize storage bar widths from data attributes (avoids Jinja2 in style attributes)
+    document.querySelectorAll('.storage-bar-fill[data-percent]').forEach(el => {
+        el.style.width = el.dataset.percent + '%';
+    });
+    
     // Check URL for initial tab navigation
     const urlTab = getTabFromUrl();
     if (urlTab) {

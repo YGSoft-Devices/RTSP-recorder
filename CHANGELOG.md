@@ -7,6 +7,51 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.36.07] - Fix failover inverse wlan0→wlan1
+
+### Fixed (network_service.py v2.30.18)
+- **BUG : Failover inverse (wlan0→wlan1) ne fonctionnait pas**
+  - Symptôme : wlan1 tombe → wlan0 prend le relais (OK), mais quand wlan1 revient, il reste dormant et wlan0 reste actif
+  - Cause racine : Le failover déconnectait wlan0 AVANT de tenter de connecter wlan1
+    - Si `connect_interface('wlan1')` échouait → wlan0 déjà déconnecté → perte de connectivité momentanée
+    - Au cycle suivant, wlan0 se reconnecte et le problème se répète → wlan1 ne reprend jamais la main
+    - Le statut de wlan0 capturé en début de fonction devenait stale après la déconnexion
+  - Solution : Approche "connect-then-disconnect" (make-before-break)
+    - Quand wlan1 est déjà actif → disconnect wlan0 immédiatement (safe)
+    - Quand wlan1 doit être reconnecté → garder wlan0 actif pendant la tentative
+    - Ne déconnecter wlan0 QUE si wlan1 est connecté avec succès et a une IP
+    - Si wlan1 échoue → wlan0 reste intact, pas de perte de connectivité
+  - Bénéfice : Transition sans interruption (make-before-break), zéro perte de paquets
+
+---
+
+## [2.36.06] - Fix scheduler profils, failover IP statique, erreurs CSS
+
+### Fixed (camera_service.py v2.30.11)
+- **BUG : Scheduler profils pouvait mourir silencieusement**
+  - Cause : La boucle `profiles_scheduler_loop` n'avait aucun try/except - toute exception non gérée (détection caméra, lecture fichier, application profil) tuait le thread définitivement
+  - Symptôme : Le scheduler activé ne change plus de profil, thread mort sans log
+  - Solution : Wrap complet du corps de boucle en try/except avec logging, le scheduler survit aux erreurs et réessaie au cycle suivant
+  - Ajout : Logging détaillé des transitions de profils et erreurs
+  - Ajout : Sleep interruptible via `stop_event.wait()` au lieu de `time.sleep()` (arrêt propre)
+  - Ajout : Délai initial de 5s pour laisser les services se stabiliser au boot
+
+### Fixed (network_service.py v2.30.17)
+- **BUG : Failover WiFi n'appliquait pas l'IP statique sur interfaces déjà connectées**
+  - Cause : Quand wlan1/wlan0 était déjà connecté via profil NM sauvegardé (DHCP), le failover retournait `wlan1_active`/`wlan0_active` SANS vérifier si l'IP correspond à la config statique
+  - Scénario : Boot du device → wlan1 se connecte automatiquement en DHCP (ex: 192.168.1.50) → failover voit "connecté + a une IP" → retourne sans appliquer l'IP statique configurée (192.168.1.4)
+  - Solution : Nouvelle fonction `_ensure_static_ip_on_interface(interface, current_ip)` qui vérifie et corrige l'IP si nécessaire
+  - Appelée dans les code paths `wlan1_active` et `wlan0_active` du failover
+  - Compare l'IP actuelle à l'IP statique configurée dans wifi_failover.json
+  - N'applique que si ip_mode='static' ET l'IP ne correspond pas
+
+### Fixed (index.html v2.36.04, style.css, app.js)
+- **Correction erreurs CSS linter** (Jinja2 dans les attributs style)
+  - Ligne 88 : Barre de stockage - remplacé `style="width: {{ ... }}%"` par `data-percent="{{ ... }}"` + init JS
+  - Ligne 556 : Info VBR - remplacé `style="display: {% if ... %}block{% else %}none{% endif %}"` par condition Jinja sur l'attribut entier
+  - Mis à jour le sélecteur CSS `.storage-bar-fill` pour utiliser `[data-percent^="8"]` au lieu de `[style*="width: 8"]`
+  - Ajouté initialisation JS des barres de progression dans DOMContentLoaded
+
 ## [2.36.05] - Fix critique chargement configuration vidéo RTSP
 
 ### Fixed (rpi_av_rtsp_recorder.sh v2.15.2)

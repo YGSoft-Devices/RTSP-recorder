@@ -225,6 +225,10 @@ Autres fichiers:
 2. `wlan1` (USB Dongle) - Utilisé si eth0 absent/déconnecté
 3. `wlan0` (WiFi intégré) - Fallback si wlan1 indisponible
 
+**IP Commune (Partagée) :** Quand `ip_mode=static`, la même configuration IP est appliquée à l'interface WiFi active. Lors du failover, si l'interface déjà connectée a une IP différente (ex: DHCP d'un profil NM sauvegardé), le failover corrige automatiquement en appliquant l'IP statique configurée via `_ensure_static_ip_on_interface()` (v2.30.17).
+
+**Transition Make-Before-Break (v2.30.18) :** Le failover utilise une approche "make-before-break" pour les transitions wlan0→wlan1 : quand wlan1 redevient disponible, wlan0 reste actif pendant la tentative de connexion de wlan1. wlan0 n'est déconnecté qu'APRÈS confirmation que wlan1 est connecté avec une IP valide. Si wlan1 échoue, wlan0 reste intact (zéro perte de connectivité).
+
 **Note:** Le mot de passe `primary_password` peut rester vide si NetworkManager a déjà un profil sauvegardé pour ce SSID (ex: configuré via RPi Imager). L'interface web affichera "(enregistré)" au lieu de "Aucun mot de passe" si un profil NM existe.
 
 **Permissions requises:**
@@ -1139,7 +1143,7 @@ L'onglet **Vidéo** permet de configurer la source caméra, la résolution et le
 La section **Contrôles Caméra** permet d'ajuster les paramètres en temps réel (autofocus, exposition, balance des blancs, etc.) sans redémarrer le service.
 
 - **Bouton ghost-fix (CSI uniquement)** : corrige les oscillations d'image en désactivant AE/AWB et en recentrant la luminosité, puis sauvegarde les valeurs dans le profil.
-- **Scheduler de profils** : applique automatiquement le profil actif au démarrage et met en surbrillance le profil effectivement appliqué.
+- **Scheduler de profils** : applique automatiquement le profil actif au démarrage et met en surbrillance le profil effectivement appliqué. Le thread scheduler est protégé par try/except et survit aux erreurs (v2.30.11). Il log les transitions de profils et attend 5s au boot pour stabilisation.
 
 ### 9.3 API REST (résumé)
 

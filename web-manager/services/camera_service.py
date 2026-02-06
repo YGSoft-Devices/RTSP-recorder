@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Camera Service - Camera controls, profiles, and detection
-Version: 2.30.10
+Version: 2.30.11
 
 Changes in 2.30.4:
 - Added libcamera/CSI camera support (PiCam)
@@ -1190,44 +1190,70 @@ def _restart_rtsp_for_csi_overlay_if_needed():
 
 def profiles_scheduler_loop(stop_event=None, interval_sec=30):
     from .config_service import load_config
+    import logging
+    _logger = logging.getLogger('camera_service.scheduler')
+
+    # Small initial delay to let other services stabilize
+    time.sleep(5)
 
     while True:
         if stop_event and stop_event.is_set():
             break
 
-        config = load_config()
-        scheduler_enabled = config.get('CAMERA_PROFILES_ENABLED', 'no') == 'yes'
-        scheduler_state['enabled'] = scheduler_enabled
+        try:
+            config = load_config()
+            scheduler_enabled = config.get('CAMERA_PROFILES_ENABLED', 'no') == 'yes'
+            scheduler_state['enabled'] = scheduler_enabled
 
-        profiles_data = load_camera_profiles()
-        profiles = profiles_data.get('profiles', {})
-        active_profile = get_active_profile_by_schedule(profiles)
+            profiles_data = load_camera_profiles()
+            profiles = profiles_data.get('profiles', {})
+            active_profile = get_active_profile_by_schedule(profiles)
 
-        with _scheduler_lock:
-            scheduler_state['last_check'] = datetime.now().isoformat()
+            with _scheduler_lock:
+                scheduler_state['last_check'] = datetime.now().isoformat()
 
-            if not scheduler_enabled:
-                scheduler_state['current_schedule'] = None
-                save_scheduler_state()
-            else:
-                if active_profile and active_profile != scheduler_state.get('current_schedule'):
-                    cam_type = detect_camera_type()
-                    if cam_type['type'] == 'libcamera':
-                        profile = profiles.get(active_profile, {})
-                        result = _apply_csi_profile(active_profile, profile)
-                    else:
-                        result = apply_camera_profile_auto(active_profile)
-
-                    if result.get('success'):
-                        _restart_rtsp_for_csi_overlay_if_needed()
-                        scheduler_state['current_schedule'] = active_profile
-                        set_current_profile(active_profile)
-                        save_scheduler_state()
-                elif not active_profile:
+                if not scheduler_enabled:
+                    if scheduler_state.get('current_schedule') is not None:
+                        _logger.info("[Scheduler] Disabled, clearing current schedule")
                     scheduler_state['current_schedule'] = None
                     save_scheduler_state()
+                else:
+                    if active_profile and active_profile != scheduler_state.get('current_schedule'):
+                        _logger.info(f"[Scheduler] Applying profile '{active_profile}' (was: {scheduler_state.get('current_schedule')})")
+                        try:
+                            cam_type = detect_camera_type()
+                            if cam_type['type'] == 'libcamera':
+                                profile = profiles.get(active_profile, {})
+                                result = _apply_csi_profile(active_profile, profile)
+                            else:
+                                result = apply_camera_profile_auto(active_profile)
 
-        time.sleep(interval_sec)
+                            if result.get('success'):
+                                _restart_rtsp_for_csi_overlay_if_needed()
+                                scheduler_state['current_schedule'] = active_profile
+                                set_current_profile(active_profile)
+                                save_scheduler_state()
+                                _logger.info(f"[Scheduler] Profile '{active_profile}' applied successfully")
+                            else:
+                                _logger.warning(f"[Scheduler] Failed to apply profile '{active_profile}': {result}")
+                        except Exception as apply_err:
+                            _logger.error(f"[Scheduler] Error applying profile '{active_profile}': {apply_err}")
+                    elif not active_profile:
+                        if scheduler_state.get('current_schedule') is not None:
+                            _logger.info("[Scheduler] No active profile for current time, clearing schedule")
+                        scheduler_state['current_schedule'] = None
+                        save_scheduler_state()
+
+        except Exception as e:
+            _logger.error(f"[Scheduler] Loop error (will retry in {interval_sec}s): {e}")
+
+        # Interruptible sleep
+        if stop_event:
+            stop_event.wait(interval_sec)
+            if stop_event.is_set():
+                break
+        else:
+            time.sleep(interval_sec)
 
 def apply_active_scheduled_profile(force: bool = False) -> dict:
     """

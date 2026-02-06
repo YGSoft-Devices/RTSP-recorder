@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Updates Manager Tool - Documentation Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        header {
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        header h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .role-card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+        .role-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+        }
+        .role-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        .role-card p {
+            color: #666;
+            margin-bottom: 15px;
+        }
+        .role-card a {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            transition: background 0.2s;
+        }
+        .role-card a:hover {
+            background: #764ba2;
+        }
+        .docs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .doc-card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .doc-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+        .doc-meta {
+            display: flex;
+            gap: 15px;
+            margin: 10px 0;
+            font-size: 0.9em;
+            color: #999;
+        }
+        .doc-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .doc-card p {
+            color: #666;
+            margin: 10px 0;
+            font-size: 0.95em;
+        }
+        .doc-card ul {
+            list-style: none;
+            margin: 10px 0;
+            padding-left: 0;
+        }
+        .doc-card li {
+            color: #666;
+            padding: 3px 0;
+            font-size: 0.9em;
+        }
+        .doc-card li:before {
+            content: "✓ ";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .doc-link {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        .doc-link:hover {
+            background: #764ba2;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background: #f5f5f5;
+            color: #667eea;
+            font-weight: bold;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .stat-label {
+            font-size: 0.95em;
+            opacity: 0.9;
+        }
+        footer {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 30px;
+        }
+        .badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .emoji {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 Updates Manager Tool</h1>
+            <p>Complete documentation for developers and integrators</p>
+            <p style="font-size: 0.9em; color: #999; margin-top: 10px;">Version 1.0.0 | Last Updated: 2026-02-04</p>
+        </header>
+
+        <!-- Quick Stats -->
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">Documentation Files</div>
+                <div class="stat-number">7</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Total Content</div>
+                <div class="stat-number">130+ KB</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Sections</div>
+                <div class="stat-number">50+</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Read Time</div>
+                <div class="stat-number">3h</div>
+            </div>
+        </div>
+
+        <!-- Choose Your Role -->
+        <div class="section">
+            <h2><span class="emoji">🎯</span>Choose Your Path</h2>
+            <div class="quick-links">
+                <div class="role-card">
+                    <h3>👨‍💻 Developer</h3>
+                    <p>Publishing updates and managing deployments</p>
+                    <ul style="list-style: none; padding: 0; margin-bottom: 15px;">
+                        <li>✓ Publish updates via CLI</li>
+                        <li>✓ Verify publications</li>
+                        <li>✓ Check device status</li>
+                    </ul>
+                    <a href="README.md">Get Started →</a>
+                </div>
+                <div class="role-card">
+                    <h3>🖥️ System Admin</h3>
+                    <p>Setting up and maintaining the backend</p>
+                    <ul style="list-style: none; padding: 0; margin-bottom: 15px;">
+                        <li>✓ Server installation</li>
+                        <li>✓ Database configuration</li>
+                        <li>✓ API security</li>
+                    </ul>
+                    <a href="API_SERVER_REFERENCE.md">View API Ref →</a>
+                </div>
+                <div class="role-card">
+                    <h3>🚀 DevOps Engineer</h3>
+                    <p>CI/CD integration and automation</p>
+                    <ul style="list-style: none; padding: 0; margin-bottom: 15px;">
+                        <li>✓ GitLab/GitHub setup</li>
+                        <li>✓ Canary deployments</li>
+                        <li>✓ Monitoring & alerts</li>
+                    </ul>
+                    <a href="INTEGRATION_GUIDE.md">Read Guide →</a>
+                </div>
+                <div class="role-card">
+                    <h3>🏢 Integrator</h3>
+                    <p>Deploying to multiple devices</p>
+                    <ul style="list-style: none; padding: 0; margin-bottom: 15px;">
+                        <li>✓ Bulk provisioning</li>
+                        <li>✓ Staged rollouts</li>
+                        <li>✓ Fleet management</li>
+                    </ul>
+                    <a href="INTEGRATION_GUIDE.md">View Guide →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documentation Files -->
+        <div class="section">
+            <h2><span class="emoji">📚</span>Documentation Files</h2>
+            <div class="docs-grid">
+                <!-- README -->
+                <div class="doc-card">
+                    <h3>📖 README.md</h3>
+                    <div class="doc-meta">
+                        <span>📏 12 KB</span>
+                        <span>⏱️ 10 min</span>
+                    </div>
+                    <p>Quick orientation and getting started guide.</p>
+                    <ul>
+                        <li>Feature overview</li>
+                        <li>Quick start (5 min)</li>
+                        <li>Common tasks</li>
+                        <li>Troubleshooting</li>
+                    </ul>
+                    <a href="README.md" class="doc-link">View Document →</a>
+                </div>
+
+                <!-- DOCUMENTATION -->
+                <div class="doc-card">
+                    <h3>📖 DOCUMENTATION.md</h3>
+                    <div class="doc-meta">
+                        <span>📏 30 KB</span>
+                        <span>⏱️ 45 min</span>
+                    </div>
+                    <p>Comprehensive user guide with all features.</p>
+                    <ul>
+                        <li>Complete CLI reference</li>
+                        <li>GUI navigation</li>
+                        <li>Publishing workflow</li>
+                        <li>Development guide</li>
+                    </ul>
+                    <a href="DOCUMENTATION.md" class="doc-link">View Document →</a>
+                </div>
+
+                <!-- API -->
+                <div class="doc-card">
+                    <h3>🔌 API_SERVER_REFERENCE.md</h3>
+                    <div class="doc-meta">
+                        <span>📏 25 KB</span>
+                        <span>⏱️ 30 min</span>
+                    </div>
+                    <p>Backend API specification and installation.</p>
+                    <ul>
+                        <li>Server setup steps</li>
+                        <li>Authentication flow</li>
+                        <li>7 REST endpoints</li>
+                        <li>curl examples</li>
+                    </ul>
+                    <a href="API_SERVER_REFERENCE.md" class="doc-link">View Document →</a>
+                </div>
+
+                <!-- INTEGRATION -->
+                <div class="doc-card">
+                    <h3>🚀 INTEGRATION_GUIDE.md</h3>
+                    <div class="doc-meta">
+                        <span>📏 28 KB</span>
+                        <span>⏱️ 45 min</span>
+                    </div>
+                    <p>CI/CD integration and deployment automation.</p>
+                    <ul>
+                        <li>GitLab/GitHub config</li>
+                        <li>Device provisioning</li>
+                        <li>Canary deployments</li>
+                        <li>Rollback procedures</li>
+                    </ul>
+                    <a href="INTEGRATION_GUIDE.md" class="doc-link">View Document →</a>
+                </div>
+
+                <!-- QUICK REFERENCE -->
+                <div class="doc-card">
+                    <h3>⚡ QUICK_REFERENCE.md</h3>
+                    <div class="doc-meta">
+                        <span>📏 8 KB</span>
+                        <span>⏱️ 5 min</span>
+                    </div>
+                    <p>Fast lookup for common tasks and commands.</p>
+                    <ul>
+                        <li>Copy-paste commands</li>
+                        <li>Checklists</li>
+                        <li>Error codes</li>
+                        <li>Pro tips</li>
+                    </ul>
+                    <a href="QUICK_REFERENCE.md" class="doc-link">Bookmark This →</a>
+                </div>
+
+                <!-- GLOSSARY -->
+                <div class="doc-card">
+                    <h3>📖 GLOSSARY.md</h3>
+                    <div class="doc-meta">
+                        <span>📏 18 KB</span>
+                        <span>⏱️ 25 min</span>
+                    </div>
+                    <p>Complete terminology and concepts reference.</p>
+                    <ul>
+                        <li>Core concepts</li>
+                        <li>Database terms</li>
+                        <li>API concepts</li>
+                        <li>Error codes</li>
+                    </ul>
+                    <a href="GLOSSARY.md" class="doc-link">View Document →</a>
+                </div>
+
+                <!-- INDEX -->
+                <div class="doc-card">
+                    <h3>🗺️ DOCS_INDEX.md</h3>
+                    <div class="doc-meta">
+                        <span>📏 16 KB</span>
+                        <span>⏱️ 10 min</span>
+                    </div>
+                    <p>Navigation hub for all documentation.</p>
+                    <ul>
+                        <li>Topic navigation</li>
+                        <li>Learning paths</li>
+                        <li>Command lookup</li>
+                        <li>Error solutions</li>
+                    </ul>
+                    <a href="DOCS_INDEX.md" class="doc-link">View Document →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Commands Table -->
+        <div class="section">
+            <h2><span class="emoji">⚡</span>Quick Commands</h2>
+            <table>
+                <tr>
+                    <th>Command</th>
+                    <th>Purpose</th>
+                    <th>Where to Learn</th>
+                </tr>
+                <tr>
+                    <td><code>.\Start-GUI.ps1</code></td>
+                    <td>Launch visual interface</td>
+                    <td><a href="README.md#-quick-start-5-minutes">README</a></td>
+                </tr>
+                <tr>
+                    <td><code>.\Run-CLI.ps1 publish ...</code></td>
+                    <td>Publish update from command line</td>
+                    <td><a href="DOCUMENTATION.md#2-publish---publier-une-mise-à-jour">Docs</a></td>
+                </tr>
+                <tr>
+                    <td><code>.\Run-CLI.ps1 verify ...</code></td>
+                    <td>Verify published update</td>
+                    <td><a href="DOCUMENTATION.md#3-verify---vérifier-une-publication">Docs</a></td>
+                </tr>
+                <tr>
+                    <td><code>.\Run-CLI.ps1 fleet</code></td>
+                    <td>Check device fleet status</td>
+                    <td><a href="DOCUMENTATION.md#4-fleet---état-de-la-flotte-de-devices">Docs</a></td>
+                </tr>
+                <tr>
+                    <td><code>.\Run-CLI.ps1 history</code></td>
+                    <td>View update history</td>
+                    <td><a href="DOCUMENTATION.md#5-history---historique-des-mises-à-jour">Docs</a></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Learning Paths -->
+        <div class="section">
+            <h2><span class="emoji">🎓</span>Learning Paths</h2>
+            <table>
+                <tr>
+                    <th>Goal</th>
+                    <th>Time</th>
+                    <th>Path</th>
+                </tr>
+                <tr>
+                    <td>Publish my first update</td>
+                    <td>15 min</td>
+                    <td><a href="README.md">README</a> → <a href="DOCUMENTATION.md#workflow-de-publication">Workflow</a> → Try CLI</td>
+                </tr>
+                <tr>
+                    <td>Learn all features</td>
+                    <td>3 hours</td>
+                    <td>Read all docs in order (see <a href="DOCS_INDEX.md">Index</a>)</td>
+                </tr>
+                <tr>
+                    <td>Set up backend</td>
+                    <td>1 hour</td>
+                    <td><a href="API_SERVER_REFERENCE.md#installation-côté-serveur">API Ref Installation</a></td>
+                </tr>
+                <tr>
+                    <td>Integrate CI/CD</td>
+                    <td>45 min</td>
+                    <td><a href="INTEGRATION_GUIDE.md#intégration-cicd">Integration Guide</a></td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Getting Help -->
+        <div class="section">
+            <h2><span class="emoji">🆘</span>Getting Help</h2>
+            <ul style="list-style: none; padding: 0;">
+                <li style="padding: 10px 0;">
+                    <strong>🔍 Search by topic:</strong> 
+                    Use <a href="DOCS_INDEX.md#-quick-navigation">DOCS_INDEX.md Quick Navigation</a>
+                </li>
+                <li style="padding: 10px 0;">
+                    <strong>📖 Understand terminology:</strong> 
+                    Check <a href="GLOSSARY.md">GLOSSARY.md</a>
+                </li>
+                <li style="padding: 10px 0;">
+                    <strong>🐛 Troubleshoot issues:</strong> 
+                    See <a href="DOCUMENTATION.md#troubleshooting">Troubleshooting section</a> or 
+                    <a href="QUICK_REFERENCE.md#-instant-troubleshooting">Quick Reference</a>
+                </li>
+                <li style="padding: 10px 0;">
+                    <strong>📋 Use checklists:</strong> 
+                    Copy from <a href="QUICK_REFERENCE.md">QUICK_REFERENCE.md</a>
+                </li>
+                <li style="padding: 10px 0;">
+                    <strong>📧 Contact support:</strong> 
+                    admin@meeting.ygsoft.fr
+                </li>
+            </ul>
+        </div>
+
+        <footer>
+            <p><strong>Updates Manager Tool Documentation Suite v1.0.0</strong></p>
+            <p>Created: 2026-02-04 | All documentation current and tested</p>
+            <p style="margin-top: 15px; font-size: 0.9em;">
+                <span class="badge">7 Files</span>
+                <span class="badge">130+ KB</span>
+                <span class="badge">50+ Sections</span>
+                <span class="badge">Production Ready</span>
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

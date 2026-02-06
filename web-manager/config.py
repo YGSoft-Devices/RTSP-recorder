@@ -30,6 +30,14 @@ def _read_version():
 APP_VERSION = _read_version()
 GITHUB_REPO = 'YGSoft-Devices/RTSP-recorder'
 
+# ==========================================================================
+# Updates (Meeting server)
+# ==========================================================================
+MEETING_UPDATES_BASE_URL = os.environ.get('MEETING_UPDATES_BASE_URL', 'https://meeting.ygsoft.fr')
+UPDATE_DEVICE_TYPE = os.environ.get('UPDATE_DEVICE_TYPE', 'RTSP-Recorder')
+UPDATE_DISTRIBUTION = os.environ.get('UPDATE_DISTRIBUTION', '232')
+UPDATE_CHANNEL = os.environ.get('UPDATE_CHANNEL', 'default')
+
 # ============================================================================
 # File Paths
 # ============================================================================

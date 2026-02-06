@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Network Service - Network interfaces, WiFi, and AP mode management
-Version: 2.30.16
+Version: 2.30.18
 
 Changes in 2.30.16:
 - Added get_public_ip() for Meeting API heartbeat v1.8.0+ ip_public field
@@ -1412,6 +1412,49 @@ def connect_interface(interface):
         logger.error(f"[Failover] Error connecting {interface}: {e}")
         return False
 
+def _ensure_static_ip_on_interface(interface, current_ip):
+    """
+    Ensure the configured static IP is applied to an already-connected interface.
+    
+    When an interface is already connected (e.g., via NM saved profile with DHCP),
+    but the failover config specifies ip_mode='static', the current IP may not match.
+    This function checks and corrects that.
+    
+    Args:
+        interface: Network interface name (wlan0, wlan1)
+        current_ip: The current IP address of the interface
+    
+    Returns:
+        bool: True if static IP was applied or already correct, False on error
+    """
+    try:
+        config = get_wifi_failover_config()
+        ip_mode = config.get('ip_mode', 'dhcp')
+        
+        if ip_mode != 'static':
+            return True  # DHCP mode, nothing to do
+        
+        static_ip = config.get('static_ip', '')
+        if not static_ip:
+            return True  # No static IP configured
+        
+        # Extract just the IP part (without /prefix) for comparison
+        configured_ip = static_ip.split('/')[0]
+        
+        if current_ip == configured_ip:
+            return True  # IP already matches
+        
+        # IP mismatch - apply configured static IP
+        gateway = config.get('gateway', '')
+        dns = config.get('dns', '8.8.8.8')
+        
+        logger.info(f"[Failover] {interface} has IP {current_ip} but static IP {configured_ip} is configured, applying...")
+        return _apply_static_ip_to_interface(interface, static_ip, gateway, dns)
+        
+    except Exception as e:
+        logger.error(f"[Failover] Error ensuring static IP on {interface}: {e}")
+        return False
+
 def _apply_static_ip_to_interface(interface, static_ip, gateway, dns):
     """
     Apply static IP configuration to an interface via NetworkManager.
@@ -1578,15 +1621,17 @@ def _manage_network_failover_internal():
         }
     
     elif wlan1_status['present']:
-        # eth0 is down, try wlan1
+        # eth0 is down, try wlan1 (higher priority than wlan0)
         target_interface = 'wlan1'
         
-        # Disconnect wlan0 first (lower priority)
-        if wlan0_status['present'] and wlan0_status['connected']:
-            logger.info("[Failover] Disconnecting wlan0 (lower priority than wlan1)")
-            disconnect_interface('wlan0')
-        
         if wlan1_status['connected'] and wlan1_status['has_ip']:
+            # wlan1 is already active and working
+            # NOW safe to disconnect lower-priority wlan0
+            if wlan0_status['present'] and wlan0_status['connected']:
+                logger.info("[Failover] wlan1 active, disconnecting wlan0 (lower priority)")
+                disconnect_interface('wlan0')
+            # Ensure static IP is applied if configured (wlan1 may have DHCP from NM saved profile)
+            _ensure_static_ip_on_interface('wlan1', wlan1_status['ip'])
             logger.info(f"[Failover] wlan1 is active ({wlan1_status['ip']})")
             return {
                 'active_interface': 'wlan1',
@@ -1594,13 +1639,19 @@ def _manage_network_failover_internal():
                 'message': f'wlan1 active ({wlan1_status["ip"]})'
             }
         else:
-            # Try to connect wlan1
-            logger.info("[Failover] eth0 down, connecting wlan1...")
+            # wlan1 needs to be connected.
+            # IMPORTANT: Do NOT disconnect wlan0 yet! Keep connectivity as fallback
+            # during the transition attempt.
+            logger.info("[Failover] eth0 down, trying to connect wlan1 (keeping wlan0 as fallback)...")
             if connect_interface('wlan1'):
                 # Wait a bit for IP
                 time.sleep(3)
                 wlan1_status = get_interface_connection_status('wlan1')
                 if wlan1_status['has_ip']:
+                    # wlan1 successfully connected! NOW safe to disconnect wlan0
+                    if wlan0_status['present'] and wlan0_status['connected']:
+                        logger.info("[Failover] wlan1 connected, disconnecting wlan0")
+                        disconnect_interface('wlan0')
                     action = 'failover_to_wlan1'
                     _trigger_heartbeat_on_failover(action)
                     return {
@@ -1609,12 +1660,14 @@ def _manage_network_failover_internal():
                         'message': f'Failover to wlan1 ({wlan1_status["ip"]})'
                     }
             
-            # wlan1 failed, fall through to wlan0
-            logger.warning("[Failover] wlan1 failed to connect, trying wlan0")
+            # wlan1 failed to connect - do NOT touch wlan0, fall through gracefully
+            logger.warning("[Failover] wlan1 failed to connect, keeping wlan0 active")
     
     # Last resort: wlan0
     if wlan0_status['present']:
         if wlan0_status['connected'] and wlan0_status['has_ip']:
+            # Ensure static IP is applied if configured (wlan0 may have DHCP from NM saved profile)
+            _ensure_static_ip_on_interface('wlan0', wlan0_status['ip'])
             logger.info(f"[Failover] wlan0 is active ({wlan0_status['ip']})")
             return {
                 'active_interface': 'wlan0',
