@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Meeting Service - Meeting API integration and heartbeat
-Version: 2.30.17
+Version: 2.30.18
 """
 
 import os
@@ -809,14 +809,14 @@ def validate_credentials(api_url, device_key, token_code):
             return {
                 'success': False,
                 'valid': False,
-                'message': f'HTTP error {e.code}: {e.reason}'
+                'message': _t('ui.meeting.http_error', code=e.code, reason=e.reason)
             }
     
     except urllib.error.URLError as e:
         return {
             'success': False,
             'valid': False,
-            'message': f'Connection error: {e.reason}'
+            'message': _t('ui.meeting.connection_error', reason=e.reason)
         }
     
     except Exception as e:
@@ -850,7 +850,7 @@ def provision_device(api_url, device_key, token_code):
     if not validation.get('valid'):
         return {
             'success': False,
-            'message': validation.get('message', 'Invalid credentials')
+            'message': validation.get('message', _t('ui.meeting.invalid_credentials'))
         }
     
     device = validation.get('device', {})
@@ -934,14 +934,14 @@ def provision_device(api_url, device_key, token_code):
             pass
         return {
             'success': False,
-            'message': f'Erreur lors de la consommation du token: HTTP {e.code}',
+            'message': _t('ui.meeting.provision_token_error', code=e.code),
             'details': error_body
         }
     
     except Exception as e:
         return {
             'success': False,
-            'message': f'Erreur de provisioning: {str(e)}'
+            'message': _t('ui.meeting.provision_failed', error=str(e))
         }
 
 def _save_to_config_env(api_url, device_key, token_code):

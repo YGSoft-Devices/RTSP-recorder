@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.33.07
+Version: 2.33.10
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -707,6 +707,26 @@ Le système gère automatiquement la priorité entre Ethernet et WiFi:
 ### 9.2 Fichiers gérés
 - charge/sauvegarde la config RTSP dans `/etc/rpi-cam/config.env`
 - gère des JSON système (`wifi_failover.json`, `camera_profiles.json`, `csi_tuning.json`, `onvif.conf`, `ap_mode.json`, `locked_recordings.json`)
+
+### 9.2.1 Internationalisation (i18n)
+
+Le Web Manager est multilingue via un système i18n léger (sans dépendances).
+
+**Emplacement des traductions :**
+- `web-manager/i18n/fr.json`
+- `web-manager/i18n/en.json`
+
+**Convention :** clés plates de type `ui.section.element`.
+Exemple : `ui.actions.save` → "Sauvegarder"
+
+**Sélection de langue (priorité) :**
+1. Query param `?lang=fr`
+2. Cookie `lang`
+3. Variable d’environnement `RTSP_UI_LANG`
+4. Config `UI_LANG` dans `config.env`
+5. Défaut : `fr`
+
+**Règle :** toute chaîne UI doit passer par `t('...')` (backend) ou `window.t('...')` (frontend).
 
 ### 9.2.0 Contrôles caméra CSI (Picamera2) - NOUVEAU v2.30.57
 

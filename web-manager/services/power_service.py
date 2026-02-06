@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Power Service - LED, GPU memory, HDMI, and power management
-Version: 2.30.7
+Version: 2.30.8
 """
 
 import os
@@ -469,7 +469,7 @@ def set_gpu_mem(mem_mb):
     if mem_mb not in valid_values:
         return {
             'success': False,
-            'message': f'Invalid GPU memory value. Use: {valid_values}',
+            'message': _t('ui.power.gpu_memory_invalid', values=valid_values),
             'requires_reboot': False
         }
     
@@ -499,7 +499,7 @@ def set_gpu_mem(mem_mb):
         
         return {
             'success': True,
-            'message': f'GPU memory set to {mem_mb}MB. Reboot required.',
+            'message': _t('ui.power.gpu_memory_set_reboot', value=mem_mb),
             'requires_reboot': True
         }
     
@@ -564,12 +564,12 @@ def configure_hdmi(enabled):
     if result['success']:
         return {
             'success': True,
-            'message': f"HDMI {'enabled' if enabled else 'disabled'}"
+            'message': _t('ui.power.hdmi_enabled' if enabled else 'ui.power.hdmi_disabled')
         }
     else:
         return {
             'success': False,
-            'message': result['stderr'] or 'Failed to configure HDMI'
+            'message': result['stderr'] or _t('ui.power.hdmi_config_failed')
         }
 
 # ============================================================================
@@ -701,7 +701,7 @@ def configure_power_boot(settings):
         
         return {
             'success': True,
-            'message': f'Power settings updated: {", ".join(changes)}',
+            'message': _t('ui.power.settings_updated', changes=", ".join(changes)),
             'requires_reboot': True
         }
     
@@ -1172,7 +1172,7 @@ def reboot_system(delay=0):
         
         return {
             'success': True,
-            'message': f'System will reboot in {delay} seconds' if delay else 'Rebooting now...'
+            'message': _t('ui.power.reboot_in_seconds', seconds=delay) if delay else _t('ui.power.reboot_now')
         }
     except Exception as e:
         return {
@@ -1207,7 +1207,7 @@ def shutdown_system(delay=0):
         
         return {
             'success': True,
-            'message': f'System will shutdown in {delay} seconds' if delay else 'Shutting down now...'
+            'message': _t('ui.power.shutdown_in_seconds', seconds=delay) if delay else _t('ui.power.shutdown_now')
         }
     except Exception as e:
         return {

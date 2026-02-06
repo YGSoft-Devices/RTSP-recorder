@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 System Service - Diagnostics, logs, updates, and system management
-Version: 2.30.28
+Version: 2.30.29
 """
 
 import os
@@ -595,7 +595,11 @@ def _reset_config_directory() -> dict:
     try:
         shutil.move(config_dir, backup_dir)
         os.makedirs(config_dir, exist_ok=True)
-        return {'success': True, 'message': f"Config reset, backup: {backup_dir}", 'backup_dir': backup_dir}
+        return {
+            'success': True,
+            'message': _t('ui.system.config_reset_backup', path=backup_dir),
+            'backup_dir': backup_dir
+        }
     except Exception as e:
         return {'success': False, 'message': str(e)}
 def _normalize_required_packages(required_packages) -> list:
@@ -912,7 +916,10 @@ def _apply_update_package(archive_path, allow_same_version=False, install_deps=F
     if missing_apt:
         deps_result = _install_packages(missing_apt)
         if not deps_result.get('success'):
-            return {'success': False, 'message': deps_result.get('message', 'Dependency install failed')}
+            return {
+                'success': False,
+                'message': deps_result.get('message', _t('ui.system.deps_install_failed'))
+            }
         deps_installed = True
 
     services = inspect_result.get('restart_services') or ['rpi-cam-webmanager']
@@ -948,7 +955,10 @@ def _apply_update_package(archive_path, allow_same_version=False, install_deps=F
                 requirements_path = os.path.join(UPDATE_WEB_INSTALL_DIR, requirements_file)
                 pip_result = _install_python_requirements(requirements_path)
                 if not pip_result.get('success'):
-                    return {'success': False, 'message': pip_result.get('message', 'Python dependencies install failed')}
+                    return {
+                        'success': False,
+                        'message': pip_result.get('message', _t('ui.system.python_deps_install_failed'))
+                    }
                 deps_installed = True
 
         reset_result = None
@@ -1093,7 +1103,7 @@ def create_config_backup(include_logs=False):
     if not os.path.isdir(config_dir):
         return {
             'success': False,
-            'message': f"Config directory not found: {config_dir}"
+            'message': _t('ui.system.config_dir_not_found', path=config_dir)
         }
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -1231,7 +1241,7 @@ def restore_config_backup(archive_path):
             if not os.path.isdir(source_root):
                 return {
                     'success': False,
-                    'message': f"Config directory not found in backup: {config_dir_archive}"
+                    'message': _t('ui.system.config_dir_not_found_in_backup', path=config_dir_archive)
                 }
 
             os.makedirs(config_dir, exist_ok=True)
@@ -1323,7 +1333,7 @@ def test_snmp_config(enabled: bool, host: str, port: int) -> dict:
         import socket
         addrs = socket.getaddrinfo(host, port_int, proto=socket.IPPROTO_UDP)
     except Exception as e:
-        return {'success': False, 'message': f"DNS/resolve impossible: {e}"}
+        return {'success': False, 'message': _t('ui.system.dns_resolve_failed', error=str(e))}
 
     # Best-effort UDP "connect" + send to validate reachability (no ACK expected)
     resolved = []
@@ -1763,13 +1773,13 @@ def perform_update(backup=True, force=False, reset_settings=False):
             if missing_apt:
                 deps_result = _install_packages(missing_apt)
                 if not deps_result.get('success'):
-                    result['message'] = deps_result.get('message', 'Dependency install failed')
+                    result['message'] = deps_result.get('message', _t('ui.system.deps_install_failed'))
                     return result
                 deps_installed = True
             if missing_pip and os.path.exists(requirements_path):
                 pip_result = _install_python_requirements(requirements_path)
                 if not pip_result.get('success'):
-                    result['message'] = pip_result.get('message', 'Python dependencies install failed')
+                    result['message'] = pip_result.get('message', _t('ui.system.python_deps_install_failed'))
                     return result
                 deps_installed = True
 
@@ -2049,7 +2059,7 @@ def restart_service(service_name):
     
     return {
         'success': result['success'],
-        'message': f'Service {service_name} restarted' if result['success'] else result['stderr']
+        'message': _t('ui.system.service_restarted', service=service_name) if result['success'] else result['stderr']
     }
 
 def restart_all_services():
@@ -2119,7 +2129,7 @@ def reboot_system(delay=0):
     except Exception as e:
         return {
             'success': False,
-            'message': f'Erreur: {str(e)}'
+            'message': _t('ui.errors.with_message', message=str(e))
         }
 
 def shutdown_system(delay=0):
@@ -2143,7 +2153,7 @@ def shutdown_system(delay=0):
         if result['success']:
             return {
                 'success': True,
-                'message': f'Arrêt en cours{" dans " + str(delay) + "s" if delay > 0 else ""}'
+                'message': _t('ui.power.shutdown_in_seconds', seconds=delay) if delay > 0 else _t('ui.power.shutdown_now')
             }
         else:
             return {
@@ -2153,7 +2163,7 @@ def shutdown_system(delay=0):
     except Exception as e:
         return {
             'success': False,
-            'message': f'Erreur: {str(e)}'
+            'message': _t('ui.errors.with_message', message=str(e))
         }
 
 # ============================================================================

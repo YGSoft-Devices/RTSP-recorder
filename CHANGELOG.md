@@ -7,6 +7,48 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.33.10] - Template i18n Cleanup + Windows Tests
+
+### Ajouts
+- **web-manager/i18n/en.json**, **web-manager/i18n/fr.json**
+  - Clés i18n pour SSID, commande ffmpeg d’exemple, commandes firmware, symbole de fermeture.
+
+### Modifications
+- **web-manager/templates/index.html**
+  - Remplacement des libellés hardcodés (SSID, Device Key, commandes) par clés i18n.
+  - Symboles de fermeture des modales via i18n.
+- **tests/test_i18n_service.py**
+  - Stub `fcntl` sous Windows pour éviter l’échec de collecte.
+
+---
+
+## [2.33.09] - CSI UI i18n Cleanup
+
+### Modifications
+- **web-manager/static/js/modules/camera.js**
+  - Remplacement des libellés CSI restants par des clés i18n existantes.
+  - Actions "Rafraîchir" / "Réinitialiser" alignées sur i18n.
+
+---
+
+## [2.33.08] - I18n System Hardening
+
+### Ajouts
+- **web-manager/blueprints/i18n_bp.py**
+  - Endpoints i18n: languages, language, translations.
+- **docs/I18N.md**, **docs/DOCUMENTATION_COMPLETE.md**
+  - Documentation complète du système i18n (clés, sélection de langue, tests).
+- **tests/test_i18n_service.py**, **tests/test_i18n_static.py**
+  - Tests i18n (fallback, interpolation, JSON invalide) + checker statique UI.
+
+### Modifications
+- **web-manager/services/**
+  - Messages API user-facing alignés sur les clés i18n.
+- **web-manager/i18n/en.json**, **web-manager/i18n/fr.json**
+  - Nouvelles clés i18n pour services (watchdog, power, meeting, system, camera).
+
+---
+
 ## [2.33.06] - CSI Profiles + Overlay
 
 ### Corrections

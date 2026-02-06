@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Watchdog Service - RTSP service monitoring and WiFi failover
-Version: 2.30.7
+Version: 2.30.8
 
 Changelog:
   - 2.30.6: Fix health check to detect CSI mode (python3 rpi_csi_rtsp_server.py)
@@ -88,7 +88,7 @@ def check_camera_available():
         return {
             'available': True,
             'device': device,
-            'message': f'Camera found at {device}'
+            'message': _t('ui.watchdog.camera_found', device=device)
         }
     else:
         return {
@@ -146,13 +146,13 @@ def check_rtsp_stream_health(rtsp_url=None, timeout=5):
         if process_check['success'] and 'OK' in process_check.get('stdout', ''):
             return {
                 'healthy': True,
-                'message': f'RTSP server listening on port {rtsp_port}',
+                'message': _t('ui.watchdog.rtsp_port_listening', port=rtsp_port),
                 'latency': round(latency, 3)
             }
     
     return {
         'healthy': False,
-        'message': f'RTSP port {rtsp_port} not responding',
+        'message': _t('ui.watchdog.rtsp_port_not_responding', port=rtsp_port),
         'latency': round(latency, 3)
     }
 
@@ -178,16 +178,16 @@ def check_rtsp_service_health():
     # Determine overall health
     if not health['camera']['available']:
         health['overall'] = 'error'
-        health['message'] = 'Camera not available'
+        health['message'] = _t('ui.watchdog.overall.camera_unavailable')
     elif not health['service']['active']:
         health['overall'] = 'warning'
-        health['message'] = 'Service not running'
+        health['message'] = _t('ui.watchdog.overall.service_not_running')
     elif not health['stream']['healthy']:
         health['overall'] = 'warning'
-        health['message'] = 'Stream not accessible'
+        health['message'] = _t('ui.watchdog.overall.stream_not_accessible')
     else:
         health['overall'] = 'healthy'
-        health['message'] = 'All systems operational'
+        health['message'] = _t('ui.watchdog.overall.all_ok')
     
     return health
 
@@ -239,12 +239,12 @@ def restart_rtsp_service(reason='manual'):
     if start_result['success']:
         return {
             'success': True,
-            'message': f'RTSP service restarted ({reason})'
+            'message': _t('ui.watchdog.rtsp.restarted_reason', reason=reason)
         }
     else:
         return {
             'success': False,
-            'message': f"Failed to restart: {start_result['message']}"
+            'message': _t('ui.watchdog.rtsp.restart_failed', message=start_result.get('message'))
         }
 
 def recover_camera():
@@ -266,7 +266,7 @@ def recover_camera():
     if camera['available']:
         return {
             'success': True,
-            'message': f"Camera recovered at {camera['device']}"
+            'message': _t('ui.watchdog.camera_recovered', device=camera['device'])
         }
     else:
         return {
@@ -445,13 +445,13 @@ def perform_wifi_failover(backup_ssid, backup_password, backup_interface='wlan0'
             
             return {
                 'success': True,
-                'message': f'Failed over to {backup_ssid}',
+                'message': _t('ui.watchdog.failover.failed_over', ssid=backup_ssid),
                 'latency': connectivity['latency']
             }
     
     return {
         'success': False,
-        'message': f"Failover failed: {result.get('message', 'Unknown error')}"
+        'message': _t('ui.watchdog.failover.failed', message=result.get('message', _t('ui.errors.unknown_error')))
     }
 
 def perform_wifi_failback(primary_interface='eth0'):

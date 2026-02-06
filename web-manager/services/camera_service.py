@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Camera Service - Camera controls, profiles, and detection
-Version: 2.30.10
+Version: 2.30.11
 
 Changes in 2.30.4:
 - Added libcamera/CSI camera support (PiCam)
@@ -522,9 +522,15 @@ def set_camera_control(control_name, value, device=None):
     )
     
     if result['success']:
-        return {'success': True, 'message': f'{control_name} set to {value}'}
+        return {
+            'success': True,
+            'message': _t('ui.camera.control_set', name=control_name, value=value)
+        }
     else:
-        return {'success': False, 'message': result['stderr'] or 'Failed to set control'}
+        return {
+            'success': False,
+            'message': result['stderr'] or _t('ui.camera.control_set_failed')
+        }
 
 def reset_camera_control(control_name, device=None):
     """
@@ -548,7 +554,7 @@ def reset_camera_control(control_name, device=None):
     control = next((c for c in controls if c['name'] == control_name), None)
     
     if not control:
-        return {'success': False, 'message': f'Control {control_name} not found'}
+        return {'success': False, 'message': _t('ui.camera.control_not_found', name=control_name)}
     
     if control['default'] is None:
         return {'success': False, 'message': _t('ui.camera.default_value_unavailable')}
@@ -595,7 +601,7 @@ def auto_camera_controls(device=None):
     if controls_set:
         return {
             'success': True,
-            'message': f'Auto controls enabled: {", ".join(controls_set)}',
+            'message': _t('ui.camera.auto_controls_enabled', controls=", ".join(controls_set)),
             'controls_set': controls_set
         }
     else:
@@ -626,7 +632,7 @@ def focus_oneshot(device=None):
         # Enable autofocus
         success, msg = set_camera_autofocus(device, True, persist=False)
         if not success:
-            return {'success': False, 'message': f'Failed to enable autofocus: {msg}'}
+            return {'success': False, 'message': _t('ui.camera.autofocus_enable_failed', message=msg)}
         
         # Wait for focus to settle (typical cameras take 500-2000ms)
         time.sleep(1.5)
@@ -634,7 +640,7 @@ def focus_oneshot(device=None):
         # Disable autofocus (lock the focus)
         success, msg = set_camera_autofocus(device, False, persist=False)
         if not success:
-            return {'success': False, 'message': f'Failed to lock focus: {msg}'}
+            return {'success': False, 'message': _t('ui.camera.autofocus_lock_failed', message=msg)}
         
         return {'success': True, 'message': _t('ui.camera.focus_locked')}
     except Exception as e:
@@ -913,7 +919,7 @@ def delete_camera_profile(name):
     
     with camera_profiles_state['lock']:
         if name not in camera_profiles_state['profiles']:
-            return {'success': False, 'message': f'Profile "{name}" not found'}
+            return {'success': False, 'message': _t('ui.camera.profile.not_found_named', profile=name)}
         
         del camera_profiles_state['profiles'][name]
         
@@ -943,7 +949,11 @@ def apply_camera_profile(name, device=None):
     
     with camera_profiles_state['lock']:
         if name not in camera_profiles_state['profiles']:
-            return {'success': False, 'message': f'Profile "{name}" not found', 'controls_applied': []}
+            return {
+                'success': False,
+                'message': _t('ui.camera.profile.not_found_named', profile=name),
+                'controls_applied': []
+            }
         
         profile = camera_profiles_state['profiles'][name]
     
@@ -967,14 +977,14 @@ def apply_camera_profile(name, device=None):
     if errors:
         return {
             'success': len(controls_applied) > 0,
-            'message': f'Applied {len(controls_applied)} controls, {len(errors)} failed',
+            'message': _t('ui.camera.profile.apply_partial', applied=len(controls_applied), failed=len(errors)),
             'controls_applied': controls_applied,
             'errors': errors
         }
     
     return {
         'success': True,
-        'message': f'Profile "{name}" applied ({len(controls_applied)} controls)',
+        'message': _t('ui.camera.profile.applied_status', profile=name, applied=len(controls_applied), skipped=0),
         'controls_applied': controls_applied
     }
 
@@ -986,7 +996,11 @@ def apply_csi_camera_profile(name):
 
     with camera_profiles_state['lock']:
         if name not in camera_profiles_state['profiles']:
-            return {'success': False, 'message': f'Profile "{name}" not found', 'controls_applied': []}
+            return {
+                'success': False,
+                'message': _t('ui.camera.profile.not_found_named', profile=name),
+                'controls_applied': []
+            }
         profile = camera_profiles_state['profiles'][name]
 
     controls = profile.get('controls', {})
@@ -1020,7 +1034,7 @@ def apply_csi_camera_profile(name):
             applied += 1
         else:
             failed += 1
-            errors.append(f"{ctrl_name}: {result.get('message', 'Unknown error')}")
+            errors.append(f"{ctrl_name}: {result.get('message', _t('ui.errors.unknown_error'))}")
 
     # Update current profile
     with camera_profiles_state['lock']:
@@ -1030,14 +1044,14 @@ def apply_csi_camera_profile(name):
     if failed > 0:
         return {
             'success': False,
-            'message': f'Applied {applied} controls, {failed} failed, {skipped} skipped',
+            'message': _t('ui.camera.profile.apply_with_failures', applied=applied, failed=failed, skipped=skipped),
             'controls_applied': list(filtered_controls.keys()),
             'errors': errors
         }
 
     return {
         'success': True,
-        'message': f'Profile "{name}" applied ({applied} controls, {skipped} skipped)',
+        'message': _t('ui.camera.profile.applied_status', profile=name, applied=applied, skipped=skipped),
         'controls_applied': list(filtered_controls.keys())
     }
 
@@ -1111,7 +1125,7 @@ def capture_camera_profile(name, description='', device=None):
     if result['success']:
         return {
             'success': True,
-            'message': f'Profile "{name}" captured ({len(profile_controls)} controls)',
+            'message': _t('ui.camera.profile.captured_status', profile=name, count=len(profile_controls)),
             'profile': {
                 'name': name,
                 'controls': profile_controls,

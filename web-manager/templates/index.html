@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.33.07 -->
+<!-- RTSP Recorder Web Interface - Version 2.33.10 -->
 <html lang="{{ current_lang }}">
 <head>
     <meta charset="UTF-8">
@@ -1197,7 +1197,7 @@
                                 <strong>{{ t('ui.recording.note_title') }}</strong> {{ t('ui.recording.note_body') }}<br>
                                 {{ t('ui.recording.note_command_intro') }}<br>
                                 <code style="background: var(--bg-color); padding: 4px 8px; border-radius: 4px; display: block; margin-top: 8px;">
-                                    ffmpeg -i rtsp://localhost:8554/stream -c copy -f segment -segment_time 300 rec_%03d.ts
+                                    {{ t('ui.recording.ffmpeg_example') }}
                                 </code>
                             </span>
                         </div>
@@ -1410,7 +1410,7 @@
                             <div class="modal-content modal-video">
                                 <div class="modal-header">
                                     <h3><i class="fas fa-play-circle"></i> <span id="video-player-title">{{ t('ui.files.playback_title') }}</span></h3>
-                                    <button type="button" class="modal-close" onclick="closeVideoPlayer()">&times;</button>
+                                    <button type="button" class="modal-close" onclick="closeVideoPlayer()">{{ t('ui.actions.close_symbol') }}</button>
                                 </div>
                                 <div class="modal-body">
                                     <video id="video-player" controls autoplay playsinline>
@@ -1845,7 +1845,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="wifi_primary_ssid">
-                                            <i class="fas fa-wifi"></i> SSID
+                                            <i class="fas fa-wifi"></i> {{ t('ui.network.ssid_label') }}
                                         </label>
                                         <div class="input-with-button">
                                             <input type="text" id="wifi_primary_ssid" name="wifi_primary_ssid" 
@@ -1879,7 +1879,7 @@
                                     </div>
                                     <div class="form-group">
                                         <label for="wifi_secondary_ssid">
-                                            <i class="fas fa-wifi"></i> SSID
+                                            <i class="fas fa-wifi"></i> {{ t('ui.network.ssid_label') }}
                                         </label>
                                         <div class="input-with-button">
                                             <input type="text" id="wifi_secondary_ssid" name="wifi_secondary_ssid" 
@@ -2686,7 +2686,7 @@
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="provision_device_key">
-                                            <i class="fas fa-key"></i> Device Key
+                                            <i class="fas fa-key"></i> {{ t('ui.meeting.device_key_label') }}
                                         </label>
                                         <input type="text" id="provision_device_key" 
                                                value="{{ config.MEETING_DEVICE_KEY }}"
@@ -2826,7 +2826,7 @@
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h3><i class="fas fa-exclamation-triangle"></i> {{ t('ui.meeting.master_reset') }}</h3>
-                                <button type="button" class="modal-close" onclick="closeMasterResetModal()">&times;</button>
+                                <button type="button" class="modal-close" onclick="closeMasterResetModal()">{{ t('ui.actions.close_symbol') }}</button>
                             </div>
                             <div class="modal-body">
                                 <p class="warning-text">
@@ -3032,7 +3032,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="meeting_config_device_key">
-                                        <i class="fas fa-key"></i> Device Key
+                                        <i class="fas fa-key"></i> {{ t('ui.meeting.device_key_label') }}
                                     </label>
                                     <input type="text" id="meeting_config_device_key" placeholder="ABCDEF123456789...">
                                 </div>
@@ -3114,8 +3114,8 @@
                         <div class="form-section">
                             <h4><i class="fas fa-microchip"></i> {{ t('ui.debug.firmware_title') }}</h4>
                             <small class="section-help">
-                                <strong>{{ t('ui.debug.firmware_pi45') }}</strong> <code>rpi-eeprom-update</code><br>
-                                <strong>{{ t('ui.debug.firmware_pi32') }}</strong> <code>rpi-update</code> {{ t('ui.debug.firmware_experimental') }}
+                                <strong>{{ t('ui.debug.firmware_pi45') }}</strong> <code>{{ t('ui.debug.firmware_pi45_command') }}</code><br>
+                                <strong>{{ t('ui.debug.firmware_pi32') }}</strong> <code>{{ t('ui.debug.firmware_pi32_command') }}</code> {{ t('ui.debug.firmware_experimental') }}
                             </small>
                             <div class="debug-action-card">
                                 <div class="debug-action-info">
@@ -3372,7 +3372,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3><i class="fas fa-clock"></i> <span id="profile-modal-title">{{ t('ui.video.new_profile') }}</span></h3>
-                <button type="button" class="modal-close" onclick="closeProfileModal()">&times;</button>
+                <button type="button" class="modal-close" onclick="closeProfileModal()">{{ t('ui.actions.close_symbol') }}</button>
             </div>
             <div class="modal-body">
                 <form id="profile-form" onsubmit="saveProfile(event)">
@@ -3446,7 +3446,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3><i class="fas fa-cogs"></i> <span id="profile-settings-title">{{ t('ui.profile.settings_title') }}</span></h3>
-                <button type="button" class="modal-close" onclick="closeProfileSettingsModal()">&times;</button>
+                <button type="button" class="modal-close" onclick="closeProfileSettingsModal()">{{ t('ui.actions.close_symbol') }}</button>
             </div>
             <div class="modal-body">
                 <div class="profile-settings-meta" id="profile-settings-meta"></div>
@@ -3462,7 +3462,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3><i class="fab fa-github"></i> {{ t('ui.updates.update_from_repo') }}</h3>
-                <button type="button" class="modal-close" onclick="closeUpdateRepoModal()">&times;</button>
+                <button type="button" class="modal-close" onclick="closeUpdateRepoModal()">{{ t('ui.actions.close_symbol') }}</button>
             </div>
             <div class="modal-body">
                 <div class="status-row">
@@ -3514,7 +3514,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3><i class="fas fa-file-upload"></i> {{ t('ui.updates.update_from_file') }}</h3>
-                <button type="button" class="modal-close" onclick="closeUpdateFileModal()">&times;</button>
+                <button type="button" class="modal-close" onclick="closeUpdateFileModal()">{{ t('ui.actions.close_symbol') }}</button>
             </div>
             <div class="modal-body">
                 <div class="status-row">

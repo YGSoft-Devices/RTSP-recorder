@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Config Service - Configuration management and service control
-Version: 2.30.15
+Version: 2.30.16
 """
 
 import os
@@ -247,14 +247,21 @@ def control_service(service_name, action):
     valid_actions = ['start', 'stop', 'restart', 'enable', 'disable', 'reload']
     
     if action not in valid_actions:
-        return {'success': False, 'message': f"Invalid action. Use: {', '.join(valid_actions)}"}
+        return {
+            'success': False,
+            'message': _t('ui.services.invalid_action', actions=', '.join(valid_actions))
+        }
     
     # Special case: restarting ourselves - run in background with delay
     if service_name == 'rpi-cam-webmanager' and action in ['restart', 'stop']:
         # Use nohup + sleep to delay the restart and allow response to be sent
         cmd = f"nohup bash -c 'sleep 1 && sudo systemctl {action} {service_name}' >/dev/null 2>&1 &"
         run_command(cmd, timeout=5)
-        return {'success': True, 'message': f"Service {service_name} {action} initiated (will occur in 1 second)", 'self_restart': True}
+        return {
+            'success': True,
+            'message': _t('ui.services.action_initiated_delayed', service=service_name, action=action),
+            'self_restart': True
+        }
     
     if not service_name:
         service_name = SERVICE_NAME
@@ -275,9 +282,15 @@ def control_service(service_name, action):
                 ).start()
             except Exception:
                 pass
-        return {'success': True, 'message': f"Service {service_name} {action}ed successfully"}
+        return {
+            'success': True,
+            'message': _t('ui.services.action_success', service=service_name, action=action)
+        }
     else:
-        return {'success': False, 'message': result['stderr'] or f"Failed to {action} service"}
+        return {
+            'success': False,
+            'message': result['stderr'] or _t('ui.services.action_failed', action=action)
+        }
 
 def sync_recorder_service(config=None):
     """
@@ -327,7 +340,7 @@ def sync_recorder_service(config=None):
         return {
             'success': True,
             'action': action,
-            'message': f"rtsp-recorder service is {action}"
+            'message': _t('ui.services.recorder_state', action=action)
         }
 
 def get_all_services_status():
@@ -338,11 +351,11 @@ def get_all_services_status():
         dict: {service_name: status_dict} for all services
     """
     services = {
-        SERVICE_NAME: 'Main RTSP Streaming',
-        'rtsp-watchdog': 'RTSP Watchdog',
-        'rtsp-recorder': 'Recording Service',
-        'rpi-cam-webmanager': 'Web Manager',
-        'rpi-cam-onvif': 'ONVIF Server'
+        SERVICE_NAME: _t('ui.services.rtsp_streaming'),
+        'rtsp-watchdog': _t('ui.services.watchdog'),
+        'rtsp-recorder': _t('ui.services.recording_service'),
+        'rpi-cam-webmanager': _t('ui.services.web_manager'),
+        'rpi-cam-onvif': _t('ui.services.onvif')
     }
     
     # Add optional services
@@ -571,4 +584,7 @@ def set_hostname(new_hostname):
     if errors:
         return {'success': False, 'message': '; '.join(errors)}
     
-    return {'success': True, 'message': f'Hostname set to {new_hostname} (persistent)'}
+    return {
+        'success': True,
+        'message': _t('ui.system.hostname_set', hostname=new_hostname)
+    }

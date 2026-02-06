@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Preview and camera controls
- * Version: 2.33.06
+ * Version: 2.33.10
  */
 
 (function () {
@@ -391,8 +391,8 @@ async function loadCSICameraControls() {
                 <div class="info-box warning">
                     <i class="fas fa-exclamation-triangle"></i>
                     <div>
-                        <strong>Picamera2 non installé</strong>
-                        <p>Pour contrôler les paramètres de la caméra CSI, installez Picamera2 :</p>
+                        <strong>${t('ui.camera.csi_picamera2_missing_title')}</strong>
+                        <p>${t('ui.camera.csi_picamera2_missing_hint')}</p>
                         <code>sudo apt install python3-picamera2</code>
                     </div>
                 </div>
@@ -411,8 +411,8 @@ async function loadCSICameraControls() {
                     <div class="info-box info">
                         <i class="fas fa-hourglass-half"></i>
                         <div>
-                            <strong>Serveur CSI en démarrage...</strong>
-                            <p>Le serveur RTSP CSI est en cours de démarrage. Rechargement automatique dans 3 secondes.</p>
+                            <strong>${t('ui.camera.csi_server_starting_title')}</strong>
+                            <p>${t('ui.camera.csi_server_starting_hint')}</p>
                         </div>
                     </div>
                 `;
@@ -427,7 +427,7 @@ async function loadCSICameraControls() {
                     <div class="info-box warning">
                         <i class="fas fa-broadcast-tower"></i>
                         <div>
-                            <strong>Caméra en cours d'utilisation</strong>
+                            <strong>${t('ui.camera.csi_in_use_title')}</strong>
                             <p>${t('ui.camera.csi_in_use_hint')}</p>
                             <p>${t('ui.camera.csi_in_use_steps_title')}</p>
                             <ol style="margin: 10px 0; padding-left: 20px;">
@@ -519,8 +519,8 @@ function renderCSIControls(data) {
     if (data.camera_info) {
         html += `
             <div class="camera-info-box">
-                <strong><i class="fas fa-camera"></i> ${data.camera_info.model || 'Caméra CSI'}</strong>
-                ${data.camera_info.pixel_array_size ? `<span class="info-detail">${data.camera_info.pixel_array_size[0]}×${data.camera_info.pixel_array_size[1]} pixels</span>` : ''}
+                <strong><i class="fas fa-camera"></i> ${data.camera_info.model || t('ui.camera.csi_default_name')}</strong>
+                ${data.camera_info.pixel_array_size ? `<span class="info-detail">${data.camera_info.pixel_array_size[0]}×${data.camera_info.pixel_array_size[1]} ${t('ui.units.pixels')}</span>` : ''}
             </div>
         `;
     }
@@ -550,10 +550,10 @@ function renderCSIControls(data) {
     html += `
         <div class="csi-controls-actions">
             <button type="button" class="btn btn-secondary" onclick="loadCSICameraControls()">
-                <i class="fas fa-sync"></i> Rafraîchir
+                <i class="fas fa-sync"></i> ${t('ui.actions.refresh')}
             </button>
             <button type="button" class="btn btn-warning" onclick="resetCSIControls()">
-                <i class="fas fa-undo"></i> Réinitialiser
+                <i class="fas fa-undo"></i> ${t('ui.actions.reset')}
             </button>
         </div>
     `;
@@ -566,40 +566,40 @@ function renderCSIControls(data) {
  */
 const CSI_CONTROL_LABELS = {
     // Exposure
-    'ExposureTime': { label: 'Temps d\'exposition', desc: 'Durée d\'exposition en µs', unit: 'µs' },
-    'AnalogueGain': { label: 'Gain analogique', desc: 'Amplification du signal capteur' },
-    'ExposureValue': { label: 'Correction d\'exposition (EV)', desc: 'Ajustement luminosité (-8 à +8)' },
-    'AeExposureMode': { label: 'Mode d\'exposition', desc: '0=Normal, 1=Court, 2=Long, 3=Personnalisé' },
-    'ExposureTimeMode': { label: 'Mode temps expo', desc: '0=Auto, 1=Manuel' },
-    'AnalogueGainMode': { label: 'Mode gain', desc: '0=Auto, 1=Manuel' },
-    'ColourGains': { label: 'Gains couleur (R/B)', desc: 'Gains rouge/bleu manuels' },
+    'ExposureTime': { label: t('ui.camera.csi.control.exposure_time.label'), desc: t('ui.camera.csi.control.exposure_time.desc'), unit: t('ui.units.us') },
+    'AnalogueGain': { label: t('ui.camera.csi.control.analogue_gain.label'), desc: t('ui.camera.csi.control.analogue_gain.desc') },
+    'ExposureValue': { label: t('ui.camera.csi.control.exposure_value.label'), desc: t('ui.camera.csi.control.exposure_value.desc') },
+    'AeExposureMode': { label: t('ui.camera.csi.control.ae_exposure_mode.label'), desc: t('ui.camera.csi.control.ae_exposure_mode.desc') },
+    'ExposureTimeMode': { label: t('ui.camera.csi.control.exposure_time_mode.label'), desc: t('ui.camera.csi.control.exposure_time_mode.desc') },
+    'AnalogueGainMode': { label: t('ui.camera.csi.control.analogue_gain_mode.label'), desc: t('ui.camera.csi.control.analogue_gain_mode.desc') },
+    'ColourGains': { label: t('ui.camera.csi.control.colour_gains.label'), desc: t('ui.camera.csi.control.colour_gains.desc') },
     
     // Color
-    'Brightness': { label: 'Luminosité', desc: 'Ajustement luminosité (-1 à +1)' },
-    'Contrast': { label: 'Contraste', desc: 'Ratio de contraste' },
-    'Saturation': { label: 'Saturation', desc: 'Intensité des couleurs' },
-    'Sharpness': { label: 'Netteté', desc: 'Niveau de netteté de l\'image' },
-    'ColourCorrectionMatrix': { label: 'Matrice couleur', desc: 'Correction colorimétrique' },
-    'ColourTemperature': { label: 'Température couleur', desc: 'En Kelvin (2000K-10000K)' },
+    'Brightness': { label: t('ui.camera.csi.control.brightness.label'), desc: t('ui.camera.csi.control.brightness.desc') },
+    'Contrast': { label: t('ui.camera.csi.control.contrast.label'), desc: t('ui.camera.csi.control.contrast.desc') },
+    'Saturation': { label: t('ui.camera.csi.control.saturation.label'), desc: t('ui.camera.csi.control.saturation.desc') },
+    'Sharpness': { label: t('ui.camera.csi.control.sharpness.label'), desc: t('ui.camera.csi.control.sharpness.desc') },
+    'ColourCorrectionMatrix': { label: t('ui.camera.csi.control.colour_correction_matrix.label'), desc: t('ui.camera.csi.control.colour_correction_matrix.desc') },
+    'ColourTemperature': { label: t('ui.camera.csi.control.colour_temperature.label'), desc: t('ui.camera.csi.control.colour_temperature.desc') },
     
     // Auto
-    'AeEnable': { label: 'Exposition auto', desc: 'Auto-exposition activée' },
-    'AwbEnable': { label: 'Balance blancs auto', desc: 'AWB activée' },
-    'AwbMode': { label: 'Mode AWB', desc: '0=Auto, 1=Tungstène, 2=Fluorescent, 3=Intérieur, 4=Soleil, 5=Nuageux, 6=Personnalisé' },
-    'AeMeteringMode': { label: 'Mode mesure AE', desc: '0=Centre, 1=Spot, 2=Matrice, 3=Personnalisé' },
-    'AeConstraintMode': { label: 'Contrainte AE', desc: '0=Normal, 1=Highlights, 2=Shadows, 3=Personnalisé' },
-    'AeFlickerMode': { label: 'Anti-flicker', desc: '0=Off, 1=Manuel' },
-    'AeFlickerPeriod': { label: 'Période flicker', desc: 'Pour 50Hz=10000µs, 60Hz=8333µs' },
+    'AeEnable': { label: t('ui.camera.csi.control.ae_enable.label'), desc: t('ui.camera.csi.control.ae_enable.desc') },
+    'AwbEnable': { label: t('ui.camera.csi.control.awb_enable.label'), desc: t('ui.camera.csi.control.awb_enable.desc') },
+    'AwbMode': { label: t('ui.camera.csi.control.awb_mode.label'), desc: t('ui.camera.csi.control.awb_mode.desc') },
+    'AeMeteringMode': { label: t('ui.camera.csi.control.ae_metering_mode.label'), desc: t('ui.camera.csi.control.ae_metering_mode.desc') },
+    'AeConstraintMode': { label: t('ui.camera.csi.control.ae_constraint_mode.label'), desc: t('ui.camera.csi.control.ae_constraint_mode.desc') },
+    'AeFlickerMode': { label: t('ui.camera.csi.control.ae_flicker_mode.label'), desc: t('ui.camera.csi.control.ae_flicker_mode.desc') },
+    'AeFlickerPeriod': { label: t('ui.camera.csi.control.ae_flicker_period.label'), desc: t('ui.camera.csi.control.ae_flicker_period.desc') },
     
     // Noise
-    'NoiseReductionMode': { label: 'Réduction bruit', desc: '0=Off, 1=Rapide, 2=Haute qualité, 3=Minimal, 4=ZSL' },
+    'NoiseReductionMode': { label: t('ui.camera.csi.control.noise_reduction_mode.label'), desc: t('ui.camera.csi.control.noise_reduction_mode.desc') },
     
     // Other
-    'FrameDurationLimits': { label: 'Durée frame', desc: 'Min/Max durée d\'une frame en µs' },
-    'HdrMode': { label: 'Mode HDR', desc: '0=Off, 1=Single, 2=Multi, 3=Night, 4=Personnalisé' },
-    'ScalerCrop': { label: 'Zone de crop', desc: 'Région de recadrage' },
-    'SyncMode': { label: 'Mode sync', desc: '0=Off, 1=Server, 2=Client' },
-    'SyncFrames': { label: 'Frames sync', desc: 'Frames à synchroniser' }
+    'FrameDurationLimits': { label: t('ui.camera.csi.control.frame_duration_limits.label'), desc: t('ui.camera.csi.control.frame_duration_limits.desc') },
+    'HdrMode': { label: t('ui.camera.csi.control.hdr_mode.label'), desc: t('ui.camera.csi.control.hdr_mode.desc') },
+    'ScalerCrop': { label: t('ui.camera.csi.control.scaler_crop.label'), desc: t('ui.camera.csi.control.scaler_crop.desc') },
+    'SyncMode': { label: t('ui.camera.csi.control.sync_mode.label'), desc: t('ui.camera.csi.control.sync_mode.desc') },
+    'SyncFrames': { label: t('ui.camera.csi.control.sync_frames.label'), desc: t('ui.camera.csi.control.sync_frames.desc') }
 };
 
 /**
