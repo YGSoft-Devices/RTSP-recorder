@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Meeting/NTP/RTC functions
- * Version: 2.35.18
+ * Version: 2.36.08
  */
 
 (function () {
@@ -35,7 +35,7 @@ async function testMeetingConnection() {
     const resultDiv = document.getElementById('meeting-test-result');
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Test de connexion en cours...';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.test_in_progress', {}, 'Testing connection...')}`;
     
     try {
         const response = await fetch('/api/meeting/test', { method: 'POST' });
@@ -47,7 +47,7 @@ async function testMeetingConnection() {
             if (data.data) {
                 resultDiv.innerHTML += `<pre>${JSON.stringify(data.data, null, 2)}</pre>`;
             }
-            showToast('Connexion Meeting réussie', 'success');
+            showToast(I18n.t('meeting.test_success_toast', {}, 'Meeting connection successful'), 'success');
             updateMeetingStatus(true);
         } else {
             resultDiv.className = 'meeting-result error';
@@ -55,13 +55,13 @@ async function testMeetingConnection() {
             if (data.details) {
                 resultDiv.innerHTML += `<pre>${JSON.stringify(data.details, null, 2)}</pre>`;
             }
-            showToast('Échec de connexion Meeting', 'error');
+            showToast(I18n.t('meeting.test_fail_toast', {}, 'Meeting connection failed'), 'error');
             updateMeetingStatus(false);
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
-        showToast('Erreur de test Meeting', 'error');
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
+        showToast(I18n.t('meeting.test_error_toast', {}, 'Meeting test error'), 'error');
         updateMeetingStatus(false);
     }
 }
@@ -73,7 +73,7 @@ async function sendMeetingHeartbeat() {
     const resultDiv = document.getElementById('meeting-test-result');
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi du heartbeat...';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.heartbeat_in_progress', {}, 'Sending heartbeat...')}`;
     
     try {
         // Use debug endpoint to get both payload and response
@@ -82,7 +82,7 @@ async function sendMeetingHeartbeat() {
         
         if (data.success) {
             resultDiv.className = 'meeting-result success';
-            let html = `<i class="fas fa-heartbeat"></i> Heartbeat envoyé avec succès`;
+            let html = `<i class="fas fa-heartbeat"></i> ${I18n.t('meeting.heartbeat_success', {}, 'Heartbeat sent successfully')}`;
             
             // Show endpoint
             if (data.api_url && data.endpoint) {
@@ -91,36 +91,36 @@ async function sendMeetingHeartbeat() {
             
             // Show payload sent
             if (data.payload_sent) {
-                html += `<details style="margin-top: 10px;"><summary><strong>📤 Payload envoyé</strong></summary>`;
+                html += `<details style="margin-top: 10px;"><summary><strong>📤 ${I18n.t('meeting.payload_sent', {}, 'Payload sent')}</strong></summary>`;
                 html += `<pre style="background:#1a1a2e; padding:10px; border-radius:5px; overflow-x:auto; font-size:11px;">${JSON.stringify(data.payload_sent, null, 2)}</pre></details>`;
             }
             
             // Show response received
             if (data.response) {
-                html += `<details style="margin-top: 5px;"><summary><strong>📥 Réponse Meeting</strong></summary>`;
+                html += `<details style="margin-top: 5px;"><summary><strong>📥 ${I18n.t('meeting.response_meeting', {}, 'Meeting response')}</strong></summary>`;
                 html += `<pre style="background:#1a1a2e; padding:10px; border-radius:5px; overflow-x:auto; font-size:11px;">${JSON.stringify(data.response, null, 2)}</pre></details>`;
             }
             
             resultDiv.innerHTML = html;
-            showToast('Heartbeat envoyé', 'success');
+            showToast(I18n.t('meeting.heartbeat_success_toast', {}, 'Heartbeat sent'), 'success');
             updateMeetingStatus(true);
         } else {
             resultDiv.className = 'meeting-result error';
-            let html = `<i class="fas fa-times-circle"></i> ${data.response?.error || data.response?.message || 'Échec'}`;
+            let html = `<i class="fas fa-times-circle"></i> ${data.response?.error || data.response?.message || I18n.t('meeting.generic_failure', {}, 'Failed')}`;
             
             // Still show what was attempted
             if (data.payload_sent) {
-                html += `<details style="margin-top: 10px;"><summary><strong>📤 Payload tenté</strong></summary>`;
+                html += `<details style="margin-top: 10px;"><summary><strong>📤 ${I18n.t('meeting.payload_attempted', {}, 'Payload attempted')}</strong></summary>`;
                 html += `<pre style="background:#1a1a2e; padding:10px; border-radius:5px; overflow-x:auto; font-size:11px;">${JSON.stringify(data.payload_sent, null, 2)}</pre></details>`;
             }
             
             resultDiv.innerHTML = html;
-            showToast('Échec du heartbeat', 'error');
+            showToast(I18n.t('meeting.heartbeat_fail_toast', {}, 'Heartbeat failed'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
-        showToast('Erreur heartbeat', 'error');
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
+        showToast(I18n.t('meeting.heartbeat_error_toast', {}, 'Heartbeat error'), 'error');
     }
 }
 
@@ -131,7 +131,7 @@ async function getMeetingAvailability() {
     const resultDiv = document.getElementById('meeting-test-result');
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification de la disponibilité...';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.availability_checking', {}, 'Checking availability...')}`;
     
     try {
         const response = await fetch('/api/meeting/availability');
@@ -143,26 +143,26 @@ async function getMeetingAvailability() {
             const isOnline = avail.online === true || avail.status === 'Available' || avail.status === 'available';
             resultDiv.className = 'meeting-result success';
             resultDiv.innerHTML = `
-                <i class="fas fa-info-circle"></i> État de disponibilité
+                <i class="fas fa-info-circle"></i> ${I18n.t('meeting.availability_title', {}, 'Availability status')}
                 <div class="availability-info">
-                    <p><strong>En ligne:</strong> ${isOnline ? 'Oui ✓' : 'Non ✗'}</p>
-                    <p><strong>Status:</strong> ${avail.status || 'N/A'}</p>
-                    ${avail.last_heartbeat ? `<p><strong>Dernier heartbeat:</strong> ${avail.last_heartbeat}</p>` : ''}
-                    ${avail.last_seen ? `<p><strong>Dernière connexion:</strong> ${new Date(avail.last_seen).toLocaleString()}</p>` : ''}
-                    ${avail.uptime ? `<p><strong>Uptime:</strong> ${avail.uptime} minutes</p>` : ''}
-                    ${avail.ip ? `<p><strong>IP:</strong> ${avail.ip}</p>` : ''}
+                    <p><strong>${I18n.t('meeting.availability_online', {}, 'Online')}:</strong> ${isOnline ? I18n.t('meeting.online_yes', {}, 'Yes ✓') : I18n.t('meeting.online_no', {}, 'No ✗')}</p>
+                    <p><strong>${I18n.t('meeting.availability_status', {}, 'Status')}:</strong> ${avail.status || I18n.t('common.na', {}, 'N/A')}</p>
+                    ${avail.last_heartbeat ? `<p><strong>${I18n.t('meeting.availability_last_heartbeat', {}, 'Last heartbeat')}:</strong> ${avail.last_heartbeat}</p>` : ''}
+                    ${avail.last_seen ? `<p><strong>${I18n.t('meeting.availability_last_seen', {}, 'Last seen')}:</strong> ${new Date(avail.last_seen).toLocaleString()}</p>` : ''}
+                    ${avail.uptime ? `<p><strong>${I18n.t('meeting.availability_uptime', {}, 'Uptime')}:</strong> ${avail.uptime} ${I18n.t('meeting.availability_minutes', {}, 'minutes')}</p>` : ''}
+                    ${avail.ip ? `<p><strong>${I18n.t('meeting.availability_ip', {}, 'IP')}:</strong> ${avail.ip}</p>` : ''}
                 </div>
             `;
-            showToast('Disponibilité récupérée', 'success');
+            showToast(I18n.t('meeting.availability_success_toast', {}, 'Availability retrieved'), 'success');
         } else {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || data.message || 'Échec'}`;
-            showToast('Échec récupération disponibilité', 'error');
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || data.message || I18n.t('meeting.generic_failure', {}, 'Failed')}`;
+            showToast(I18n.t('meeting.availability_fail_toast', {}, 'Availability check failed'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
-        showToast('Erreur disponibilité', 'error');
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
+        showToast(I18n.t('meeting.availability_error_toast', {}, 'Availability error'), 'error');
     }
 }
 
@@ -171,7 +171,7 @@ async function getMeetingAvailability() {
  */
 async function fetchMeetingDeviceInfo() {
     const infoDiv = document.getElementById('meeting-device-info');
-    infoDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement des informations...';
+    infoDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.device_info_loading', {}, 'Loading information...')}`;
     
     try {
         // Fetch both device info and availability in parallel
@@ -189,16 +189,16 @@ async function fetchMeetingDeviceInfo() {
             
             // Map API fields to expected fields
             // Name = product_serial (not device_name which is just the key)
-            const deviceName = device.product_serial || device.name || device.device_name || 'Non défini';
+            const deviceName = device.product_serial || device.name || device.device_name || I18n.t('meeting.device_name_undefined', {}, 'Not set');
             // IP from device info
-            const deviceIp = device.ip_address || device.ip || 'N/A';
+            const deviceIp = device.ip_address || device.ip || I18n.t('common.na', {}, 'N/A');
             // Online status from availability API
             const isOnline = avail.status === 'Available' || avail.status === 'available' || avail.online === true;
             // Last seen from availability
             const lastSeen = avail.last_heartbeat || avail.last_seen || device.last_seen;
             
             // Format last_seen date
-            let lastSeenStr = 'N/A';
+            let lastSeenStr = I18n.t('common.na', {}, 'N/A');
             if (lastSeen) {
                 try {
                     // Handle various date formats

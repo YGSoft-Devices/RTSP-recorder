@@ -89,7 +89,8 @@
         "update": "Mise à jour",
         "install": "Installer",
         "unprovisioned": "NON PROVISIONNÉ",
-        "not_configured": "Non configuré"
+        "not_configured": "Non configuré",
+        "na": "N/A"
     },
     "header": {
         "title": "RTSP Recorder",
@@ -758,7 +759,37 @@
             "masterCode": "Code Master",
             "masterCodePlaceholder": "Entrez le code master",
             "reset": "Réinitialiser"
-        }
+        },
+        "test_in_progress": "Test de connexion en cours...",
+        "test_success_toast": "Connexion Meeting réussie",
+        "test_fail_toast": "Échec de connexion Meeting",
+        "test_error_toast": "Erreur de test Meeting",
+        "heartbeat_in_progress": "Envoi du heartbeat...",
+        "heartbeat_success": "Heartbeat envoyé avec succès",
+        "heartbeat_success_toast": "Heartbeat envoyé",
+        "heartbeat_fail_toast": "Échec du heartbeat",
+        "heartbeat_error_toast": "Erreur heartbeat",
+        "payload_sent": "Payload envoyé",
+        "payload_attempted": "Payload tenté",
+        "response_meeting": "Réponse Meeting",
+        "generic_failure": "Échec",
+        "availability_checking": "Vérification de la disponibilité...",
+        "availability_title": "État de disponibilité",
+        "availability_online": "En ligne",
+        "availability_status": "Statut",
+        "availability_last_heartbeat": "Dernier heartbeat",
+        "availability_last_seen": "Dernière connexion",
+        "availability_uptime": "Uptime",
+        "availability_minutes": "minutes",
+        "availability_ip": "IP",
+        "availability_success_toast": "Disponibilité récupérée",
+        "availability_fail_toast": "Échec récupération disponibilité",
+        "availability_error_toast": "Erreur disponibilité",
+        "device_info_loading": "Chargement des informations...",
+        "device_name_undefined": "Non défini",
+        "online_yes": "Oui ✓",
+        "online_no": "Non ✗",
+        "error_with_message": "Erreur: {{error}}"
     },
     "logs": {
         "title": "Journaux système",

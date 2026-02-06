@@ -89,7 +89,8 @@
         "update": "Update",
         "install": "Install",
         "unprovisioned": "UNPROVISIONED",
-        "not_configured": "Not configured"
+        "not_configured": "Not configured",
+        "na": "N/A"
     },
     "header": {
         "title": "RTSP Recorder",
@@ -759,6 +760,36 @@
             "masterCodePlaceholder": "Enter master code",
             "reset": "Reset"
         }
+        "test_in_progress": "Testing connection...",
+        "test_success_toast": "Meeting connection successful",
+        "test_fail_toast": "Meeting connection failed",
+        "test_error_toast": "Meeting test error",
+        "heartbeat_in_progress": "Sending heartbeat...",
+        "heartbeat_success": "Heartbeat sent successfully",
+        "heartbeat_success_toast": "Heartbeat sent",
+        "heartbeat_fail_toast": "Heartbeat failed",
+        "heartbeat_error_toast": "Heartbeat error",
+        "payload_sent": "Payload sent",
+        "payload_attempted": "Payload attempted",
+        "response_meeting": "Meeting response",
+        "generic_failure": "Failed",
+        "availability_checking": "Checking availability...",
+        "availability_title": "Availability status",
+        "availability_online": "Online",
+        "availability_status": "Status",
+        "availability_last_heartbeat": "Last heartbeat",
+        "availability_last_seen": "Last seen",
+        "availability_uptime": "Uptime",
+        "availability_minutes": "minutes",
+        "availability_ip": "IP",
+        "availability_success_toast": "Availability retrieved",
+        "availability_fail_toast": "Availability check failed",
+        "availability_error_toast": "Availability error",
+        "device_info_loading": "Loading information...",
+        "device_name_undefined": "Not set",
+        "online_yes": "Yes ✓",
+        "online_no": "No ✗",
+        "error_with_message": "Error: {{error}}"
     },
     "logs": {
         "title": "System Logs",
