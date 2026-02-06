@@ -13,6 +13,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 - **i18n core** : fallback client vers langue par défaut + support `?lang=xx` côté frontend
 - **Sélection langue serveur** : priorité `?lang` → cookie → Accept-Language → env `WEB_LANGUAGE` → config `WEB_LANGUAGE` → défaut `fr`
 - **Documentation i18n** : nouveau fichier `docs/I18N.md`
+- **Tests i18n** : unit tests + scanner activable via `I18N_SCAN=1`
 
 ### Changed
 - `index.html` utilise `lang` dynamique côté serveur
