@@ -7,6 +7,19 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.36.08] - i18n core, sélection langue serveur
+
+### Added
+- **i18n core** : fallback client vers langue par défaut + support `?lang=xx` côté frontend
+- **Sélection langue serveur** : priorité `?lang` → cookie → Accept-Language → env `WEB_LANGUAGE` → config `WEB_LANGUAGE` → défaut `fr`
+- **Documentation i18n** : nouveau fichier `docs/I18N.md`
+
+### Changed
+- `index.html` utilise `lang` dynamique côté serveur
+- Ajout de `WEB_LANGUAGE` dans `config.env.example`
+- Extensions des clés i18n (OK, chargement court, erreurs i18n)
+
+
 ## [2.36.07] - Fix failover inverse wlan0→wlan1
 
 ### Fixed (network_service.py v2.30.18)
@@ -1888,6 +1901,8 @@ for attempt in range(1, max_retries + 1):
             raise
 ```
 
+
+    ---
 ### Résultat Attendu
 - Boot de service: Service tente immédiatement, échoue, retry automatiquement
 - Après 1-2 secondes: Kernel libère la caméra, retry réussit

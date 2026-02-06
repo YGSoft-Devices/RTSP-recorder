@@ -2,7 +2,7 @@
  * Internationalization (i18n) Module
  * Handles multilingual support for the RTSP Recorder Web Interface
  * 
- * @version 2.35.01
+ * @version 2.36.08
  */
 
 const I18n = (function() {
@@ -32,6 +32,7 @@ const I18n = (function() {
 
     let currentLanguage = null;
     let translations = {};
+    let defaultTranslations = {};
     let availableLanguages = [];
     let isInitialized = false;
     let onLanguageChangeCallbacks = [];
@@ -82,6 +83,16 @@ const I18n = (function() {
      * @returns {string} The language code
      */
     function getPreferredLanguage() {
+        // Check query param (?lang=fr)
+        try {
+            const urlLang = new URLSearchParams(window.location.search).get('lang');
+            if (urlLang && availableLanguages.some(l => l.code === urlLang)) {
+                return urlLang;
+            }
+        } catch (e) {
+            // Ignore URL parsing errors
+        }
+
         // Check localStorage first
         const stored = localStorage.getItem(CONFIG.storageKey);
         if (stored && availableLanguages.some(l => l.code === stored)) {
@@ -92,6 +103,12 @@ const I18n = (function() {
         const cookieMatch = document.cookie.match(/language=([^;]+)/);
         if (cookieMatch && availableLanguages.some(l => l.code === cookieMatch[1])) {
             return cookieMatch[1];
+        }
+
+        // Check HTML lang attribute
+        const docLang = document.documentElement.lang;
+        if (docLang && availableLanguages.some(l => l.code === docLang)) {
+            return docLang;
         }
         
         // Check browser language
@@ -193,17 +210,16 @@ const I18n = (function() {
      */
     function t(key, variables = {}, defaultText = null) {
         let text = deepGet(translations, key);
-        
-        // Try fallback language if not found
-        if (text === null && currentLanguage !== CONFIG.fallbackLanguage) {
-            // In a real implementation, we'd have fallback translations cached
-            text = defaultText || key;
+
+        // Fallback to default language if not found
+        if (text === null) {
+            text = deepGet(defaultTranslations, key);
         }
-        
+
         if (text === null) {
             text = defaultText || key;
         }
-        
+
         return interpolate(text, variables);
     }
 
@@ -286,7 +302,7 @@ const I18n = (function() {
                     </option>
                 `).join('')}
             </select>
-            <button type="button" id="language-btn-ok" class="language-btn-ok" title="${t('i18n.apply_language', {}, 'Apply language')}">OK</button>
+            <button type="button" id="language-btn-ok" class="language-btn-ok" title="${t('i18n.apply_language', {}, 'Apply language')}">${t('common.ok', {}, 'OK')}</button>
         `;
 
         container.appendChild(wrapper);
@@ -297,12 +313,12 @@ const I18n = (function() {
             const select = document.getElementById('language-select');
             if (select && select.value !== currentLanguage) {
                 okButton.disabled = true;
-                okButton.textContent = '...';
+                okButton.textContent = t('common.loading_short', {}, '...');
                 try {
                     await setLanguage(select.value);
                 } finally {
                     okButton.disabled = false;
-                    okButton.textContent = 'OK';
+                    okButton.textContent = t('common.ok', {}, 'OK');
                 }
             }
         });
@@ -343,11 +359,26 @@ const I18n = (function() {
         console.log('[i18n] Available languages:', availableLanguages.map(l => l.code).join(', '));
 
         // Get preferred language
-        const preferredLang = getPreferredLanguage();
-        
-        // Load translations
-        translations = await fetchTranslations(preferredLang);
+        let preferredLang = getPreferredLanguage();
+        if (!availableLanguages.some(l => l.code === preferredLang)) {
+            preferredLang = CONFIG.defaultLanguage;
+        }
+
+        // Load default translations (for fallback)
+        defaultTranslations = await fetchTranslations(CONFIG.defaultLanguage);
+
+        // Load translations for preferred language
+        translations = preferredLang === CONFIG.defaultLanguage
+            ? defaultTranslations
+            : await fetchTranslations(preferredLang);
+
         currentLanguage = preferredLang;
+
+        // If preferred language failed to load, fallback to default
+        if (!translations || Object.keys(translations).length === 0) {
+            translations = defaultTranslations;
+            currentLanguage = CONFIG.defaultLanguage;
+        }
         
         // Save preference
         saveLanguagePreference(currentLanguage);

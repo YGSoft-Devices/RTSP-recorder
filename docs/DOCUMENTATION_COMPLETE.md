@@ -1,6 +1,6 @@
 # RTSP-Full — Encyclopédie technique
 
-Version: 2.36.05
+Version: 2.36.08
 
 Objectif: fournir une documentation exhaustive et installable pour un nouvel appareil (Raspberry Pi OS Trixie / Debian 13), sans zones d’ombre.
 
@@ -187,6 +187,28 @@ Autres fichiers:
   - Lu par le Web UI pour afficher SSID/mot de passe/canal
   - Si vide, l'UI affiche "(non configuré dans Meeting)"
 - `/etc/rpi-cam/meeting.json` (JSON, configuration Meeting API avec token)
+
+### 4.5 Internationalisation (Web UI)
+
+**Traductions intégrées (repo):**
+- `web-manager/static/locales/fr.json`
+- `web-manager/static/locales/en.json`
+
+**Traductions personnalisées (device):**
+- `/etc/rpi-cam/locales/<lang>.json`
+
+**Priorité de sélection (serveur):**
+1. Query param `?lang=fr`
+2. Cookie `language`
+3. Header `Accept-Language`
+4. Variable d’environnement `WEB_LANGUAGE` (optionnel)
+5. Clé `WEB_LANGUAGE` dans `/etc/rpi-cam/config.env`
+6. Défaut: `fr`
+
+**Notes:**
+- Le sélecteur de langue côté frontend enregistre la préférence (cookie + localStorage).
+- Les traductions personnalisées surchargent les traductions intégrées.
+- Tous les fichiers de traduction doivent rester en UTF-8.
 
 **Structure de `/etc/rpi-cam/wifi_failover.json` :**
 ```json

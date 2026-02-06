@@ -2,7 +2,7 @@
     "_meta": {
         "language": "English",
         "code": "en",
-        "version": "2.35.01",
+        "version": "2.36.08",
         "author": "RTSP-Recorder Team"
     },
     "common": {
@@ -10,12 +10,14 @@
         "cancel": "Cancel",
         "apply": "Apply",
         "reset": "Reset",
+        "ok": "OK",
         "close": "Close",
         "delete": "Delete",
         "edit": "Edit",
         "add": "Add",
         "refresh": "Refresh",
         "loading": "Loading...",
+        "loading_short": "...",
         "error": "Error",
         "success": "Success",
         "warning": "Warning",
@@ -53,6 +55,7 @@
         "date": "Date",
         "time": "Time",
         "duration": "Duration",
+        "seconds": "{{value}} s",
         "file": "File",
         "files": "files",
         "folder": "Folder",
@@ -84,7 +87,9 @@
         "check": "Check",
         "verify": "Verify",
         "update": "Update",
-        "install": "Install"
+        "install": "Install",
+        "unprovisioned": "UNPROVISIONED",
+        "not_configured": "Not configured"
     },
     "header": {
         "title": "RTSP Recorder",
@@ -181,7 +186,14 @@
             "title": "Streaming URLs",
             "rtsp": "RTSP",
             "onvif": "ONVIF"
-        }
+        },
+        "service_action_in_progress": "{{service}}: {{action}} in progress...",
+        "service_action_in_progress_reload": "{{service}}: {{action}} in progress... The page will reload.",
+        "service_restart_in_progress": "{{service}}: restarting...",
+        "page_reload": "Reloading the page...",
+        "service_action_done": "{{service}}: {{action}} done",
+        "service_error": "Error: {{error}}",
+        "service_restarted_reload": "Service restarted, reloading..."
     },
     "rtsp": {
         "configuration": {
@@ -824,6 +836,7 @@
         "serviceRestarted": "Service restarted",
         "serviceError": "Service error",
         "copied": "Copied to clipboard",
+        "rtspCopied": "RTSP URL copied",
         "copyError": "Copy error",
         "uploadSuccess": "Upload successful",
         "uploadError": "Upload error",
@@ -844,7 +857,21 @@
         "uploadSuccess": "Translation uploaded successfully",
         "uploadError": "Error uploading translation",
         "invalidFormat": "Invalid file format",
-        "languageChanged": "Language changed"
+        "languageChanged": "Language changed",
+        "invalid_file": "Invalid file. Use a JSON file.",
+        "validation_failed": "Validation failed: {{errors}} errors",
+        "no_lang_code": "Language code not found in file",
+        "upload_success": "Translation {{lang}} uploaded successfully",
+        "upload_failed": "Upload error",
+        "parse_error": "Error reading JSON file",
+        "template_downloaded": "Template downloaded",
+        "template_error": "Error downloading template",
+        "export_success": "Translation exported",
+        "export_error": "Error exporting translation",
+        "confirm_delete": "Delete translation \"{{lang}}\"?",
+        "delete_success": "Translation deleted",
+        "delete_error": "Error deleting translation",
+        "switch_to_new": "Use language \"{{lang}}\" now?"
     },
     "video": {
         "resolution_invalid": "Invalid resolution",

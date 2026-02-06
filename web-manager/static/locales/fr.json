@@ -2,7 +2,7 @@
     "_meta": {
         "language": "Français",
         "code": "fr",
-        "version": "2.35.01",
+        "version": "2.36.08",
         "author": "RTSP-Recorder Team"
     },
     "common": {
@@ -10,12 +10,14 @@
         "cancel": "Annuler",
         "apply": "Appliquer",
         "reset": "Reset",
+        "ok": "OK",
         "close": "Fermer",
         "delete": "Supprimer",
         "edit": "Modifier",
         "add": "Ajouter",
         "refresh": "Actualiser",
         "loading": "Chargement...",
+        "loading_short": "...",
         "error": "Erreur",
         "success": "Succès",
         "warning": "Attention",
@@ -53,6 +55,7 @@
         "date": "Date",
         "time": "Heure",
         "duration": "Durée",
+        "seconds": "{{value}} s",
         "file": "Fichier",
         "files": "fichiers",
         "folder": "Dossier",
@@ -84,7 +87,9 @@
         "check": "Vérifier",
         "verify": "Vérifier",
         "update": "Mise à jour",
-        "install": "Installer"
+        "install": "Installer",
+        "unprovisioned": "NON PROVISIONNÉ",
+        "not_configured": "Non configuré"
     },
     "header": {
         "title": "RTSP Recorder",
@@ -181,7 +186,14 @@
             "title": "URLs de streaming",
             "rtsp": "RTSP",
             "onvif": "ONVIF"
-        }
+        },
+        "service_action_in_progress": "{{service}}: {{action}} en cours...",
+        "service_action_in_progress_reload": "{{service}}: {{action}} en cours... La page va se recharger.",
+        "service_restart_in_progress": "{{service}}: redémarrage en cours...",
+        "page_reload": "Rechargement de la page...",
+        "service_action_done": "{{service}}: {{action}} effectué",
+        "service_error": "Erreur: {{error}}",
+        "service_restarted_reload": "Service redémarré, rechargement..."
     },
     "rtsp": {
         "configuration": {
@@ -824,6 +836,7 @@
         "serviceRestarted": "Service redémarré",
         "serviceError": "Erreur du service",
         "copied": "Copié dans le presse-papiers",
+        "rtspCopied": "URL RTSP copiée",
         "copyError": "Erreur de copie",
         "uploadSuccess": "Upload réussi",
         "uploadError": "Erreur lors de l'upload",
@@ -844,7 +857,21 @@
         "uploadSuccess": "Traduction uploadée avec succès",
         "uploadError": "Erreur lors de l'upload de la traduction",
         "invalidFormat": "Format de fichier invalide",
-        "languageChanged": "Langue changée"
+        "languageChanged": "Langue changée",
+        "invalid_file": "Fichier invalide. Utilisez un fichier JSON.",
+        "validation_failed": "Validation échouée: {{errors}} erreurs",
+        "no_lang_code": "Code langue introuvable dans le fichier",
+        "upload_success": "Traduction {{lang}} chargée avec succès",
+        "upload_failed": "Erreur lors de l'upload",
+        "parse_error": "Erreur de lecture du fichier JSON",
+        "template_downloaded": "Modèle téléchargé",
+        "template_error": "Erreur lors du téléchargement",
+        "export_success": "Traduction exportée",
+        "export_error": "Erreur lors de l'export",
+        "confirm_delete": "Supprimer la traduction \"{{lang}}\" ?",
+        "delete_success": "Traduction supprimée",
+        "delete_error": "Erreur lors de la suppression",
+        "switch_to_new": "Voulez-vous utiliser la langue \"{{lang}}\" maintenant?"
     },
     "video": {
         "resolution_invalid": "Résolution invalide",

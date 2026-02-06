@@ -4,7 +4,7 @@
 RTSP Recorder Web Manager - Main Application
 Modular Flask application with blueprints architecture.
 
-Version: 2.35.00
+Version: 2.36.08
 """
 
 import os
@@ -48,6 +48,7 @@ from services.watchdog_service import (
 from services.camera_service import load_camera_profiles, profiles_scheduler_loop
 from services.network_service import manage_wifi_based_on_ethernet
 from services import media_cache_service
+from services.i18n_service import get_user_language
 
 # ============================================================================
 # LOGGING CONFIGURATION
@@ -252,6 +253,8 @@ def register_error_handlers(app):
         rtsp_url_hostname = f"rtsp://{hostname}:{rtsp_port}/{rtsp_path}" if hostname else None
         is_provisioned = config.get('MEETING_PROVISIONED', 'no') == 'yes'
         
+        current_lang = get_user_language(request)
+
         return render_template('index.html', 
                              config=config,
                              metadata=CONFIG_METADATA,
@@ -266,7 +269,8 @@ def register_error_handlers(app):
                              gpu_mem=gpu_mem,
                              platform=PLATFORM,
                              app_version=APP_VERSION,
-                             ap_mode=ap_mode), 404
+                     ap_mode=ap_mode,
+                     current_lang=current_lang), 404
     
     @app.errorhandler(500)
     def internal_error(error):
@@ -329,6 +333,8 @@ def register_main_routes(app):
         # Check if device is provisioned (Meeting)
         is_provisioned = config.get('MEETING_PROVISIONED', 'no') == 'yes'
         
+        current_lang = get_user_language(request)
+
         return render_template('index.html', 
                              config=config, 
                              metadata=CONFIG_METADATA,
@@ -343,7 +349,8 @@ def register_main_routes(app):
                              gpu_mem=gpu_mem,
                              platform=PLATFORM,
                              app_version=APP_VERSION,
-                             ap_mode=ap_mode)
+                     ap_mode=ap_mode,
+                     current_lang=current_lang)
     
     @app.route('/health')
     def health():

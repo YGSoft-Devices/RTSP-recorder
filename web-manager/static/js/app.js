@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Frontend JavaScript
- * Version: 2.36.00
+ * Version: 2.36.08
  */
 
 let backupFileAction = null;
@@ -110,7 +110,7 @@ async function handleTranslationUpload(input) {
     if (!file) return;
     
     if (!file.name.endsWith('.json')) {
-        showToast(I18n.t('i18n.invalid_file', {}, 'Fichier invalide. Utilisez un fichier JSON.'), 'error');
+        showToast(I18n.t('i18n.invalid_file', {}, 'Invalid file. Use a JSON file.'), 'error');
         return;
     }
     
@@ -129,7 +129,7 @@ async function handleTranslationUpload(input) {
         
         if (!validateResult.valid) {
             showToast(I18n.t('i18n.validation_failed', { errors: validateResult.errors.length }, 
-                `Validation échouée: ${validateResult.errors.length} erreurs`), 'error');
+                `Validation failed: ${validateResult.errors.length} errors`), 'error');
             console.error('Translation validation errors:', validateResult.errors);
             return;
         }
@@ -138,7 +138,7 @@ async function handleTranslationUpload(input) {
         const langCode = json._meta?.code || file.name.replace('.json', '').split('_').pop();
         
         if (!langCode || langCode.length < 2) {
-            showToast(I18n.t('i18n.no_lang_code', {}, 'Code langue introuvable dans le fichier'), 'error');
+            showToast(I18n.t('i18n.no_lang_code', {}, 'Language code not found in file'), 'error');
             return;
         }
         
@@ -151,21 +151,21 @@ async function handleTranslationUpload(input) {
         
         if (uploadResponse.ok) {
             showToast(I18n.t('i18n.upload_success', { lang: langCode }, 
-                `Traduction ${langCode} chargée avec succès`), 'success');
+                `Translation ${langCode} uploaded successfully`), 'success');
             loadCustomTranslationsList();
             
             // Offer to switch to the new language
             if (confirm(I18n.t('i18n.switch_to_new', { lang: langCode }, 
-                `Voulez-vous utiliser la langue "${langCode}" maintenant?`))) {
+                `Use language "${langCode}" now?`))) {
                 I18n.setLanguage(langCode);
             }
         } else {
             const error = await uploadResponse.json();
-            showToast(I18n.t('i18n.upload_failed', {}, `Erreur: ${error.error}`), 'error');
+            showToast(I18n.t('i18n.upload_failed', {}, `Error: ${error.error}`), 'error');
         }
     } catch (e) {
         console.error('Translation upload error:', e);
-        showToast(I18n.t('i18n.parse_error', {}, 'Erreur de lecture du fichier JSON'), 'error');
+        showToast(I18n.t('i18n.parse_error', {}, 'Error reading JSON file'), 'error');
     }
     
     // Reset the input
@@ -190,10 +190,10 @@ async function downloadTranslationTemplate() {
         a.click();
         
         URL.revokeObjectURL(url);
-        showToast(I18n.t('i18n.template_downloaded', {}, 'Modèle téléchargé'), 'success');
+        showToast(I18n.t('i18n.template_downloaded', {}, 'Template downloaded'), 'success');
     } catch (e) {
         console.error('Template download error:', e);
-        showToast(I18n.t('i18n.template_error', {}, 'Erreur lors du téléchargement'), 'error');
+        showToast(I18n.t('i18n.template_error', {}, 'Error downloading template'), 'error');
     }
 }
 
@@ -216,10 +216,10 @@ async function downloadCurrentTranslation() {
         a.click();
         
         URL.revokeObjectURL(url);
-        showToast(I18n.t('i18n.export_success', {}, 'Traduction exportée'), 'success');
+        showToast(I18n.t('i18n.export_success', {}, 'Translation exported'), 'success');
     } catch (e) {
         console.error('Export error:', e);
-        showToast(I18n.t('i18n.export_error', {}, 'Erreur lors de l\'export'), 'error');
+        showToast(I18n.t('i18n.export_error', {}, 'Error exporting translation'), 'error');
     }
 }
 
@@ -268,7 +268,7 @@ async function loadCustomTranslationsList() {
  */
 async function deleteCustomTranslation(langCode) {
     if (!confirm(I18n.t('i18n.confirm_delete', { lang: langCode }, 
-        `Supprimer la traduction "${langCode}"?`))) {
+        `Delete translation "${langCode}"?`))) {
         return;
     }
     
@@ -278,7 +278,7 @@ async function deleteCustomTranslation(langCode) {
         });
         
         if (response.ok) {
-            showToast(I18n.t('i18n.delete_success', {}, 'Traduction supprimée'), 'success');
+            showToast(I18n.t('i18n.delete_success', {}, 'Translation deleted'), 'success');
             loadCustomTranslationsList();
             
             // If we deleted the current language, switch back to default
@@ -287,11 +287,11 @@ async function deleteCustomTranslation(langCode) {
             }
         } else {
             const error = await response.json();
-            showToast(error.error || 'Erreur', 'error');
+            showToast(error.error || I18n.t('common.error', {}, 'Error'), 'error');
         }
     } catch (e) {
         console.error('Delete translation error:', e);
-        showToast(I18n.t('i18n.delete_error', {}, 'Erreur lors de la suppression'), 'error');
+        showToast(I18n.t('i18n.delete_error', {}, 'Error deleting translation'), 'error');
     }
 }
 
@@ -375,7 +375,7 @@ async function applyResolution() {
     fps = fpsInput ? fpsInput.value : '30';
     
     if (!width || !height) {
-        showToast(I18n ? I18n.t('video.resolution_invalid', {}, 'Résolution invalide') : 'Résolution invalide', 'error');
+        showToast(I18n ? I18n.t('video.resolution_invalid', {}, 'Invalid resolution') : 'Invalid resolution', 'error');
         return;
     }
     
@@ -395,14 +395,14 @@ async function applyResolution() {
         });
         
         if (response.ok) {
-            showToast(I18n ? I18n.t('video.resolution_applied', {}, 'Résolution appliquée') : 'Résolution appliquée', 'success');
+            showToast(I18n ? I18n.t('video.resolution_applied', {}, 'Resolution applied') : 'Resolution applied', 'success');
         } else {
             const error = await response.json();
-            showToast(error.error || 'Erreur', 'error');
+            showToast(error.error || (I18n ? I18n.t('common.error', {}, 'Error') : 'Error'), 'error');
         }
     } catch (e) {
         console.error('[app] applyResolution error:', e);
-        showToast(I18n ? I18n.t('common.error', {}, 'Erreur') : 'Erreur', 'error');
+        showToast(I18n ? I18n.t('common.error', {}, 'Error') : 'Error', 'error');
     }
 }
 

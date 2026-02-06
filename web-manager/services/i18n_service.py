@@ -4,7 +4,7 @@
 i18n Service - Internationalization Service for RTSP Recorder Web Manager
 Handles language detection, translation loading, and custom translation upload.
 
-Version: 1.0.0
+Version: 1.1.0
 """
 
 import os
@@ -30,6 +30,9 @@ BUILT_IN_LANGUAGES = ['fr', 'en']
 
 # Default language
 DEFAULT_LANGUAGE = 'fr'
+
+# Environment variable for language override (optional)
+ENV_LANGUAGE_KEY = 'WEB_LANGUAGE'
 
 # Cache for loaded translations
 _translations_cache: Dict[str, Dict] = {}
@@ -171,7 +174,12 @@ def deep_merge(base: Dict, override: Dict) -> Dict:
     return result
 
 
-def get_translation(lang_code: str, key: str, default: str = None) -> str:
+def get_translation(
+    lang_code: str,
+    key: str,
+    default: str = None,
+    return_none_on_missing: bool = False
+) -> Optional[str]:
     """
     Get a specific translation by dot-notation key.
     
@@ -181,7 +189,7 @@ def get_translation(lang_code: str, key: str, default: str = None) -> str:
         default: Default value if key not found
         
     Returns:
-        Translated string or default
+        Translated string or default (or None if return_none_on_missing=True)
     """
     translation = load_translation(lang_code)
     
@@ -192,9 +200,41 @@ def get_translation(lang_code: str, key: str, default: str = None) -> str:
     try:
         for k in keys:
             value = value[k]
-        return value if isinstance(value, str) else default or key
+        if isinstance(value, str):
+            return value
+        return None if return_none_on_missing else (default or key)
     except (KeyError, TypeError):
-        return default or key
+        return None if return_none_on_missing else (default or key)
+
+
+def _interpolate(text: Optional[str], params: Optional[Dict[str, Any]] = None) -> Optional[str]:
+    """
+    Interpolate parameters into a translation string.
+    Supports both "{name}" and "{{name}}" styles.
+    """
+    if not text or not params:
+        return text
+    result = text
+    try:
+        for key, value in params.items():
+            result = result.replace(f"{{{{{key}}}}}", str(value))
+            result = result.replace(f"{{{key}}}", str(value))
+    except Exception:
+        return text
+    return result
+
+
+def t(lang_code: str, key: str, params: Optional[Dict[str, Any]] = None, default: str = None) -> str:
+    """
+    Translation helper with fallback chain:
+    requested language -> default language -> key/default.
+    """
+    text = get_translation(lang_code, key, return_none_on_missing=True)
+    if text is None and lang_code != DEFAULT_LANGUAGE:
+        text = get_translation(DEFAULT_LANGUAGE, key, return_none_on_missing=True)
+    if text is None:
+        text = default or key
+    return _interpolate(text, params)
 
 
 # ============================================================================
@@ -349,7 +389,7 @@ def get_translation_template() -> Dict:
 def get_user_language(request=None) -> str:
     """
     Determine user's preferred language.
-    Priority: cookie > Accept-Language header > default
+    Priority: query param > cookie > Accept-Language header > env var > config > default
     
     Args:
         request: Flask request object (optional)
@@ -358,6 +398,11 @@ def get_user_language(request=None) -> str:
         Language code
     """
     if request:
+        # Query param (?lang=fr)
+        query_lang = request.args.get('lang')
+        if query_lang and is_language_available(query_lang):
+            return query_lang
+
         # Check cookie first
         cookie_lang = request.cookies.get('language')
         if cookie_lang and is_language_available(cookie_lang):
@@ -370,6 +415,21 @@ def get_user_language(request=None) -> str:
         )
         if accept_lang:
             return accept_lang
+
+    # Environment override (optional)
+    env_lang = os.environ.get(ENV_LANGUAGE_KEY) or os.environ.get('I18N_LANGUAGE')
+    if env_lang and is_language_available(env_lang):
+        return env_lang
+
+    # Config override (optional)
+    try:
+        from services.config_service import load_config
+        config = load_config()
+        config_lang = config.get(ENV_LANGUAGE_KEY) or config.get('I18N_LANGUAGE')
+        if config_lang and is_language_available(config_lang):
+            return config_lang
+    except Exception as e:
+        logger.debug(f"Error reading config language: {e}")
     
     return DEFAULT_LANGUAGE
 

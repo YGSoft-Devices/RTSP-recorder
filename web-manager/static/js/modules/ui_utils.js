@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - UI utilities
- * Version: 2.33.01
+ * Version: 2.36.08
  */
 (function () {
     function showToast(message, type = 'info') {
@@ -28,9 +28,9 @@
     function copyRtspUrl() {
         const url = document.getElementById('rtsp-url').textContent;
         navigator.clipboard.writeText(url).then(() => {
-            showToast('URL RTSP copiée !', 'success');
+            showToast(I18n.t('toast.rtspCopied', {}, 'RTSP URL copied!'), 'success');
         }).catch(() => {
-            showToast('Erreur lors de la copie', 'error');
+            showToast(I18n.t('toast.copyError', {}, 'Copy error'), 'error');
         });
     }
 
@@ -38,7 +38,7 @@
         // Modern API (HTTPS only)
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(text).then(() => {
-                showToast('Copié !', 'success');
+                showToast(I18n.t('toast.copied', {}, 'Copied!'), 'success');
             }).catch(() => {
                 fallbackCopyToClipboard(text);
             });
@@ -61,12 +61,12 @@
         try {
             const successful = document.execCommand('copy');
             if (successful) {
-                showToast('Copié !', 'success');
+                showToast(I18n.t('toast.copied', {}, 'Copied!'), 'success');
             } else {
-                showToast('Erreur lors de la copie', 'error');
+                showToast(I18n.t('toast.copyError', {}, 'Copy error'), 'error');
             }
         } catch (err) {
-            showToast('Erreur lors de la copie', 'error');
+            showToast(I18n.t('toast.copyError', {}, 'Copy error'), 'error');
         }
         
         document.body.removeChild(textArea);

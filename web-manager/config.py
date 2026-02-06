@@ -3,7 +3,7 @@
 RTSP Recorder Web Manager - Configuration
 Central configuration file for constants, defaults, and metadata.
 
-Version: 1.2.0
+Version: 1.2.3
 """
 
 import os
@@ -230,6 +230,9 @@ DEFAULT_CONFIG = {
     "GST_DEBUG_LEVEL": "2",
     "LOG_DIR": "/var/log/rpi-cam",
     "LOW_LATENCY": "1",
+
+    # UI Language (optional override, e.g., fr/en)
+    "WEB_LANGUAGE": "",
     
     # Meeting API Integration
     "MEETING_ENABLED": "no",
