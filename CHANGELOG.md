@@ -7,6 +7,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [2.36.09] - Hotfix déploiement CRLF
+
+### Fixed
+- **Update tool** : conversion CRLF → LF automatique pour les scripts déployés (évite `env: bash\r` et exit 127)
+
+---
+
 ## [2.36.08] - i18n core, sélection langue serveur
 
 ### Added

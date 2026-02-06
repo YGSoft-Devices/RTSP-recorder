@@ -648,7 +648,7 @@ RTSP-Full/
 
 | Fichier | Version Actuelle |
 |---------|------------------|
-| VERSION | 2.36.08 (source unique) |
+| VERSION | 2.36.09 (source unique) |
 | rpi_av_rtsp_recorder.sh | 2.15.2 |
 | rtsp_recorder.sh | 1.8.0 |
 | rtsp_watchdog.sh | 1.2.0 |
@@ -706,12 +706,12 @@ RTSP-Full/
 | debug_tools/install_device.ps1 | 1.4.4 |
 | debug_tools/install_device_gui.ps1 | 1.4.0 |
 | debug_tools/run_remote.ps1 | 1.3.1 |
-| debug_tools/update_device.ps1 | 2.0.4 |
+| debug_tools/update_device.ps1 | 2.0.8 |
 | debug_tools/ssh_device.ps1 | 1.0.0 |
 | debug_tools/deploy_scp.ps1 | 1.4.7 |
 | debug_tools/Get-DeviceIP.ps1 | 1.0.0 |
 | debug_tools/stop_services.sh | 1.0.0 |
-| docs/DOCUMENTATION_COMPLETE.md | 2.36.08 |
+| docs/DOCUMENTATION_COMPLETE.md | 2.36.09 |
 | debug_tools/package_update.ps1 | 1.0.1 |
 
 

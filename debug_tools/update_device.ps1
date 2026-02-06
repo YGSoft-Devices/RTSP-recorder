@@ -1,5 +1,5 @@
 # update_device.ps1 - Quick update of project files on a running device
-# Version: 2.0.7
+# Version: 2.0.8
 #
 # This script performs a lightweight, fast update:
 # 0. Wait for device to be reachable (with automatic retry on network/reboot issues)
@@ -385,10 +385,13 @@ $output = & $runRemote -IP $deviceIp $syncCmd -Timeout 60 2>&1
 if ($LASTEXITCODE -ne 0) { Write-Host "⚠ Warning during legacy sync (may be OK)" -ForegroundColor Yellow }
 else { Write-Host "✓ Legacy sync completed" -ForegroundColor Green }
 
-# STEP 2.2: Fix executable permissions for scripts
+# STEP 2.2: Normalize line endings + fix executable permissions
 Write-Host ""
-Write-Host "=== STEP 2.2: Fixing script permissions ===" -ForegroundColor Cyan
+Write-Host "=== STEP 2.2: Normalizing line endings + fixing script permissions ===" -ForegroundColor Cyan
 $chmodCmd = @'
+# Convert CRLF to LF for scripts (prevents env: bash\r errors)
+sudo find /usr/local/bin -maxdepth 1 -type f \( -name '*.sh' -o -name '*.py' \) -exec sed -i 's/\r$//' {} + 2>/dev/null || true
+sudo find /opt/rpi-cam-webmanager -type f \( -name '*.sh' -o -name '*.py' \) -exec sed -i 's/\r$//' {} + 2>/dev/null || true
 # Ensure all scripts in /usr/local/bin have execute permission
 echo "Fixing executable permissions..."
 sudo chmod +x /usr/local/bin/rpi_*.sh /usr/local/bin/rpi_*.py 2>/dev/null || true
