@@ -2,7 +2,7 @@
  * Internationalization (i18n) Module
  * Handles multilingual support for the RTSP Recorder Web Interface
  * 
- * @version 2.36.08
+ * @version 2.36.14
  */
 
 const I18n = (function() {
@@ -188,7 +188,8 @@ const I18n = (function() {
             const response = await fetch(CONFIG.languageEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ language: langCode })
+                body: JSON.stringify({ language: langCode }),
+                credentials: 'same-origin'
             });
             return response.ok;
         } catch (error) {
@@ -292,36 +293,63 @@ const I18n = (function() {
             return;
         }
 
-        const wrapper = document.createElement('div');
-        wrapper.className = 'language-selector';
-        wrapper.innerHTML = `
-            <select id="language-select" class="language-select" title="${t('i18n.select_language', {}, 'Select language')}">
-                ${availableLanguages.map(lang => `
-                    <option value="${lang.code}" ${lang.code === currentLanguage ? 'selected' : ''}>
-                        ${lang.flag || ''} ${lang.native_name || lang.name}
-                    </option>
-                `).join('')}
-            </select>
-            <button type="button" id="language-btn-ok" class="language-btn-ok" title="${t('i18n.apply_language', {}, 'Apply language')}">${t('common.ok', {}, 'OK')}</button>
-        `;
+        let select = container.querySelector('#language-select');
+        let okButton = container.querySelector('#language-btn-ok');
 
-        container.appendChild(wrapper);
+        if (!select) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'language-selector';
+            wrapper.innerHTML = `
+                <select id="language-select" class="language-select" title="${t('i18n.select_language', {}, 'Select language')}">
+                    ${availableLanguages.map(lang => `
+                        <option value="${lang.code}" ${lang.code === currentLanguage ? 'selected' : ''}>
+                            ${lang.flag || ''} ${lang.native_name || lang.name}
+                        </option>
+                    `).join('')}
+                </select>
+                <button type="button" id="language-btn-ok" class="language-btn-ok" title="${t('i18n.apply_language', {}, 'Apply language')}">${t('common.ok', {}, 'OK')}</button>
+            `;
+            container.appendChild(wrapper);
+            select = wrapper.querySelector('#language-select');
+            okButton = wrapper.querySelector('#language-btn-ok');
+        } else {
+            select.innerHTML = availableLanguages.map(lang => `
+                <option value="${lang.code}" ${lang.code === currentLanguage ? 'selected' : ''}>
+                    ${lang.flag || ''} ${lang.native_name || lang.name}
+                </option>
+            `).join('');
+        }
 
-        // Add event listener for OK button (not auto-apply on change)
-        const okButton = wrapper.querySelector('#language-btn-ok');
-        okButton.addEventListener('click', async () => {
-            const select = document.getElementById('language-select');
-            if (select && select.value !== currentLanguage) {
-                okButton.disabled = true;
-                okButton.textContent = t('common.loading_short', {}, '...');
-                try {
-                    await setLanguage(select.value);
-                } finally {
-                    okButton.disabled = false;
-                    okButton.textContent = t('common.ok', {}, 'OK');
+        if (select && !select.dataset.i18nBound) {
+            select.dataset.i18nBound = 'true';
+            select.addEventListener('change', async () => {
+                if (select.value !== currentLanguage) {
+                    select.disabled = true;
+                    try {
+                        await setLanguage(select.value);
+                    } finally {
+                        select.disabled = false;
+                    }
                 }
-            }
-        });
+            });
+        }
+
+        if (okButton && !okButton.dataset.i18nBound) {
+            okButton.dataset.i18nBound = 'true';
+            okButton.addEventListener('click', async () => {
+                const currentSelect = document.getElementById('language-select');
+                if (currentSelect && currentSelect.value !== currentLanguage) {
+                    okButton.disabled = true;
+                    okButton.textContent = t('common.loading_short', {}, '...');
+                    try {
+                        await setLanguage(currentSelect.value);
+                    } finally {
+                        okButton.disabled = false;
+                        okButton.textContent = t('common.ok', {}, 'OK');
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -382,6 +410,9 @@ const I18n = (function() {
         
         // Save preference
         saveLanguagePreference(currentLanguage);
+
+        // Update document language
+        document.documentElement.lang = currentLanguage;
 
         // Translate the DOM
         translateDOM();

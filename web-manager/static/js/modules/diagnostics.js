@@ -12,7 +12,7 @@
  */
 async function runDiagnostic() {
     try {
-        showToast('Diagnostic en cours...', 'info');
+        showToast(I18n.t('diagnostics.run_in_progress', {}, 'Diagnostic running...'), 'info');
         
         const response = await fetch('/api/diagnostic');
         const data = await response.json();
@@ -20,12 +20,12 @@ async function runDiagnostic() {
         if (data.success) {
             displayDiagnostic(data.diagnostic);
             document.getElementById('diagnostic-results').style.display = 'block';
-            showToast('Diagnostic terminé', 'success');
+            showToast(I18n.t('diagnostics.run_done', {}, 'Diagnostic completed'), 'success');
         } else {
-            showToast('Erreur lors du diagnostic', 'error');
+            showToast(I18n.t('diagnostics.run_error', {}, 'Diagnostic error'), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -39,15 +39,15 @@ function displayDiagnostic(diag) {
             <span class="status-icon ${diag.service.active ? 'success' : 'error'}">
                 <i class="fas fa-${diag.service.active ? 'check-circle' : 'times-circle'}"></i>
             </span>
-            <span class="label">État du service:</span>
-            <span class="value">${diag.service.status || 'inconnu'}</span>
+            <span class="label">${I18n.t('diagnostics.service_status_label', {}, 'Service status')}:</span>
+            <span class="value">${diag.service.status || I18n.t('diagnostics.unknown', {}, 'unknown')}</span>
         </div>
         <div class="diag-item">
             <span class="status-icon ${diag.service.script_exists ? 'success' : 'error'}">
                 <i class="fas fa-${diag.service.script_exists ? 'check-circle' : 'times-circle'}"></i>
             </span>
-            <span class="label">Script RTSP:</span>
-            <span class="value">${diag.service.script_exists ? 'Présent' : 'Absent'} (${diag.service.script_path})</span>
+            <span class="label">${I18n.t('diagnostics.rtsp_script_label', {}, 'RTSP script')}:</span>
+            <span class="value">${diag.service.script_exists ? I18n.t('diagnostics.present', {}, 'Present') : I18n.t('diagnostics.missing', {}, 'Missing')} (${diag.service.script_path})</span>
         </div>
     `;
     document.getElementById('diag-service').innerHTML = serviceHtml;
@@ -58,15 +58,15 @@ function displayDiagnostic(diag) {
             <span class="status-icon ${diag.gstreamer.installed ? 'success' : 'error'}">
                 <i class="fas fa-${diag.gstreamer.installed ? 'check-circle' : 'times-circle'}"></i>
             </span>
-            <span class="label">GStreamer:</span>
-            <span class="value">${diag.gstreamer.installed ? diag.gstreamer.version : 'Non installé'}</span>
+            <span class="label">${I18n.t('diagnostics.gstreamer_label', {}, 'GStreamer')}:</span>
+            <span class="value">${diag.gstreamer.installed ? diag.gstreamer.version : I18n.t('diagnostics.not_installed', {}, 'Not installed')}</span>
         </div>
         <div class="diag-item">
             <span class="status-icon ${diag.gstreamer.rtsp_plugin ? 'success' : 'error'}">
                 <i class="fas fa-${diag.gstreamer.rtsp_plugin ? 'check-circle' : 'times-circle'}"></i>
             </span>
-            <span class="label">Plugin RTSP:</span>
-            <span class="value">${diag.gstreamer.rtsp_plugin ? 'Installé' : 'Manquant (gst-rtsp-server)'}</span>
+            <span class="label">${I18n.t('diagnostics.rtsp_plugin_label', {}, 'RTSP plugin')}:</span>
+            <span class="value">${diag.gstreamer.rtsp_plugin ? I18n.t('diagnostics.installed', {}, 'Installed') : I18n.t('diagnostics.missing_plugin', {}, 'Missing (gst-rtsp-server)')}</span>
         </div>
     `;
     document.getElementById('diag-gstreamer').innerHTML = gstHtml;
@@ -83,25 +83,25 @@ function displayDiagnostic(diag) {
                 <span class="status-icon ${hasEncoder ? (isHardware ? 'success' : 'warning') : 'error'}">
                     <i class="fas fa-${hasEncoder ? (isHardware ? 'microchip' : 'microprocessor') : 'times-circle'}"></i>
                 </span>
-                <span class="label">Encodeur actif:</span>
-                <span class="value">${diag.encoder.active_encoder || 'inconnu'}</span>
+                <span class="label">${I18n.t('diagnostics.encoder_active_label', {}, 'Active encoder')}:</span>
+                <span class="value">${diag.encoder.active_encoder || I18n.t('diagnostics.unknown', {}, 'unknown')}</span>
             </div>
             <div class="diag-item">
                 <span class="status-icon ${isHardware ? 'success' : (isSoftware ? 'warning' : 'error')}">
                     <i class="fas fa-${isHardware ? 'bolt' : (isSoftware ? 'cog' : 'times-circle')}"></i>
                 </span>
-                <span class="label">Type:</span>
+                <span class="label">${I18n.t('diagnostics.encoder_type_label', {}, 'Type')}:</span>
                 <span class="value encoder-type-${encoderType}">${
-                    isHardware ? 'HARDWARE (GPU VideoCore) - CPU faible' : 
-                    (isSoftware ? 'SOFTWARE (x264) - CPU élevé' : 'Aucun')
+                    isHardware ? I18n.t('diagnostics.encoder_type_hw', {}, 'HARDWARE (GPU VideoCore) - low CPU') : 
+                    (isSoftware ? I18n.t('diagnostics.encoder_type_sw', {}, 'SOFTWARE (x264) - high CPU') : I18n.t('diagnostics.none', {}, 'None'))
                 }</span>
             </div>
             <div class="diag-item">
                 <span class="status-icon ${diag.encoder.hw_available ? 'success' : 'warning'}">
                     <i class="fas fa-${diag.encoder.hw_available ? 'check-circle' : 'exclamation-triangle'}"></i>
                 </span>
-                <span class="label">HW disponible:</span>
-                <span class="value">${diag.encoder.hw_available ? 'Oui (v4l2h264enc)' : 'Non'}</span>
+                <span class="label">${I18n.t('diagnostics.encoder_hw_available_label', {}, 'HW available')}:</span>
+                <span class="value">${diag.encoder.hw_available ? I18n.t('diagnostics.yes_hw', {}, 'Yes (v4l2h264enc)') : I18n.t('diagnostics.no', {}, 'No')}</span>
             </div>
             ${!diag.encoder.hw_available ? `
             <div class="diag-output" style="font-size: 0.85em; color: var(--text-muted);">
@@ -120,7 +120,7 @@ function displayDiagnostic(diag) {
             if (gstSection && gstSection.parentElement) {
                 const newSection = document.createElement('div');
                 newSection.innerHTML = `
-                    <h5><i class="fas fa-microchip"></i> Encodeur H264</h5>
+                    <h5><i class="fas fa-microchip"></i> ${I18n.t('diagnostics.encoder_h264_title', {}, 'H264 Encoder')}</h5>
                     <div id="diag-encoder"></div>
                 `;
                 gstSection.parentElement.insertBefore(newSection, gstSection.nextSibling);
@@ -138,8 +138,8 @@ function displayDiagnostic(diag) {
             <span class="status-icon ${diag.camera.devices_found ? 'success' : 'warning'}">
                 <i class="fas fa-${diag.camera.devices_found ? 'check-circle' : 'exclamation-triangle'}"></i>
             </span>
-            <span class="label">Caméra V4L2:</span>
-            <span class="value">${diag.camera.devices_found ? 'Détectée' : 'Non détectée'}</span>
+            <span class="label">${I18n.t('diagnostics.camera_v4l2_label', {}, 'V4L2 camera')}:</span>
+            <span class="value">${diag.camera.devices_found ? I18n.t('diagnostics.detected', {}, 'Detected') : I18n.t('diagnostics.not_detected', {}, 'Not detected')}</span>
         </div>
     `;
     if (diag.camera.v4l2_output) {
@@ -151,8 +151,8 @@ function displayDiagnostic(diag) {
                 <span class="status-icon ${diag.camera.csi_detected ? 'success' : 'warning'}">
                     <i class="fas fa-${diag.camera.csi_detected ? 'check-circle' : 'exclamation-triangle'}"></i>
                 </span>
-                <span class="label">Caméra CSI:</span>
-                <span class="value">${diag.camera.csi_detected ? 'Détectée' : 'Non détectée'}</span>
+                <span class="label">${I18n.t('diagnostics.camera_csi_label', {}, 'CSI camera')}:</span>
+                <span class="value">${diag.camera.csi_detected ? I18n.t('diagnostics.detected', {}, 'Detected') : I18n.t('diagnostics.not_detected', {}, 'Not detected')}</span>
             </div>
         `;
         if (diag.camera.libcamera_output) {
@@ -167,8 +167,8 @@ function displayDiagnostic(diag) {
             <span class="status-icon ${diag.audio.devices_found ? 'success' : 'warning'}">
                 <i class="fas fa-${diag.audio.devices_found ? 'check-circle' : 'exclamation-triangle'}"></i>
             </span>
-            <span class="label">Microphone:</span>
-            <span class="value">${diag.audio.devices_found ? 'Détecté' : 'Non détecté'}</span>
+            <span class="label">${I18n.t('diagnostics.microphone_label', {}, 'Microphone')}:</span>
+            <span class="value">${diag.audio.devices_found ? I18n.t('diagnostics.detected', {}, 'Detected') : I18n.t('diagnostics.not_detected', {}, 'Not detected')}</span>
         </div>
     `;
     if (diag.audio.arecord_output) {
@@ -182,8 +182,8 @@ function displayDiagnostic(diag) {
             <span class="status-icon ${diag.network.rtsp_port_in_use ? 'success' : 'warning'}">
                 <i class="fas fa-${diag.network.rtsp_port_in_use ? 'check-circle' : 'exclamation-triangle'}"></i>
             </span>
-            <span class="label">Port RTSP:</span>
-            <span class="value">${diag.network.rtsp_port_in_use ? 'En écoute' : 'Non actif'}</span>
+            <span class="label">${I18n.t('diagnostics.rtsp_port_label', {}, 'RTSP port')}:</span>
+            <span class="value">${diag.network.rtsp_port_in_use ? I18n.t('diagnostics.listening', {}, 'Listening') : I18n.t('diagnostics.inactive', {}, 'Inactive')}</span>
         </div>
     `;
     document.getElementById('diag-network').innerHTML = networkHtml;
@@ -230,10 +230,10 @@ async function startPreview() {
     // Update UI state - show connecting
     placeholder.innerHTML = `
         <i class="fas fa-spinner fa-spin"></i>
-        <p>Connexion en cours...</p>
-        <small>Initialisation du flux vidéo</small>
+        <p>${I18n.t('diagnostics.preview_connecting_title', {}, 'Connecting...')}</p>
+        <small>${I18n.t('diagnostics.preview_connecting_subtitle', {}, 'Initializing video stream')}</small>
     `;
-    statusText.innerHTML = '<i class="fas fa-circle preview-status-dot" style="color: var(--warning-color);"></i> Connexion...';
+    statusText.innerHTML = `<i class="fas fa-circle preview-status-dot" style="color: var(--warning-color);"></i> ${I18n.t('diagnostics.preview_status_connecting', {}, 'Connecting...')}`;
     
     // Set stream source
     streamImg.src = streamUrl;
@@ -244,9 +244,9 @@ async function startPreview() {
         streamImg.style.display = 'block';
         btnStart.style.display = 'none';
         btnStop.style.display = 'inline-flex';
-        statusText.innerHTML = '<i class="fas fa-circle preview-status-dot active"></i> Streaming...';
+        statusText.innerHTML = `<i class="fas fa-circle preview-status-dot active"></i> ${I18n.t('diagnostics.preview_status_streaming', {}, 'Streaming...')}`;
         previewActive = true;
-        showToast('Aperçu démarré', 'success');
+        showToast(I18n.t('diagnostics.preview_started_toast', {}, 'Preview started'), 'success');
     };
     
     // Handle stream errors
@@ -254,14 +254,14 @@ async function startPreview() {
         if (!previewActive) {
             placeholder.innerHTML = `
                 <i class="fas fa-exclamation-triangle"></i>
-                <p>Erreur de connexion</p>
-                <small>Impossible d'établir le flux vidéo</small>
+                <p>${I18n.t('diagnostics.preview_error_title', {}, 'Connection error')}</p>
+                <small>${I18n.t('diagnostics.preview_error_subtitle', {}, 'Unable to establish video stream')}</small>
             `;
-            statusText.innerHTML = '<i class="fas fa-circle preview-status-dot inactive"></i> Erreur';
-            showToast('Erreur de connexion au flux vidéo', 'error');
+            statusText.innerHTML = `<i class="fas fa-circle preview-status-dot inactive"></i> ${I18n.t('diagnostics.preview_status_error', {}, 'Error')}`;
+            showToast(I18n.t('diagnostics.preview_error_toast', {}, 'Video stream connection error'), 'error');
         } else {
             stopPreview();
-            showToast('Flux vidéo interrompu', 'warning');
+            showToast(I18n.t('diagnostics.preview_interrupted_toast', {}, 'Video stream interrupted'), 'warning');
         }
     };
 }
@@ -285,9 +285,9 @@ function stopPreview() {
     placeholder.style.display = 'flex';
     btnStart.style.display = 'inline-flex';
     btnStop.style.display = 'none';
-    statusText.innerHTML = '<i class="fas fa-circle preview-status-dot inactive"></i> Inactif';
+    statusText.innerHTML = `<i class="fas fa-circle preview-status-dot inactive"></i> ${I18n.t('diagnostics.preview_status_inactive', {}, 'Inactive')}`;
     
-    showToast('Aperçu arrêté', 'info');
+    showToast(I18n.t('diagnostics.preview_stopped_toast', {}, 'Preview stopped'), 'info');
 }
 
 /**
@@ -298,12 +298,12 @@ async function takeSnapshot() {
     const [width, height] = quality.split('x');
     
     try {
-        showToast('Capture en cours...', 'info');
+        showToast(I18n.t('diagnostics.snapshot_in_progress', {}, 'Capturing...'), 'info');
         
         const response = await fetch(`/api/video/preview/snapshot?width=${width}&height=${height}`);
         
         if (!response.ok) {
-            throw new Error('Failed to capture snapshot');
+            throw new Error(I18n.t('diagnostics.snapshot_failed', {}, 'Failed to capture snapshot'));
         }
         
         const blob = await response.blob();
@@ -318,10 +318,10 @@ async function takeSnapshot() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        showToast('Capture téléchargée !', 'success');
+        showToast(I18n.t('diagnostics.snapshot_downloaded_toast', {}, 'Snapshot downloaded'), 'success');
     } catch (error) {
         console.error('Snapshot error:', error);
-        showToast('Erreur lors de la capture', 'error');
+        showToast(I18n.t('diagnostics.snapshot_error_toast', {}, 'Snapshot error'), 'error');
     }
 }
 
@@ -339,13 +339,15 @@ async function checkPreviewStatus() {
         if (!data.preview_available) {
             placeholder.innerHTML = `
                 <i class="fas fa-video-slash"></i>
-                <p>Caméra non disponible</p>
-                <small>Vérifiez que la caméra est connectée</small>
+                <p>${I18n.t('diagnostics.preview_unavailable_title', {}, 'Camera unavailable')}</p>
+                <small>${I18n.t('diagnostics.preview_unavailable_subtitle', {}, 'Check that the camera is connected')}</small>
             `;
-            statusText.innerHTML = '<i class="fas fa-circle preview-status-dot inactive"></i> Non disponible';
+            statusText.innerHTML = `<i class="fas fa-circle preview-status-dot inactive"></i> ${I18n.t('diagnostics.preview_status_unavailable', {}, 'Unavailable')}`;
         } else {
-            const sourceLabel = data.preview_source === 'rtsp' ? 'via RTSP' : 'directe';
-            statusText.innerHTML = `<i class="fas fa-circle preview-status-dot inactive"></i> Prêt (${sourceLabel})`;
+            const sourceLabel = data.preview_source === 'rtsp'
+                ? I18n.t('diagnostics.preview_source_rtsp', {}, 'via RTSP')
+                : I18n.t('diagnostics.preview_source_direct', {}, 'direct');
+            statusText.innerHTML = `<i class="fas fa-circle preview-status-dot inactive"></i> ${I18n.t('diagnostics.preview_ready', {}, 'Ready')} (${sourceLabel})`;
         }
     } catch (error) {
         console.error('Preview status check failed:', error);
@@ -377,7 +379,9 @@ async function loadCameraControls() {
             if (af.autofocus_available) {
                 autofocusCheckbox.disabled = false;
                 autofocusCheckbox.checked = af.autofocus_enabled;
-                autofocusStatus.textContent = af.autofocus_enabled ? 'Activé' : 'Désactivé';
+                autofocusStatus.textContent = af.autofocus_enabled
+                    ? I18n.t('diagnostics.autofocus_enabled', {}, 'Enabled')
+                    : I18n.t('diagnostics.autofocus_disabled', {}, 'Disabled');
                 autofocusStatus.className = 'control-status ' + (af.autofocus_enabled ? 'status-on' : 'status-off');
                 
                 // Show/hide manual focus based on autofocus state
@@ -390,14 +394,14 @@ async function loadCameraControls() {
                 }
             } else {
                 autofocusCheckbox.disabled = true;
-                autofocusStatus.textContent = 'Non disponible';
+                autofocusStatus.textContent = I18n.t('diagnostics.autofocus_unavailable', {}, 'Unavailable');
                 autofocusStatus.className = 'control-status status-unavailable';
                 manualFocusGroup.style.display = 'none';
             }
         }
     } catch (error) {
         console.error('Error loading camera controls:', error);
-        document.getElementById('autofocus-status').textContent = 'Erreur';
+        document.getElementById('autofocus-status').textContent = I18n.t('diagnostics.autofocus_error', {}, 'Error');
     }
 }
 
@@ -408,7 +412,12 @@ async function setCameraAutofocus(enabled) {
     try {
         const device = document.getElementById('VIDEO_DEVICE')?.value || '/dev/video0';
         
-        showToast(enabled ? 'Activation autofocus...' : 'Désactivation autofocus...', 'info');
+        showToast(
+            enabled
+                ? I18n.t('diagnostics.autofocus_enabling', {}, 'Enabling autofocus...')
+                : I18n.t('diagnostics.autofocus_disabling', {}, 'Disabling autofocus...'),
+            'info'
+        );
         
         const response = await fetch('/api/camera/autofocus', {
             method: 'POST',
@@ -422,7 +431,9 @@ async function setCameraAutofocus(enabled) {
             const autofocusStatus = document.getElementById('autofocus-status');
             const manualFocusGroup = document.getElementById('manual-focus-group');
             
-            autofocusStatus.textContent = enabled ? 'Activé' : 'Désactivé';
+            autofocusStatus.textContent = enabled
+                ? I18n.t('diagnostics.autofocus_enabled', {}, 'Enabled')
+                : I18n.t('diagnostics.autofocus_disabled', {}, 'Disabled');
             autofocusStatus.className = 'control-status ' + (enabled ? 'status-on' : 'status-off');
             
             // Show manual focus slider when autofocus is disabled
@@ -430,14 +441,19 @@ async function setCameraAutofocus(enabled) {
                 manualFocusGroup.style.display = enabled ? 'none' : 'block';
             }
             
-            showToast(enabled ? 'Autofocus activé' : 'Autofocus désactivé - Ajustez le focus manuellement', 'success');
+            showToast(
+                enabled
+                    ? I18n.t('diagnostics.autofocus_on_toast', {}, 'Autofocus enabled')
+                    : I18n.t('diagnostics.autofocus_off_toast', {}, 'Autofocus disabled - adjust focus manually'),
+                'success'
+            );
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
             // Revert checkbox
             document.getElementById('camera_autofocus').checked = !enabled;
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -463,7 +479,7 @@ async function setCameraFocus(value) {
         const data = await response.json();
         
         if (!data.success) {
-            showToast(`Erreur focus: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.focus_error', { error: data.message }, `Focus error: ${data.message}`), 'error');
         }
     } catch (error) {
         console.error('Error setting focus:', error);
@@ -477,7 +493,7 @@ async function triggerOneShotFocus() {
     try {
         const device = document.getElementById('VIDEO_DEVICE')?.value || '/dev/video0';
         
-        showToast('Mise au point en cours...', 'info');
+        showToast(I18n.t('diagnostics.oneshot_in_progress', {}, 'Focusing...'), 'info');
         
         const response = await fetch('/api/camera/oneshot-focus', {
             method: 'POST',
@@ -488,7 +504,7 @@ async function triggerOneShotFocus() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Mise au point effectuée et verrouillée', 'success');
+            showToast(I18n.t('diagnostics.oneshot_done', {}, 'Focus complete and locked'), 'success');
             // Update autofocus checkbox to show it's now off (locked)
             const checkbox = document.getElementById('camera_autofocus');
             if (checkbox) {
@@ -496,7 +512,7 @@ async function triggerOneShotFocus() {
             }
             const status = document.getElementById('autofocus-status');
             if (status) {
-                status.textContent = 'Verrouillé';
+                status.textContent = I18n.t('diagnostics.autofocus_locked', {}, 'Locked');
                 status.className = 'control-status status-off';
             }
             // Show manual focus slider
@@ -505,10 +521,10 @@ async function triggerOneShotFocus() {
                 manualGroup.style.display = 'block';
             }
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -553,13 +569,13 @@ async function loadAdvancedCameraControls() {
             return;
         }
         
-        container.innerHTML = '<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Chargement des contrôles...</p>';
+        container.innerHTML = `<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> ${I18n.t('diagnostics.controls_loading', {}, 'Loading controls...')}</p>`;
         
         const response = await fetch(`/api/camera/all-controls?device=${encodeURIComponent(device)}`);
         const data = await response.json();
         
         if (!data.success) {
-            container.innerHTML = `<p class="error-text"><i class="fas fa-exclamation-triangle"></i> ${data.error || 'Erreur de chargement'}</p>`;
+            container.innerHTML = `<p class="error-text"><i class="fas fa-exclamation-triangle"></i> ${data.error || I18n.t('diagnostics.load_error', {}, 'Load error')}</p>`;
             return;
         }
         
@@ -569,7 +585,7 @@ async function loadAdvancedCameraControls() {
     } catch (error) {
         console.error('Error loading advanced controls:', error);
         document.getElementById('advanced-camera-controls').innerHTML = 
-            `<p class="error-text"><i class="fas fa-exclamation-triangle"></i> ${error.message}</p>`;
+            `<p class="error-text"><i class="fas fa-exclamation-triangle"></i> ${I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`)}</p>`;
     }
 }
 
@@ -578,7 +594,7 @@ async function loadAdvancedCameraControls() {
  */
 async function loadCSICameraControls() {
     const container = document.getElementById('advanced-camera-controls');
-    container.innerHTML = '<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Chargement des contrôles Picamera2...</p>';
+    container.innerHTML = `<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> ${I18n.t('diagnostics.csi_controls_loading', {}, 'Loading Picamera2 controls...')}</p>`;
     
     try {
         // Check if CSI/Picamera2 is available
@@ -590,8 +606,8 @@ async function loadCSICameraControls() {
                 <div class="info-box warning">
                     <i class="fas fa-exclamation-triangle"></i>
                     <div>
-                        <strong>Picamera2 non installé</strong>
-                        <p>Pour contrôler les paramètres de la caméra CSI, installez Picamera2 :</p>
+                        <strong>${I18n.t('diagnostics.csi_not_installed_title', {}, 'Picamera2 not installed')}</strong>
+                        <p>${I18n.t('diagnostics.csi_not_installed_body', {}, 'To control CSI camera settings, install Picamera2:')}</p>
                         <code>sudo apt install python3-picamera2</code>
                     </div>
                 </div>
@@ -610,8 +626,8 @@ async function loadCSICameraControls() {
                     <div class="info-box info">
                         <i class="fas fa-hourglass-half"></i>
                         <div>
-                            <strong>Serveur CSI en démarrage...</strong>
-                            <p>Le serveur RTSP CSI est en cours de démarrage. Rechargement automatique dans 3 secondes.</p>
+                            <strong>${I18n.t('diagnostics.csi_starting_title', {}, 'CSI server starting...')}</strong>
+                            <p>${I18n.t('diagnostics.csi_starting_body', {}, 'The CSI RTSP server is starting. Auto-reload in 3 seconds.')}</p>
                         </div>
                     </div>
                 `;
@@ -626,16 +642,16 @@ async function loadCSICameraControls() {
                     <div class="info-box warning">
                         <i class="fas fa-broadcast-tower"></i>
                         <div>
-                            <strong>Caméra en cours d'utilisation</strong>
-                            <p>La caméra CSI est actuellement utilisée par le flux RTSP.</p>
-                            <p>Pour modifier les paramètres d'image :</p>
+                            <strong>${I18n.t('diagnostics.csi_busy_title', {}, 'Camera in use')}</strong>
+                            <p>${I18n.t('diagnostics.csi_busy_body', {}, 'The CSI camera is currently used by the RTSP stream.')}</p>
+                            <p>${I18n.t('diagnostics.csi_busy_steps_intro', {}, 'To change image settings:')}</p>
                             <ol style="margin: 10px 0; padding-left: 20px;">
-                                <li>Arrêtez le flux RTSP (bouton ci-dessous)</li>
-                                <li>Modifiez les paramètres</li>
-                                <li>Redémarrez le flux</li>
+                                <li>${I18n.t('diagnostics.csi_busy_step_stop', {}, 'Stop the RTSP stream (button below)')}</li>
+                                <li>${I18n.t('diagnostics.csi_busy_step_change', {}, 'Change settings')}</li>
+                                <li>${I18n.t('diagnostics.csi_busy_step_restart', {}, 'Restart the stream')}</li>
                             </ol>
                             <button type="button" class="btn btn-warning btn-sm" onclick="stopRtspForConfig()">
-                                <i class="fas fa-stop"></i> Arrêter le flux temporairement
+                                <i class="fas fa-stop"></i> ${I18n.t('diagnostics.csi_busy_stop_button', {}, 'Stop stream temporarily')}
                             </button>
                         </div>
                     </div>
@@ -645,10 +661,10 @@ async function loadCSICameraControls() {
                     <div class="info-box warning">
                         <i class="fas fa-exclamation-triangle"></i>
                         <div>
-                            <strong>Erreur de chargement</strong>
-                            <p>${data.error || 'Erreur inconnue'}</p>
+                            <strong>${I18n.t('diagnostics.csi_load_error_title', {}, 'Load error')}</strong>
+                            <p>${data.error || I18n.t('diagnostics.unknown_error', {}, 'Unknown error')}</p>
                             <button type="button" class="btn btn-sm btn-secondary" onclick="loadCSICameraControls()">
-                                <i class="fas fa-redo"></i> Réessayer
+                                <i class="fas fa-redo"></i> ${I18n.t('diagnostics.retry', {}, 'Retry')}
                             </button>
                         </div>
                     </div>
@@ -662,7 +678,7 @@ async function loadCSICameraControls() {
         
     } catch (error) {
         console.error('Error loading CSI controls:', error);
-        container.innerHTML = `<p class="error-text"><i class="fas fa-exclamation-triangle"></i> ${error.message}</p>`;
+        container.innerHTML = `<p class="error-text"><i class="fas fa-exclamation-triangle"></i> ${I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`)}</p>`;
     }
 }
 
@@ -670,21 +686,21 @@ async function loadCSICameraControls() {
  * Stop RTSP stream temporarily to configure CSI camera
  */
 async function stopRtspForConfig() {
-    if (!confirm('Arrêter le flux RTSP pour configurer la caméra ?\\nLes clients connectés seront déconnectés.')) return;
+    if (!confirm(I18n.t('diagnostics.confirm_stop_rtsp', {}, 'Stop the RTSP stream to configure the camera?\\nConnected clients will be disconnected.'))) return;
     
     try {
         const response = await fetch('/api/service/rpi-av-rtsp-recorder/stop', { method: 'POST' });
         const data = await response.json();
         
         if (data.success) {
-            showToast('Flux RTSP arrêté. Chargement des contrôles...', 'success');
+            showToast(I18n.t('diagnostics.rtsp_stopped_loading_controls', {}, 'RTSP stream stopped. Loading controls...'), 'success');
             // Wait a bit for camera to be released
             setTimeout(() => loadCSICameraControls(), 2000);
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -696,20 +712,20 @@ function renderCSIControls(data) {
     const grouped = data.grouped || {};
     
     const categoryLabels = {
-        'exposure': { icon: 'fa-sun', label: 'Exposition' },
-        'color': { icon: 'fa-palette', label: 'Couleur / Balance des blancs' },
-        'focus': { icon: 'fa-crosshairs', label: 'Focus' },
-        'noise': { icon: 'fa-volume-off', label: 'Réduction de bruit' },
-        'auto': { icon: 'fa-magic', label: 'Automatique' },
-        'other': { icon: 'fa-sliders-h', label: 'Autres' }
+        'exposure': { icon: 'fa-sun', label: I18n.t('diagnostics.csi_category_exposure', {}, 'Exposure') },
+        'color': { icon: 'fa-palette', label: I18n.t('diagnostics.csi_category_color', {}, 'Color / White balance') },
+        'focus': { icon: 'fa-crosshairs', label: I18n.t('diagnostics.csi_category_focus', {}, 'Focus') },
+        'noise': { icon: 'fa-volume-off', label: I18n.t('diagnostics.csi_category_noise', {}, 'Noise reduction') },
+        'auto': { icon: 'fa-magic', label: I18n.t('diagnostics.csi_category_auto', {}, 'Automatic') },
+        'other': { icon: 'fa-sliders-h', label: I18n.t('diagnostics.csi_category_other', {}, 'Other') }
     };
     
     let html = `
         <div class="live-apply-notice csi-notice">
             <i class="fas fa-microchip"></i>
-            <span>Contrôles CSI via Picamera2</span>
+            <span>${I18n.t('diagnostics.csi_controls_title', {}, 'CSI controls via Picamera2')}</span>
             <span class="live-apply-indicator">
-                <i class="fas fa-save"></i> Les valeurs sont sauvegardées
+                <i class="fas fa-save"></i> ${I18n.t('diagnostics.csi_controls_saved', {}, 'Values are saved')}
             </span>
         </div>
     `;
@@ -718,7 +734,7 @@ function renderCSIControls(data) {
     if (data.camera_info) {
         html += `
             <div class="camera-info-box">
-                <strong><i class="fas fa-camera"></i> ${data.camera_info.model || 'Caméra CSI'}</strong>
+                <strong><i class="fas fa-camera"></i> ${data.camera_info.model || I18n.t('diagnostics.csi_camera_label', {}, 'CSI Camera')}</strong>
                 ${data.camera_info.pixel_array_size ? `<span class="info-detail">${data.camera_info.pixel_array_size[0]}×${data.camera_info.pixel_array_size[1]} pixels</span>` : ''}
             </div>
         `;
@@ -749,10 +765,10 @@ function renderCSIControls(data) {
     html += `
         <div class="csi-controls-actions">
             <button type="button" class="btn btn-secondary" onclick="loadCSICameraControls()">
-                <i class="fas fa-sync"></i> Rafraîchir
+                <i class="fas fa-sync"></i> ${I18n.t('diagnostics.refresh', {}, 'Refresh')}
             </button>
             <button type="button" class="btn btn-warning" onclick="resetCSIControls()">
-                <i class="fas fa-undo"></i> Réinitialiser
+                <i class="fas fa-undo"></i> ${I18n.t('diagnostics.reset', {}, 'Reset')}
             </button>
         </div>
     `;
@@ -765,40 +781,40 @@ function renderCSIControls(data) {
  */
 const CSI_CONTROL_LABELS = {
     // Exposure
-    'ExposureTime': { label: 'Temps d\'exposition', desc: 'Durée d\'exposition en µs', unit: 'µs' },
-    'AnalogueGain': { label: 'Gain analogique', desc: 'Amplification du signal capteur' },
-    'ExposureValue': { label: 'Correction d\'exposition (EV)', desc: 'Ajustement luminosité (-8 à +8)' },
-    'AeExposureMode': { label: 'Mode d\'exposition', desc: '0=Normal, 1=Court, 2=Long, 3=Personnalisé' },
-    'ExposureTimeMode': { label: 'Mode temps expo', desc: '0=Auto, 1=Manuel' },
-    'AnalogueGainMode': { label: 'Mode gain', desc: '0=Auto, 1=Manuel' },
-    'ColourGains': { label: 'Gains couleur (R/B)', desc: 'Gains rouge/bleu manuels' },
+    'ExposureTime': { label: I18n.t('diagnostics.csi_ctrl_exposure_time_label', {}, 'Exposure time'), desc: I18n.t('diagnostics.csi_ctrl_exposure_time_desc', {}, 'Exposure duration in µs'), unit: 'µs' },
+    'AnalogueGain': { label: I18n.t('diagnostics.csi_ctrl_analogue_gain_label', {}, 'Analogue gain'), desc: I18n.t('diagnostics.csi_ctrl_analogue_gain_desc', {}, 'Sensor signal amplification') },
+    'ExposureValue': { label: I18n.t('diagnostics.csi_ctrl_exposure_value_label', {}, 'Exposure compensation (EV)'), desc: I18n.t('diagnostics.csi_ctrl_exposure_value_desc', {}, 'Brightness adjustment (-8 to +8)') },
+    'AeExposureMode': { label: I18n.t('diagnostics.csi_ctrl_ae_exposure_mode_label', {}, 'Exposure mode'), desc: I18n.t('diagnostics.csi_ctrl_ae_exposure_mode_desc', {}, '0=Normal, 1=Short, 2=Long, 3=Custom') },
+    'ExposureTimeMode': { label: I18n.t('diagnostics.csi_ctrl_exposure_time_mode_label', {}, 'Exposure time mode'), desc: I18n.t('diagnostics.csi_ctrl_exposure_time_mode_desc', {}, '0=Auto, 1=Manual') },
+    'AnalogueGainMode': { label: I18n.t('diagnostics.csi_ctrl_analogue_gain_mode_label', {}, 'Gain mode'), desc: I18n.t('diagnostics.csi_ctrl_analogue_gain_mode_desc', {}, '0=Auto, 1=Manual') },
+    'ColourGains': { label: I18n.t('diagnostics.csi_ctrl_colour_gains_label', {}, 'Color gains (R/B)'), desc: I18n.t('diagnostics.csi_ctrl_colour_gains_desc', {}, 'Manual red/blue gains') },
     
     // Color
-    'Brightness': { label: 'Luminosité', desc: 'Ajustement luminosité (-1 à +1)' },
-    'Contrast': { label: 'Contraste', desc: 'Ratio de contraste' },
-    'Saturation': { label: 'Saturation', desc: 'Intensité des couleurs' },
-    'Sharpness': { label: 'Netteté', desc: 'Niveau de netteté de l\'image' },
-    'ColourCorrectionMatrix': { label: 'Matrice couleur', desc: 'Correction colorimétrique' },
-    'ColourTemperature': { label: 'Température couleur', desc: 'En Kelvin (2000K-10000K)' },
+    'Brightness': { label: I18n.t('diagnostics.csi_ctrl_brightness_label', {}, 'Brightness'), desc: I18n.t('diagnostics.csi_ctrl_brightness_desc', {}, 'Brightness adjustment (-1 to +1)') },
+    'Contrast': { label: I18n.t('diagnostics.csi_ctrl_contrast_label', {}, 'Contrast'), desc: I18n.t('diagnostics.csi_ctrl_contrast_desc', {}, 'Contrast ratio') },
+    'Saturation': { label: I18n.t('diagnostics.csi_ctrl_saturation_label', {}, 'Saturation'), desc: I18n.t('diagnostics.csi_ctrl_saturation_desc', {}, 'Color intensity') },
+    'Sharpness': { label: I18n.t('diagnostics.csi_ctrl_sharpness_label', {}, 'Sharpness'), desc: I18n.t('diagnostics.csi_ctrl_sharpness_desc', {}, 'Image sharpness level') },
+    'ColourCorrectionMatrix': { label: I18n.t('diagnostics.csi_ctrl_colour_correction_matrix_label', {}, 'Color correction matrix'), desc: I18n.t('diagnostics.csi_ctrl_colour_correction_matrix_desc', {}, 'Color correction') },
+    'ColourTemperature': { label: I18n.t('diagnostics.csi_ctrl_colour_temperature_label', {}, 'Color temperature'), desc: I18n.t('diagnostics.csi_ctrl_colour_temperature_desc', {}, 'In Kelvin (2000K-10000K)') },
     
     // Auto
-    'AeEnable': { label: 'Exposition auto', desc: 'Auto-exposition activée' },
-    'AwbEnable': { label: 'Balance blancs auto', desc: 'AWB activée' },
-    'AwbMode': { label: 'Mode AWB', desc: '0=Auto, 1=Tungstène, 2=Fluorescent, 3=Intérieur, 4=Soleil, 5=Nuageux, 6=Personnalisé' },
-    'AeMeteringMode': { label: 'Mode mesure AE', desc: '0=Centre, 1=Spot, 2=Matrice, 3=Personnalisé' },
-    'AeConstraintMode': { label: 'Contrainte AE', desc: '0=Normal, 1=Highlights, 2=Shadows, 3=Personnalisé' },
-    'AeFlickerMode': { label: 'Anti-flicker', desc: '0=Off, 1=Manuel' },
-    'AeFlickerPeriod': { label: 'Période flicker', desc: 'Pour 50Hz=10000µs, 60Hz=8333µs' },
+    'AeEnable': { label: I18n.t('diagnostics.csi_ctrl_ae_enable_label', {}, 'Auto exposure'), desc: I18n.t('diagnostics.csi_ctrl_ae_enable_desc', {}, 'Auto exposure enabled') },
+    'AwbEnable': { label: I18n.t('diagnostics.csi_ctrl_awb_enable_label', {}, 'Auto white balance'), desc: I18n.t('diagnostics.csi_ctrl_awb_enable_desc', {}, 'AWB enabled') },
+    'AwbMode': { label: I18n.t('diagnostics.csi_ctrl_awb_mode_label', {}, 'AWB mode'), desc: I18n.t('diagnostics.csi_ctrl_awb_mode_desc', {}, '0=Auto, 1=Tungsten, 2=Fluorescent, 3=Indoor, 4=Sun, 5=Cloudy, 6=Custom') },
+    'AeMeteringMode': { label: I18n.t('diagnostics.csi_ctrl_ae_metering_mode_label', {}, 'AE metering mode'), desc: I18n.t('diagnostics.csi_ctrl_ae_metering_mode_desc', {}, '0=Center, 1=Spot, 2=Matrix, 3=Custom') },
+    'AeConstraintMode': { label: I18n.t('diagnostics.csi_ctrl_ae_constraint_mode_label', {}, 'AE constraint'), desc: I18n.t('diagnostics.csi_ctrl_ae_constraint_mode_desc', {}, '0=Normal, 1=Highlights, 2=Shadows, 3=Custom') },
+    'AeFlickerMode': { label: I18n.t('diagnostics.csi_ctrl_ae_flicker_mode_label', {}, 'Anti-flicker'), desc: I18n.t('diagnostics.csi_ctrl_ae_flicker_mode_desc', {}, '0=Off, 1=Manual') },
+    'AeFlickerPeriod': { label: I18n.t('diagnostics.csi_ctrl_ae_flicker_period_label', {}, 'Flicker period'), desc: I18n.t('diagnostics.csi_ctrl_ae_flicker_period_desc', {}, 'For 50Hz=10000µs, 60Hz=8333µs') },
     
     // Noise
-    'NoiseReductionMode': { label: 'Réduction bruit', desc: '0=Off, 1=Rapide, 2=Haute qualité, 3=Minimal, 4=ZSL' },
+    'NoiseReductionMode': { label: I18n.t('diagnostics.csi_ctrl_noise_reduction_mode_label', {}, 'Noise reduction'), desc: I18n.t('diagnostics.csi_ctrl_noise_reduction_mode_desc', {}, '0=Off, 1=Fast, 2=High quality, 3=Minimal, 4=ZSL') },
     
     // Other
-    'FrameDurationLimits': { label: 'Durée frame', desc: 'Min/Max durée d\'une frame en µs' },
-    'HdrMode': { label: 'Mode HDR', desc: '0=Off, 1=Single, 2=Multi, 3=Night, 4=Personnalisé' },
-    'ScalerCrop': { label: 'Zone de crop', desc: 'Région de recadrage' },
-    'SyncMode': { label: 'Mode sync', desc: '0=Off, 1=Server, 2=Client' },
-    'SyncFrames': { label: 'Frames sync', desc: 'Frames à synchroniser' }
+    'FrameDurationLimits': { label: I18n.t('diagnostics.csi_ctrl_frame_duration_limits_label', {}, 'Frame duration'), desc: I18n.t('diagnostics.csi_ctrl_frame_duration_limits_desc', {}, 'Min/Max frame duration in µs') },
+    'HdrMode': { label: I18n.t('diagnostics.csi_ctrl_hdr_mode_label', {}, 'HDR mode'), desc: I18n.t('diagnostics.csi_ctrl_hdr_mode_desc', {}, '0=Off, 1=Single, 2=Multi, 3=Night, 4=Custom') },
+    'ScalerCrop': { label: I18n.t('diagnostics.csi_ctrl_scaler_crop_label', {}, 'Crop region'), desc: I18n.t('diagnostics.csi_ctrl_scaler_crop_desc', {}, 'Crop region') },
+    'SyncMode': { label: I18n.t('diagnostics.csi_ctrl_sync_mode_label', {}, 'Sync mode'), desc: I18n.t('diagnostics.csi_ctrl_sync_mode_desc', {}, '0=Off, 1=Server, 2=Client') },
+    'SyncFrames': { label: I18n.t('diagnostics.csi_ctrl_sync_frames_label', {}, 'Sync frames'), desc: I18n.t('diagnostics.csi_ctrl_sync_frames_desc', {}, 'Frames to synchronize') }
 };
 
 /**
@@ -920,10 +936,10 @@ async function setCSIControl(name, value) {
         if (data.success) {
             showToast(`${name} = ${value}`, 'success');
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -951,10 +967,10 @@ async function setCSIArrayControl(name, size) {
         if (data.success) {
             showToast(`${name} = [${values.join(', ')}]`, 'success');
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -962,7 +978,7 @@ async function setCSIArrayControl(name, size) {
  * Reset CSI controls to defaults
  */
 async function resetCSIControls() {
-    if (!confirm('Réinitialiser tous les paramètres CSI aux valeurs par défaut ?')) return;
+    if (!confirm(I18n.t('diagnostics.csi_reset_confirm', {}, 'Reset all CSI settings to default values?'))) return;
     
     try {
         const response = await fetch('/api/camera/csi/tuning/reset', {
@@ -972,13 +988,13 @@ async function resetCSIControls() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Paramètres CSI réinitialisés', 'success');
+            showToast(I18n.t('diagnostics.csi_reset_done', {}, 'CSI settings reset'), 'success');
             loadCSICameraControls();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -990,21 +1006,21 @@ function renderAdvancedControls(data) {
     const grouped = data.grouped || {};
     
     const categoryLabels = {
-        'focus': { icon: 'fa-crosshairs', label: 'Focus / Zoom' },
-        'exposure': { icon: 'fa-sun', label: 'Exposition' },
-        'white_balance': { icon: 'fa-temperature-half', label: 'Balance des blancs' },
-        'color': { icon: 'fa-palette', label: 'Couleur' },
-        'power_line': { icon: 'fa-bolt', label: 'Anti-scintillement' },
-        'other': { icon: 'fa-sliders-h', label: 'Autres' }
+        'focus': { icon: 'fa-crosshairs', label: I18n.t('diagnostics.adv_category_focus', {}, 'Focus / Zoom') },
+        'exposure': { icon: 'fa-sun', label: I18n.t('diagnostics.adv_category_exposure', {}, 'Exposure') },
+        'white_balance': { icon: 'fa-temperature-half', label: I18n.t('diagnostics.adv_category_white_balance', {}, 'White balance') },
+        'color': { icon: 'fa-palette', label: I18n.t('diagnostics.adv_category_color', {}, 'Color') },
+        'power_line': { icon: 'fa-bolt', label: I18n.t('diagnostics.adv_category_power_line', {}, 'Anti-flicker') },
+        'other': { icon: 'fa-sliders-h', label: I18n.t('diagnostics.adv_category_other', {}, 'Other') }
     };
     
     // Live indicator at the top
     let html = `
         <div class="live-apply-notice">
             <i class="fas fa-broadcast-tower"></i>
-            <span>Les modifications sont appliquées en temps réel au flux vidéo</span>
+            <span>${I18n.t('diagnostics.adv_live_apply_notice', {}, 'Changes are applied in real time to the video stream')}</span>
             <span id="live-apply-indicator" class="live-apply-indicator">
-                <i class="fas fa-check-circle"></i> Appliqué
+                <i class="fas fa-check-circle"></i> ${I18n.t('diagnostics.adv_applied', {}, 'Applied')}
             </span>
         </div>
     `;
@@ -1028,7 +1044,7 @@ function renderAdvancedControls(data) {
     }
     
     if (!html) {
-        html = '<p class="info-text"><i class="fas fa-info-circle"></i> Aucun contrôle disponible pour cette caméra</p>';
+        html = `<p class="info-text"><i class="fas fa-info-circle"></i> ${I18n.t('diagnostics.adv_no_controls', {}, 'No controls available for this camera')}</p>`;
     }
     
     container.innerHTML = html;
@@ -1110,7 +1126,7 @@ function renderControlInput(ctrl) {
     
     // Build default hint if valid
     const defaultHint = displayDefault !== null 
-        ? `<small class="default-hint">(défaut: ${displayDefault})</small>` 
+        ? `<small class="default-hint">${I18n.t('diagnostics.adv_default_hint', { value: displayDefault }, `Default: ${displayDefault}`)}</small>` 
         : '';
     
     return `
@@ -1174,7 +1190,7 @@ async function setAdvancedControl(name, value) {
             // Update live indicator
             showLiveAppliedIndicator();
         } else {
-            showToast(`Erreur ${name}: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.control_error_with_name', { name, error: data.message }, `Error ${name}: ${data.message}`), 'error');
             if (controlItem) {
                 controlItem.classList.add('control-error');
                 setTimeout(() => controlItem.classList.remove('control-error'), 1000);
@@ -1182,7 +1198,7 @@ async function setAdvancedControl(name, value) {
         }
     } catch (error) {
         console.error(`Error setting control ${name}:`, error);
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1208,12 +1224,12 @@ function showLiveAppliedIndicator() {
  * Restart the RTSP stream (useful if camera settings don't apply live)
  */
 async function restartRtspStream() {
-    if (!confirm('Redémarrer le flux RTSP ? Les clients connectés seront déconnectés.')) {
+    if (!confirm(I18n.t('diagnostics.confirm_restart_rtsp', {}, 'Restart the RTSP stream? Connected clients will be disconnected.'))) {
         return;
     }
     
     try {
-        showToast('Redémarrage du flux...', 'info');
+        showToast(I18n.t('diagnostics.rtsp_restarting', {}, 'Restarting stream...'), 'info');
         
         const response = await fetch('/api/service/restart', {
             method: 'POST'
@@ -1222,12 +1238,12 @@ async function restartRtspStream() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Flux redémarré - les réglages sont maintenant actifs', 'success');
+            showToast(I18n.t('diagnostics.rtsp_restarted', {}, 'Stream restarted - settings are now active'), 'success');
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1247,14 +1263,14 @@ async function resetAdvancedControls() {
     }
     
     if (Object.keys(toReset).length === 0) {
-        showToast('Pas de valeurs par défaut disponibles', 'warning');
+        showToast(I18n.t('diagnostics.adv_no_defaults', {}, 'No default values available'), 'warning');
         return;
     }
     
     try {
         const device = document.getElementById('VIDEO_DEVICE')?.value || '/dev/video0';
         
-        showToast('Réinitialisation en cours...', 'info');
+        showToast(I18n.t('diagnostics.adv_reset_in_progress', {}, 'Resetting...'), 'info');
         
         const response = await fetch('/api/camera/controls/set-multiple', {
             method: 'POST',
@@ -1265,14 +1281,14 @@ async function resetAdvancedControls() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Contrôles réinitialisés', 'success');
+            showToast(I18n.t('diagnostics.adv_reset_done', {}, 'Controls reset'), 'success');
             loadAdvancedCameraControls();
         } else {
-            showToast(`Erreurs: ${data.errors} contrôle(s)`, 'warning');
+            showToast(I18n.t('diagnostics.adv_reset_partial', { count: data.errors }, `Errors: ${data.errors} control(s)`), 'warning');
             loadAdvancedCameraControls();
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1290,7 +1306,7 @@ let editingProfileId = null;
 async function loadCameraProfiles() {
     try {
         const container = document.getElementById('camera-profiles-list');
-        container.innerHTML = '<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Chargement...</p>';
+        container.innerHTML = `<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> ${I18n.t('diagnostics.loading', {}, 'Loading...')}</p>`;
         
         const response = await fetch('/api/camera/profiles');
         const data = await response.json();
@@ -1312,13 +1328,13 @@ async function loadCameraProfiles() {
         if (schedulerStatus) {
             const activeProfile = data.scheduler_active_profile || data.active_profile;
             if (data.scheduler_enabled && activeProfile) {
-                schedulerStatus.textContent = `Actif (profil: ${activeProfile})`;
+                schedulerStatus.textContent = I18n.t('diagnostics.scheduler_active_profile', { profile: activeProfile }, `Active (profile: ${activeProfile})`);
                 schedulerStatus.className = 'control-status status-on';
             } else if (data.scheduler_enabled) {
-                schedulerStatus.textContent = 'En attente (hors plage)';
+                schedulerStatus.textContent = I18n.t('diagnostics.scheduler_pending', {}, 'Pending (out of range)');
                 schedulerStatus.className = 'control-status status-warning';
             } else {
-                schedulerStatus.textContent = 'Désactivé';
+                schedulerStatus.textContent = I18n.t('diagnostics.scheduler_disabled', {}, 'Disabled');
                 schedulerStatus.className = 'control-status status-off';
             }
         }
@@ -1328,7 +1344,7 @@ async function loadCameraProfiles() {
     } catch (error) {
         console.error('Error loading profiles:', error);
         document.getElementById('camera-profiles-list').innerHTML = 
-            `<p class="error-text"><i class="fas fa-exclamation-triangle"></i> ${error.message}</p>`;
+            `<p class="error-text"><i class="fas fa-exclamation-triangle"></i> ${I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`)}</p>`;
     }
 }
 
@@ -1341,8 +1357,8 @@ function renderCameraProfiles(profiles, appliedProfile, scheduledProfile) {
     if (!profiles || Object.keys(profiles).length === 0) {
         container.innerHTML = `
             <p class="info-text">
-                <i class="fas fa-info-circle"></i> Aucun profil configuré. 
-                Créez des profils pour automatiser les réglages jour/nuit.
+                <i class="fas fa-info-circle"></i> ${I18n.t('diagnostics.profiles_empty_title', {}, 'No profile configured.')}
+                ${I18n.t('diagnostics.profiles_empty_body', {}, 'Create profiles to automate day/night settings.')}
             </p>
         `;
         return;
@@ -1362,27 +1378,27 @@ function renderCameraProfiles(profiles, appliedProfile, scheduledProfile) {
                     <h5>
                         <i class="fas ${isApplied ? 'fa-play-circle' : 'fa-clock'}"></i>
                         ${profile.display_name || profile.name || id}
-                        ${isApplied ? '<span class="badge badge-success">Appliqué</span>' : ''}
-                        ${isScheduled && !isApplied ? '<span class="badge badge-info">Planifié</span>' : ''}
-                        ${!profile.enabled ? '<span class="badge badge-muted">Désactivé</span>' : ''}
+                        ${isApplied ? `<span class="badge badge-success">${I18n.t('diagnostics.badge_applied', {}, 'Applied')}</span>` : ''}
+                        ${isScheduled && !isApplied ? `<span class="badge badge-info">${I18n.t('diagnostics.badge_scheduled', {}, 'Scheduled')}</span>` : ''}
+                        ${!profile.enabled ? `<span class="badge badge-muted">${I18n.t('diagnostics.badge_disabled', {}, 'Disabled')}</span>` : ''}
                     </h5>
                     <div class="profile-actions">
-                        <button class="btn btn-sm btn-info" onclick="captureProfileSettings('${id}')" title="Capturer les réglages actuels">
+                        <button class="btn btn-sm btn-info" onclick="captureProfileSettings('${id}')" title="${I18n.t('diagnostics.profile_capture_title', {}, 'Capture current settings')}">
                             <i class="fas fa-camera"></i>
                         </button>
-                        <button class="btn btn-sm btn-success" onclick="ghostFixProfile('${id}')" title="Ghost-fix (désactive AE/AWB + brightness milieu)">
-                            <i class="fas fa-magic"></i> ghost-fix
+                        <button class="btn btn-sm btn-success" onclick="ghostFixProfile('${id}')" title="${I18n.t('diagnostics.profile_ghostfix_title', {}, 'Ghost-fix (disable AE/AWB + mid brightness)')}">
+                            <i class="fas fa-magic"></i> ${I18n.t('diagnostics.profile_ghostfix_label', {}, 'ghost-fix')}
                         </button>
-                        <button class="btn btn-sm btn-warning" onclick="showProfileSettings('${id}')" title="Afficher les paramètres enregistrés">
+                        <button class="btn btn-sm btn-warning" onclick="showProfileSettings('${id}')" title="${I18n.t('diagnostics.profile_show_title', {}, 'Show saved settings')}">
                             <i class="fas fa-cogs"></i>
                         </button>
-                        <button class="btn btn-sm btn-secondary" onclick="editProfile('${id}')" title="Modifier">
+                        <button class="btn btn-sm btn-secondary" onclick="editProfile('${id}')" title="${I18n.t('diagnostics.profile_edit_title', {}, 'Edit')}">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-sm btn-primary" onclick="applyProfile('${id}')" title="Appliquer maintenant">
+                        <button class="btn btn-sm btn-primary" onclick="applyProfile('${id}')" title="${I18n.t('diagnostics.profile_apply_now_title', {}, 'Apply now')}">
                             <i class="fas fa-play"></i>
                         </button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteProfile('${id}')" title="Supprimer">
+                        <button class="btn btn-sm btn-danger" onclick="deleteProfile('${id}')" title="${I18n.t('diagnostics.profile_delete_title', {}, 'Delete')}">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -1393,10 +1409,10 @@ function renderCameraProfiles(profiles, appliedProfile, scheduledProfile) {
                         <i class="fas fa-clock"></i>
                         ${schedule.start && schedule.end 
                             ? `${schedule.start} - ${schedule.end}`
-                            : 'Pas de planification'}
+                            : I18n.t('diagnostics.profile_no_schedule', {}, 'No schedule')}
                     </div>
                     <div class="profile-controls-count">
-                        <i class="fas fa-sliders-h"></i> ${controlsCount} réglage(s)
+                        <i class="fas fa-sliders-h"></i> ${I18n.t('diagnostics.profile_controls_count', { count: controlsCount }, `${controlsCount} control(s)`)}
                     </div>
                 </div>
             </div>
@@ -1419,7 +1435,7 @@ async function toggleProfilesScheduler(enabled) {
         });
         
         if (!configResponse.ok) {
-            throw new Error('Failed to update config');
+            throw new Error(I18n.t('diagnostics.config_update_failed', {}, 'Failed to update config'));
         }
         
         // Then start/stop scheduler
@@ -1430,13 +1446,16 @@ async function toggleProfilesScheduler(enabled) {
         
         const data = await response.json();
         
-        showToast(enabled ? 'Scheduler activé' : 'Scheduler désactivé', data.success ? 'success' : 'warning');
+        showToast(
+            enabled ? I18n.t('diagnostics.scheduler_enabled_toast', {}, 'Scheduler enabled') : I18n.t('diagnostics.scheduler_disabled_toast', {}, 'Scheduler disabled'),
+            data.success ? 'success' : 'warning'
+        );
         
         // Refresh status
         setTimeout(loadCameraProfiles, 500);
         
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1446,7 +1465,7 @@ async function toggleProfilesScheduler(enabled) {
 function showProfileSettings(profileId) {
     const profile = cameraProfiles[profileId];
     if (!profile) {
-        showToast('Profil non trouvé', 'error');
+        showToast(I18n.t('diagnostics.profile_not_found', {}, 'Profile not found'), 'error');
         return;
     }
     
@@ -1455,16 +1474,16 @@ function showProfileSettings(profileId) {
     if (!modal) return;
 
     document.getElementById('profile-settings-title').textContent =
-        `Paramètres: ${profile.display_name || profileId}`;
+        I18n.t('diagnostics.profile_settings_title', { name: profile.display_name || profileId }, `Settings: ${profile.display_name || profileId}`);
 
     const schedule = profile.schedule || {};
     const scheduleText = (schedule.start && schedule.end)
         ? `${schedule.start} - ${schedule.end}`
-        : 'Pas de planification';
+        : I18n.t('diagnostics.profile_no_schedule', {}, 'No schedule');
     const controlsCount = Object.keys(controls).length;
     const meta = `
         <div><i class="fas fa-clock"></i> ${scheduleText}</div>
-        <div><i class="fas fa-sliders-h"></i> ${controlsCount} réglage(s)</div>
+        <div><i class="fas fa-sliders-h"></i> ${I18n.t('diagnostics.profile_controls_count', { count: controlsCount }, `${controlsCount} control(s)`)} </div>
     `;
     const metaEl = document.getElementById('profile-settings-meta');
     if (metaEl) metaEl.innerHTML = meta;
@@ -1473,14 +1492,14 @@ function showProfileSettings(profileId) {
     if (!contentEl) return;
 
     if (controlsCount === 0) {
-        contentEl.innerHTML = '<p class="info-text">Aucun réglage enregistré dans ce profil.</p>';
+        contentEl.innerHTML = `<p class="info-text">${I18n.t('diagnostics.profile_no_controls', {}, 'No saved settings in this profile.')}</p>`;
     } else {
         const rows = Object.entries(controls).map(([ctrlName, value]) => {
             let displayValue = value;
             if (Array.isArray(value)) {
                 displayValue = '[' + value.join(', ') + ']';
             } else if (value === null || value === undefined) {
-                displayValue = 'N/A';
+                displayValue = I18n.t('diagnostics.value_not_available', {}, 'N/A');
             } else if (typeof value === 'object') {
                 displayValue = JSON.stringify(value);
             }
@@ -1496,8 +1515,8 @@ function showProfileSettings(profileId) {
             <table class="profile-settings-table">
                 <thead>
                     <tr>
-                        <th>Paramètre</th>
-                        <th>Valeur</th>
+                        <th>${I18n.t('diagnostics.profile_table_param', {}, 'Parameter')}</th>
+                        <th>${I18n.t('diagnostics.profile_table_value', {}, 'Value')}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1520,14 +1539,14 @@ function closeProfileSettingsModal() {
  */
 function showAddProfileModal() {
     editingProfileId = null;
-    document.getElementById('profile-modal-title').textContent = 'Nouveau profil';
+    document.getElementById('profile-modal-title').textContent = I18n.t('diagnostics.profile_new_title', {}, 'New profile');
     document.getElementById('profile-id').value = '';
     document.getElementById('profile-name').value = '';
     document.getElementById('profile-description').value = '';
     document.getElementById('profile-start').value = '07:00';
     document.getElementById('profile-end').value = '19:00';
     document.getElementById('profile-enabled').checked = true;
-    document.getElementById('profile-controls-count').textContent = '0 réglages enregistrés';
+    document.getElementById('profile-controls-count').textContent = I18n.t('diagnostics.profile_controls_count_zero', {}, '0 saved controls');
     
     document.getElementById('profile-modal').style.display = 'flex';
 }
@@ -1540,7 +1559,7 @@ function editProfile(profileId) {
     if (!profile) return;
     
     editingProfileId = profileId;
-    document.getElementById('profile-modal-title').textContent = 'Modifier le profil';
+    document.getElementById('profile-modal-title').textContent = I18n.t('diagnostics.profile_edit_title_text', {}, 'Edit profile');
     document.getElementById('profile-id').value = profileId;
     document.getElementById('profile-name').value = profile.display_name || profile.name || profileId;
     document.getElementById('profile-description').value = profile.description || '';
@@ -1549,7 +1568,7 @@ function editProfile(profileId) {
     document.getElementById('profile-enabled').checked = profile.enabled === true;
     
     const controlsCount = Object.keys(profile.controls || {}).length;
-    document.getElementById('profile-controls-count').textContent = `${controlsCount} réglages enregistrés`;
+    document.getElementById('profile-controls-count').textContent = I18n.t('diagnostics.profile_controls_count_saved', { count: controlsCount }, `${controlsCount} saved controls`);
     
     document.getElementById('profile-modal').style.display = 'flex';
 }
@@ -1570,7 +1589,7 @@ async function saveProfile(event) {
     
     const name = document.getElementById('profile-name').value.trim();
     if (!name) {
-        showToast('Le nom du profil est requis', 'error');
+        showToast(I18n.t('diagnostics.profile_name_required', {}, 'Profile name is required'), 'error');
         return;
     }
     
@@ -1601,14 +1620,14 @@ async function saveProfile(event) {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Profil enregistré', 'success');
+            showToast(I18n.t('diagnostics.profile_saved', {}, 'Profile saved'), 'success');
             closeProfileModal();
             loadCameraProfiles();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1616,12 +1635,12 @@ async function saveProfile(event) {
  * Capture current camera settings into a specific profile
  */
 async function captureProfileSettings(profileId) {
-    if (!confirm(`Êtes-vous sûr de vouloir capturer les réglages actuels dans le profil "${profileId}" ?\nCela remplacera les réglages existants.`)) {
+    if (!confirm(I18n.t('diagnostics.profile_capture_confirm', { profile: profileId }, `Capture current settings into profile "${profileId}"?\nThis will replace existing settings.`))) {
         return;
     }
     
     try {
-        showToast('Capture des réglages...', 'info');
+        showToast(I18n.t('diagnostics.profile_capture_in_progress', {}, 'Capturing settings...'), 'info');
         
         const response = await fetch(`/api/camera/profiles/${profileId}/capture`, {
             method: 'POST',
@@ -1633,15 +1652,15 @@ async function captureProfileSettings(profileId) {
         
         if (data.success) {
             const controlsCount = data.profile ? Object.keys(data.profile.controls || {}).length : 0;
-            showToast(`${controlsCount} réglages capturés dans "${profileId}"`, 'success');
+            showToast(I18n.t('diagnostics.profile_capture_done', { count: controlsCount, profile: profileId }, `${controlsCount} controls captured in "${profileId}"`), 'success');
             
             // Reload profiles to update display
             loadCameraProfiles();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1649,12 +1668,12 @@ async function captureProfileSettings(profileId) {
  * Apply ghost-fix controls to a profile (CSI only)
  */
 async function ghostFixProfile(profileId) {
-    if (!confirm(`Appliquer le ghost-fix au profil "${profileId}" ?\nCela désactive AE/AWB et recentre la luminosité.`)) {
+    if (!confirm(I18n.t('diagnostics.profile_ghostfix_confirm', { profile: profileId }, `Apply ghost-fix to profile "${profileId}"?\nThis disables AE/AWB and centers brightness.`))) {
         return;
     }
     
     try {
-        showToast('Ghost-fix en cours...', 'info');
+        showToast(I18n.t('diagnostics.profile_ghostfix_in_progress', {}, 'Ghost-fix in progress...'), 'info');
         
         const response = await fetch(`/api/camera/profiles/${profileId}/ghost-fix`, {
             method: 'POST',
@@ -1665,16 +1684,16 @@ async function ghostFixProfile(profileId) {
         const data = await response.json();
         
         if (data.success) {
-            showToast(data.message || 'Ghost-fix appliqué', 'success');
+            showToast(data.message || I18n.t('diagnostics.profile_ghostfix_done', {}, 'Ghost-fix applied'), 'success');
             loadCameraProfiles();
             if (document.getElementById('advanced-camera-section').style.display !== 'none') {
                 loadCSICameraControls();
             }
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1685,14 +1704,14 @@ async function captureCurrentSettings() {
     const profileId = editingProfileId || document.getElementById('profile-name').value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_');
     
     if (!profileId) {
-        showToast('Entrez un nom de profil d\'abord', 'error');
+        showToast(I18n.t('diagnostics.profile_name_first', {}, 'Enter a profile name first'), 'error');
         return;
     }
     
     try {
         const device = document.getElementById('VIDEO_DEVICE')?.value || '/dev/video0';
         
-        showToast('Capture des réglages...', 'info');
+        showToast(I18n.t('diagnostics.profile_capture_in_progress', {}, 'Capturing settings...'), 'info');
         
         const response = await fetch(`/api/camera/profiles/${profileId}/capture`, {
             method: 'POST',
@@ -1705,8 +1724,8 @@ async function captureCurrentSettings() {
         if (data.success) {
             const controlsCount = data.profile ? Object.keys(data.profile.controls || {}).length : 0;
             document.getElementById('profile-controls-count').textContent = 
-                `${controlsCount} réglages capturés`;
-            showToast(`${controlsCount} réglages capturés`, 'success');
+                I18n.t('diagnostics.profile_controls_captured', { count: controlsCount }, `${controlsCount} captured controls`);
+            showToast(I18n.t('diagnostics.profile_controls_captured', { count: controlsCount }, `${controlsCount} captured controls`), 'success');
             
             // Reload profiles to update local cache
             const profilesResponse = await fetch('/api/camera/profiles');
@@ -1715,10 +1734,10 @@ async function captureCurrentSettings() {
                 cameraProfiles = profilesData.profiles || {};
             }
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1729,7 +1748,7 @@ async function applyProfile(profileId) {
     try {
         const device = document.getElementById('VIDEO_DEVICE')?.value || '/dev/video0';
         
-        showToast('Application du profil...', 'info');
+        showToast(I18n.t('diagnostics.profile_apply_in_progress', {}, 'Applying profile...'), 'info');
         
         const response = await fetch(`/api/camera/profiles/${profileId}/apply`, {
             method: 'POST',
@@ -1740,17 +1759,17 @@ async function applyProfile(profileId) {
         const data = await response.json();
         
         if (data.success) {
-            showToast(`Profil "${profileId}" appliqué`, 'success');
+            showToast(I18n.t('diagnostics.profile_applied', { profile: profileId }, `Profile "${profileId}" applied`), 'success');
             loadCameraProfiles();
             // Also refresh advanced controls if visible
             if (document.getElementById('advanced-camera-section').style.display !== 'none') {
                 loadAdvancedCameraControls();
             }
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1758,7 +1777,7 @@ async function applyProfile(profileId) {
  * Delete a profile
  */
 async function deleteProfile(profileId) {
-    if (!confirm(`Supprimer le profil "${profileId}" ?`)) return;
+    if (!confirm(I18n.t('diagnostics.profile_delete_confirm', { profile: profileId }, `Delete profile "${profileId}"?`))) return;
     
     try {
         const response = await fetch(`/api/camera/profiles/${profileId}`, {
@@ -1768,13 +1787,13 @@ async function deleteProfile(profileId) {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Profil supprimé', 'success');
+            showToast(I18n.t('diagnostics.profile_deleted', {}, 'Profile deleted'), 'success');
             loadCameraProfiles();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('diagnostics.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('diagnostics.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 

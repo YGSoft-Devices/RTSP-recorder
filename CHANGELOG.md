@@ -7,6 +7,63 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+
+## [2.36.16] - i18n key alignment fix
+
+### Fixed
+- **i18n HTML keys** : correction de 53 cles data-i18n cassees (45% du total)
+- **Fallback text** : suppression de tous les textes FR en dur dans les data-i18n
+- **Cloud Status / Stream URLs** : ajout de data-i18n manquants
+
+### Added
+- Traductions manquantes dans en.json et fr.json (header, i18n, advanced)
+
+---
+
+## [2.36.15] - i18n init fix
+
+### Fixed
+- **i18n frontend** : correction d’une référence undefined lors de l’init (lang HTML)
+
+---
+
+## [2.36.14] - i18n selector server-rendered
+
+### Changed
+- **i18n frontend** : sélecteur de langue rendu côté serveur + binding JS réutilisable
+
+---
+
+## [2.36.13] - i18n selector auto-apply
+
+### Changed
+- **i18n frontend** : application automatique du changement de langue + cookies same-origin + mise à jour `lang` HTML
+
+---
+
+## [2.36.12] - i18n fallback cleanup (Video UI)
+
+### Changed
+- **i18n frontend** : suppression des textes fallback dans l’onglet Vidéo (affichage uniquement via traductions)
+
+---
+
+## [2.36.11] - i18n extraction Video UI
+
+### Changed
+- **i18n frontend** : extraction des textes hardcodés de l’onglet Vidéo (aperçu, source, qualité, sélection caméra, résolution)
+- **Locales** : ajout des nouvelles clés EN/FR pour l’UI vidéo
+
+---
+
+## [2.36.10] - i18n extraction Meeting/Network/Power
+
+### Changed
+- **i18n frontend** : extraction complète des chaînes Meeting (firmware/apt/debug/terminal), Network et Power
+- **Locales** : ajout des nouvelles clés EN/FR pour réseau, énergie, reboot, terminal et firmware
+
+---
+
 ## [2.36.09] - Hotfix déploiement CRLF
 
 ### Fixed

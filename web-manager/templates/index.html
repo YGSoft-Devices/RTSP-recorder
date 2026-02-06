@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- RTSP Recorder Web Interface - Version 2.36.08 -->
+<!-- RTSP Recorder Web Interface - Version 2.36.16 -->
 <html lang="{{ current_lang | default('fr') }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="header.title">RTSP Recorder - Configuration</title>
+    <title data-i18n="header.title">RTSP Recorder</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ app_version }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -15,11 +15,20 @@
             <div class="header-content">
                 <div class="logo">
                     <i class="fas fa-video"></i>
-                    <h1 data-i18n="header.app_name">RTSP Recorder</h1>
+                    <h1 data-i18n="header.app_name"></h1>
                 </div>
                 <div class="header-right">
                     <!-- Language Selector -->
-                    <div class="language-selector" id="language-selector-container"></div>
+                    <div class="language-selector" id="language-selector-container">
+                        <select id="language-select" class="language-select">
+                            {% for lang in languages %}
+                            <option value="{{ lang.code }}" {% if lang.code == current_lang %}selected{% endif %}>
+                                {{ lang.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <button type="button" id="language-btn-ok" class="language-btn-ok" data-i18n="common.ok"></button>
+                    </div>
                     <div class="status-badge" id="service-status">
                         <span class="status-dot {{ 'active' if status == 'active' else 'inactive' }}"></span>
                         <span class="status-text">{{ status | capitalize }}</span>
@@ -38,7 +47,7 @@
                         <div class="card-icon">
                             <i class="fas fa-server"></i>
                         </div>
-                        <h3 data-i18n="dashboard.system">Système</h3>
+                        <h3 data-i18n="dashboard.system.title"></h3>
                     </div>
                     <div class="card-content">
                         <div class="system-info">
@@ -75,7 +84,7 @@
                         <div class="card-icon">
                             <i class="fas fa-hdd"></i>
                         </div>
-                        <h3 data-i18n="dashboard.storage">Stockage</h3>
+                        <h3 data-i18n="dashboard.storage.title"></h3>
                     </div>
                     <div class="card-content">
                         <div class="storage-info">
@@ -88,9 +97,9 @@
                                 <div class="storage-bar-fill" data-percent="{{ system_info.get('disk_percent_num', 0) }}"></div>
                             </div>
                             <div class="storage-details">
-                                <span><i class="fas fa-folder-open"></i> {{ system_info.get('recording_count', 0) }} <span data-i18n="dashboard.files">fichiers</span></span>
+                                <span><i class="fas fa-folder-open"></i> {{ system_info.get('recording_count', 0) }} <span data-i18n="dashboard.storage.files"></span></span>
                                 <span><i class="fas fa-film"></i> {{ system_info.get('recording_size_mb', 0) }} Mo</span>
-                                <span class="storage-free"><i class="fas fa-check-circle"></i> {{ system_info.get('disk_avail', 'N/A') }} <span data-i18n="dashboard.free">libre</span></span>
+                                <span class="storage-free"><i class="fas fa-check-circle"></i> {{ system_info.get('disk_avail', 'N/A') }} <span data-i18n="dashboard.storage.free"></span></span>
                             </div>
                         </div>
                     </div>
@@ -102,13 +111,13 @@
                         <div class="card-icon">
                             <i class="fas fa-link"></i>
                         </div>
-                        <h3 data-i18n="dashboard.rtsp_url">URL RTSP</h3>
+                        <h3 data-i18n="dashboard.rtspUrl.title"></h3>
                     </div>
                     <div class="card-content">
                         {% if is_provisioned and rtsp_url_hostname %}
                         <div class="url-display-compact">
                             <div class="url-row">
-                                <span class="url-badge primary" data-i18n="dashboard.primary">Principal</span>
+                                <span class="url-badge primary" data-i18n="dashboard.rtspUrl.primary"></span>
                                 <code class="url-text" title="{{ rtsp_url_hostname }}">{{ rtsp_url_hostname }}</code>
                                 <button class="btn-icon" onclick="copyToClipboard('{{ rtsp_url_hostname }}')" data-i18n-title="common.copy" title="Copier">
                                     <i class="fas fa-copy"></i>
@@ -137,25 +146,25 @@
 
                 <!-- Service Control Card (4th) -->
                 <div class="card control-card">
-                    <h3><i class="fas fa-power-off"></i> <span data-i18n="dashboard.service_control">Contrôle Services</span></h3>
+                    <h3><i class="fas fa-power-off"></i> <span data-i18n="dashboard.services.title"></span></h3>
                     <div class="service-selector">
                         <select id="service-select" class="service-select">
-                            <option value="rpi-av-rtsp-recorder" data-i18n="services.rtsp_streaming">RTSP Streaming</option>
-                            <option value="rtsp-watchdog" data-i18n="services.watchdog">Watchdog</option>
-                            <option value="rpi-cam-onvif" data-i18n="services.onvif">ONVIF</option>
-                            <option value="rpi-cam-webmanager" data-i18n="services.web_manager">Web Manager</option>
+                            <option value="rpi-av-rtsp-recorder" data-i18n="dashboard.services.rtspStreaming"></option>
+                            <option value="rtsp-watchdog" data-i18n="dashboard.services.watchdog"></option>
+                            <option value="rpi-cam-onvif" data-i18n="dashboard.services.onvif"></option>
+                            <option value="rpi-cam-webmanager" data-i18n="dashboard.services.webManager"></option>
                         </select>
                     </div>
                     <div class="control-buttons">
                         <button class="btn btn-success btn-service" onclick="controlServiceAction('start')">
-                            <i class="fas fa-play"></i> <span data-i18n="common.start">Démarrer</span>
+                            <i class="fas fa-play"></i> <span data-i18n="common.start"></span>
                         </button>
                         <button class="btn btn-warning btn-service" onclick="controlServiceAction('restart')">
-                            <i class="fas fa-sync"></i> <span data-i18n="common.restart">Redémarrer</span>
+                            <i class="fas fa-sync"></i> <span data-i18n="common.restart"></span>
                         </button>
                         </button>
                         <button class="btn btn-danger btn-service" onclick="controlServiceAction('stop')">
-                            <i class="fas fa-stop"></i> <span data-i18n="common.stop">Arrêter</span>
+                            <i class="fas fa-stop"></i> <span data-i18n="common.stop"></span>
                         </button>
                     </div>
                 </div>
@@ -165,44 +174,44 @@
             <section class="config-section">
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="home">
-                        <i class="fas fa-home"></i> <span data-i18n="nav.home">Accueil</span>
+                        <i class="fas fa-home"></i> <span data-i18n="nav.home"></span>
                     </button>
                     <button class="tab-btn" data-tab="rtsp">
-                        <i class="fas fa-broadcast-tower"></i> <span data-i18n="nav.rtsp">RTSP</span>
+                        <i class="fas fa-broadcast-tower"></i> <span data-i18n="nav.rtsp"></span>
                     </button>
                     <button class="tab-btn" data-tab="onvif">
-                        <i class="fas fa-eye"></i> <span data-i18n="nav.onvif">ONVIF</span>
+                        <i class="fas fa-eye"></i> <span data-i18n="nav.onvif"></span>
                     </button>
                     <button class="tab-btn" data-tab="video">
-                        <i class="fas fa-video"></i> <span data-i18n="nav.video">Vidéo</span>
+                        <i class="fas fa-video"></i> <span data-i18n="nav.video"></span>
                     </button>
                     <button class="tab-btn" data-tab="audio">
-                        <i class="fas fa-microphone"></i> <span data-i18n="nav.audio">Audio</span>
+                        <i class="fas fa-microphone"></i> <span data-i18n="nav.audio"></span>
                     </button>
                     <button class="tab-btn" data-tab="recording">
-                        <i class="fas fa-hdd"></i> <span data-i18n="nav.storage">Stockage</span>
+                        <i class="fas fa-hdd"></i> <span data-i18n="nav.recording"></span>
                     </button>
                     <button class="tab-btn" data-tab="files">
-                        <i class="fas fa-film"></i> <span data-i18n="nav.recordings">Enregistrements</span>
+                        <i class="fas fa-film"></i> <span data-i18n="nav.files"></span>
                     </button>
                     <button class="tab-btn" data-tab="network">
-                        <i class="fas fa-network-wired"></i> <span data-i18n="nav.network">Réseau</span>
+                        <i class="fas fa-network-wired"></i> <span data-i18n="nav.network"></span>
                     </button>
                     <button class="tab-btn" data-tab="system">
-                        <i class="fas fa-microchip"></i> <span data-i18n="nav.system">Système</span>
+                        <i class="fas fa-microchip"></i> <span data-i18n="nav.system"></span>
                     </button>
                     <button class="tab-btn" data-tab="meeting">
-                        <i class="fas fa-cloud-upload-alt"></i> <span data-i18n="nav.meeting">Meeting</span>
+                        <i class="fas fa-cloud-upload-alt"></i> <span data-i18n="nav.meeting"></span>
                     </button>
                     <button class="tab-btn" data-tab="advanced">
-                        <i class="fas fa-cogs"></i> <span data-i18n="nav.advanced">Avancé</span>
+                        <i class="fas fa-cogs"></i> <span data-i18n="nav.advanced"></span>
                     </button>
                     <button class="tab-btn" data-tab="logs">
-                        <i class="fas fa-file-alt"></i> <span data-i18n="nav.logs">Logs</span>
+                        <i class="fas fa-file-alt"></i> <span data-i18n="nav.logs"></span>
                     </button>
                     {% if debug_enabled %}
                     <button class="tab-btn" data-tab="debug">
-                        <i class="fas fa-bug"></i> <span data-i18n="nav.debug">Debug</span>
+                        <i class="fas fa-bug"></i> <span data-i18n="nav.debug"></span>
                     </button>
                     {% endif %}
                 </div>
@@ -213,8 +222,8 @@
                         <div class="home-welcome">
                             <div class="welcome-header">
                                 <i class="fas fa-video fa-3x"></i>
-                                <h2 data-i18n="home.welcome_title">Bienvenue sur RTSP Recorder</h2>
-                                <p class="welcome-subtitle" data-i18n="home.welcome_subtitle">Interface de gestion pour caméra Raspberry Pi</p>
+                                <h2 data-i18n="home.welcome.title"></h2>
+                                <p class="welcome-subtitle" data-i18n="home.welcome.subtitle"></p>
                             </div>
                             
                             <div class="home-grid">
@@ -222,32 +231,32 @@
                                 <div class="home-card">
                                     <div class="home-card-header">
                                         <i class="fas fa-heartbeat"></i>
-                                        <h3 data-i18n="home.system_status">État du système</h3>
+                                        <h3 data-i18n="home.systemStatus.title"></h3>
                                     </div>
                                     <div class="home-card-content">
                                         <div class="status-row">
-                                            <span data-i18n="home.rtsp_service">Service RTSP</span>
+                                            <span data-i18n="home.systemStatus.rtspService"></span>
                                             <span class="status-badge" id="home-rtsp-status">
                                                 <span class="status-dot"></span>
                                                 <span data-i18n="common.loading">Chargement...</span>
                                             </span>
                                         </div>
                                         <div class="status-row">
-                                            <span data-i18n="home.onvif_service">Service ONVIF</span>
+                                            <span data-i18n="home.systemStatus.onvifService"></span>
                                             <span class="status-badge" id="home-onvif-status">
                                                 <span class="status-dot"></span>
                                                 <span data-i18n="common.loading">Chargement...</span>
                                             </span>
                                         </div>
                                         <div class="status-row">
-                                            <span data-i18n="home.recording">Enregistrement</span>
+                                            <span data-i18n="home.systemStatus.recording"></span>
                                             <span class="status-badge" id="home-recording-status">
                                                 <span class="status-dot"></span>
                                                 <span data-i18n="common.loading">Chargement...</span>
                                             </span>
                                         </div>
                                         <div class="status-row">
-                                            <span data-i18n="home.meeting_api">Meeting API</span>
+                                            <span data-i18n="home.systemStatus.meetingApi"></span>
                                             <span class="status-badge" id="home-meeting-status">
                                                 <span class="status-dot"></span>
                                                 <span data-i18n="common.loading">Chargement...</span>
@@ -260,25 +269,25 @@
                                 <div class="home-card">
                                     <div class="home-card-header">
                                         <i class="fas fa-bolt"></i>
-                                        <h3 data-i18n="home.quick_access">Accès rapide</h3>
+                                        <h3 data-i18n="home.quickAccess.title"></h3>
                                     </div>
                                     <div class="home-card-content">
                                         <div class="quick-actions">
                                             <button type="button" class="quick-action-btn" onclick="switchToTab('rtsp')">
                                                 <i class="fas fa-broadcast-tower"></i>
-                                                <span data-i18n="home.config_rtsp">Config RTSP</span>
+                                                <span data-i18n="home.quickAccess.configRtsp"></span>
                                             </button>
                                             <button type="button" class="quick-action-btn" onclick="switchToTab('onvif')">
                                                 <i class="fas fa-eye"></i>
-                                                <span data-i18n="home.config_onvif">Config ONVIF</span>
+                                                <span data-i18n="home.quickAccess.configOnvif"></span>
                                             </button>
                                             <button type="button" class="quick-action-btn" onclick="switchToTab('video')">
                                                 <i class="fas fa-video"></i>
-                                                <span data-i18n="home.video_settings">Réglages Vidéo</span>
+                                                <span data-i18n="home.quickAccess.videoSettings"></span>
                                             </button>
                                             <button type="button" class="quick-action-btn" onclick="switchToTab('network')">
                                                 <i class="fas fa-network-wired"></i>
-                                                <span data-i18n="home.network">Réseau</span>
+                                                <span data-i18n="home.quickAccess.network"></span>
                                             </button>
                                         </div>
                                     </div>
@@ -288,23 +297,23 @@
                                 <div class="home-card">
                                     <div class="home-card-header">
                                         <i class="fas fa-info-circle"></i>
-                                        <h3 data-i18n="home.device_info">Informations device</h3>
+                                        <h3 data-i18n="home.deviceInfo.title"></h3>
                                     </div>
                                     <div class="home-card-content">
                                         <div class="info-row">
-                                            <span class="info-label" data-i18n="home.onvif_name">Nom ONVIF</span>
-                                            <span class="info-value" id="home-device-name" data-i18n="common.loading">Chargement...</span>
+                                            <span class="info-label" data-i18n="home.deviceInfo.onvifName"></span>
+                                            <span class="info-value" id="home-device-name" data-i18n="common.loading"></span>
                                         </div>
                                         <div class="info-row">
-                                            <span class="info-label" data-i18n="home.main_ip">IP principale</span>
+                                            <span class="info-label" data-i18n="home.deviceInfo.primaryIp"></span>
                                             <span class="info-value" id="home-device-ip">{{ system_info.get('ip', 'N/A') }}</span>
                                         </div>
                                         <div class="info-row">
-                                            <span class="info-label" data-i18n="home.model">Modèle</span>
+                                            <span class="info-label" data-i18n="home.deviceInfo.model"></span>
                                             <span class="info-value">{{ system_info.get('model', 'Raspberry Pi') }}</span>
                                         </div>
                                         <div class="info-row">
-                                            <span class="info-label">Uptime</span>
+                                            <span class="info-label" data-i18n="home.deviceInfo.uptime"></span>
                                             <span class="info-value" id="home-uptime">{{ system_info.get('uptime', 'N/A') }}</span>
                                         </div>
                                     </div>
@@ -314,7 +323,7 @@
                                 <div class="home-card">
                                     <div class="home-card-header">
                                         <i class="fas fa-cloud"></i>
-                                        <h3>Statut Cloud</h3>
+                                        <h3 data-i18n="home.cloudStatus.title"></h3>
                                     </div>
                                     <div class="home-card-content">
                                         {% if is_provisioned %}
@@ -323,19 +332,19 @@
                                                 <i class="fas fa-check-circle"></i>
                                             </div>
                                             <div class="cloud-status-text">
-                                                <span class="cloud-status-title">Device enregistré</span>
-                                                <span class="cloud-status-subtitle">Connecté au cloud Meeting</span>
+                                                <span class="cloud-status-title" data-i18n="home.cloudStatus.registered"></span>
+                                                <span class="cloud-status-subtitle" data-i18n="home.cloudStatus.registeredSubtitle"></span>
                                             </div>
                                         </div>
                                         <div class="cloud-details">
                                             <div class="info-row">
-                                                <span class="info-label">Device Key</span>
+                                                <span class="info-label" data-i18n="home.cloudStatus.deviceKey"></span>
                                                 <span class="info-value cloud-key" id="home-device-key">{{ config.get('MEETING_DEVICE_KEY', 'N/A')[:12] }}...</span>
                                             </div>
                                             <div class="info-row">
-                                                <span class="info-label">Heartbeat</span>
+                                                <span class="info-label" data-i18n="home.cloudStatus.heartbeat"></span>
                                                 <span class="info-value" id="home-heartbeat-status">
-                                                    <span class="status-dot status-active"></span> Actif
+                                                    <span class="status-dot status-active"></span> <span data-i18n="common.active"></span>
                                                 </span>
                                             </div>
                                         </div>
@@ -345,13 +354,13 @@
                                                 <i class="fas fa-times-circle"></i>
                                             </div>
                                             <div class="cloud-status-text">
-                                                <span class="cloud-status-title">Non enregistré</span>
-                                                <span class="cloud-status-subtitle">Device non provisionné</span>
+                                                <span class="cloud-status-title" data-i18n="home.cloudStatus.unregistered"></span>
+                                                <span class="cloud-status-subtitle" data-i18n="home.cloudStatus.unregisteredSubtitle"></span>
                                             </div>
                                         </div>
                                         <div class="cloud-action">
                                             <button type="button" class="btn btn-primary btn-sm" onclick="switchToTab('meeting')">
-                                                <i class="fas fa-cog"></i> Configurer
+                                                <i class="fas fa-cog"></i> <span data-i18n="home.cloudStatus.configure"></span>
                                             </button>
                                         </div>
                                         {% endif %}
@@ -362,19 +371,19 @@
                                 <div class="home-card home-card-wide">
                                     <div class="home-card-header">
                                         <i class="fas fa-link"></i>
-                                        <h3>URLs de streaming</h3>
+                                        <h3 data-i18n="home.streamUrls.title"></h3>
                                     </div>
                                     <div class="home-card-content">
                                         <div class="url-info-row">
-                                            <span class="url-label"><i class="fas fa-video"></i> RTSP</span>
+                                            <span class="url-label"><i class="fas fa-video"></i> <span data-i18n="home.streamUrls.rtsp"></span></span>
                                             <code class="url-value" id="home-rtsp-url">{{ rtsp_url }}</code>
                                             <button type="button" class="btn btn-icon btn-sm" onclick="copyToClipboard(document.getElementById('home-rtsp-url').textContent)">
                                                 <i class="fas fa-copy"></i>
                                             </button>
                                         </div>
                                         <div class="url-info-row">
-                                            <span class="url-label"><i class="fas fa-eye"></i> ONVIF</span>
-                                            <code class="url-value" id="home-onvif-url">Chargement...</code>
+                                            <span class="url-label"><i class="fas fa-eye"></i> <span data-i18n="home.streamUrls.onvif"></span></span>
+                                            <code class="url-value" id="home-onvif-url" data-i18n="common.loading"></code>
                                             <button type="button" class="btn btn-icon btn-sm" onclick="copyToClipboard(document.getElementById('home-onvif-url').textContent)">
                                                 <i class="fas fa-copy"></i>
                                             </button>
@@ -1004,53 +1013,53 @@
                         <!-- Video Preview Section -->
                         <div class="form-section preview-section collapsible collapsed" id="preview-section">
                             <h4 class="collapsible-header" onclick="toggleSection('preview-section')">
-                                <i class="fas fa-eye"></i> Aperçu en direct
+                                <i class="fas fa-eye"></i> <span data-i18n="video.preview.title"></span>
                                 <i class="fas fa-chevron-down collapse-icon"></i>
                             </h4>
-                            <small class="section-help">Visualisez le flux de la caméra en temps réel</small>
+                            <small class="section-help" data-i18n="video.preview.help"></small>
                             
                             <div class="collapsible-content preview-container">
                                 <div class="preview-wrapper" id="preview-wrapper">
                                     <div class="preview-placeholder" id="preview-placeholder">
                                         <i class="fas fa-video-slash"></i>
-                                        <p>Aperçu non démarré</p>
-                                        <small>Cliquez sur "Démarrer" pour voir le flux</small>
+                                        <p data-i18n="video.preview.notStarted"></p>
+                                        <small data-i18n="video.preview.clickToStart"></small>
                                     </div>
                                     <img id="preview-stream" class="preview-stream" style="display: none;" alt="Preview">
                                 </div>
                                 <div class="preview-controls">
                                     <div class="preview-buttons">
                                         <button type="button" class="btn btn-success" id="btn-preview-start" onclick="startPreview()">
-                                            <i class="fas fa-play"></i> Démarrer
+                                            <i class="fas fa-play"></i> <span data-i18n="video.preview.start"></span>
                                         </button>
                                         <button type="button" class="btn btn-danger" id="btn-preview-stop" onclick="stopPreview()" style="display: none;">
-                                            <i class="fas fa-stop"></i> Arrêter
+                                            <i class="fas fa-stop"></i> <span data-i18n="video.preview.stop"></span>
                                         </button>
                                         <button type="button" class="btn btn-secondary" onclick="takeSnapshot()">
-                                            <i class="fas fa-camera"></i> Capture
+                                            <i class="fas fa-camera"></i> <span data-i18n="video.preview.capture"></span>
                                         </button>
                                     </div>
                                     <div class="preview-options">
                                         <label>
-                                            <span>Source:</span>
+                                            <span data-i18n="video.preview.source"></span>:
                                             <select id="preview-source">
-                                                <option value="auto" selected>Auto (recommandé)</option>
-                                                <option value="rtsp">Flux RTSP</option>
-                                                <option value="camera">Caméra directe</option>
+                                                <option value="auto" selected data-i18n="video.preview.sourceAuto"></option>
+                                                <option value="rtsp" data-i18n="video.preview.sourceRtsp"></option>
+                                                <option value="camera" data-i18n="video.preview.sourceDirect"></option>
                                             </select>
                                         </label>
                                         <label>
-                                            <span>Qualité:</span>
+                                            <span data-i18n="video.preview.quality"></span>:
                                             <select id="preview-quality">
-                                                <option value="320x240">320x240 (Basse)</option>
-                                                <option value="640x480" selected>640x480 (Moyenne)</option>
-                                                <option value="800x600">800x600 (Haute)</option>
+                                                <option value="320x240" data-i18n="video.preview.qualityLow"></option>
+                                                <option value="640x480" selected data-i18n="video.preview.qualityMedium"></option>
+                                                <option value="800x600" data-i18n="video.preview.qualityHigh"></option>
                                             </select>
                                         </label>
                                     </div>
                                     <div class="preview-status">
                                         <span id="preview-status-text">
-                                            <i class="fas fa-circle preview-status-dot inactive"></i> Inactif
+                                            <i class="fas fa-circle preview-status-dot inactive"></i> <span data-i18n="video.preview.inactive"></span>
                                         </span>
                                     </div>
                                 </div>
@@ -1059,44 +1068,44 @@
                         
                         <!-- Video Device Section (camera selection) -->
                         <div class="form-section">
-                            <h4><i class="fas fa-camera"></i> Périphérique vidéo</h4>
-                            <small class="section-help">Sélectionnez d'abord la source vidéo (caméra USB ou CSI)</small>
+                            <h4><i class="fas fa-camera"></i> <span data-i18n="video.device.title"></span></h4>
+                            <small class="section-help" data-i18n="video.device.help"></small>
                             
                             <div class="form-group">
                                 <label for="VIDEO_DEVICE">
-                                    <i class="fas fa-camera"></i> Périphérique vidéo
+                                    <i class="fas fa-camera"></i> <span data-i18n="video.device.videoDevice"></span>
                                 </label>
                                 <div class="input-with-button">
                                     <input type="text" id="VIDEOIN_DEVICE" name="VIDEOIN_DEVICE" 
                                            value="{{ config.VIDEOIN_DEVICE or config.VIDEO_DEVICE }}">
                                     <input type="hidden" id="VIDEOIN_FORMAT" name="VIDEOIN_FORMAT" value="{{ config.VIDEOIN_FORMAT or config.VIDEO_FORMAT or 'auto' }}">
                                     <button type="button" class="btn btn-secondary" onclick="detectCameras()">
-                                        <i class="fas fa-search"></i> Détecter
+                                        <i class="fas fa-search"></i> <span data-i18n="video.device.detect"></span>
                                     </button>
                                 </div>
-                                <small>Chemin du périphérique USB (ex: /dev/video0)</small>
+                                <small data-i18n="video.device.videoDeviceHelp"></small>
                                 <div id="camera-list" class="detection-list"></div>
                             </div>
                             <div class="form-group">
                                 <label for="CAMERA_TYPE">
-                                    <i class="fas fa-camera"></i> Type de Caméra
+                                    <i class="fas fa-camera"></i> <span data-i18n="video.device.cameraType"></span>
                                 </label>
                                 <div class="camera-type-toggle">
                                     <input type="radio" id="cam_usb" name="CAMERA_TYPE" value="usb" 
                                         onchange="onCameraTypeChange()"
                                         {{ 'checked' if config.CAMERA_TYPE == 'usb' }}>
-                                    <label for="cam_usb" class="toggle-btn" title="Caméra USB (Webcam)">
-                                        <i class="fab fa-usb"></i> USB
+                                    <label for="cam_usb" class="toggle-btn" title="" data-i18n-title="video.device.usbTitle">
+                                        <i class="fab fa-usb"></i> <span data-i18n="video.device.usb"></span>
                                     </label>
                                     
                                     <input type="radio" id="cam_csi" name="CAMERA_TYPE" value="csi" 
                                         onchange="onCameraTypeChange()"
                                         {{ 'checked' if config.CAMERA_TYPE == 'csi' }}>
-                                    <label for="cam_csi" class="toggle-btn" title="Caméra CSI (Nappe)">
-                                        <i class="fas fa-microchip"></i> CSI
+                                    <label for="cam_csi" class="toggle-btn" title="" data-i18n-title="video.device.csiTitle">
+                                        <i class="fas fa-microchip"></i> <span data-i18n="video.device.csi"></span>
                                     </label>
                                 </div>
-                                <small>Sélectionnez le type de caméra (Redémarrage requis pour appliquer)</small>
+                                <small data-i18n="video.device.cameraTypeHelp"></small>
                             </div>
                             <!-- Hidden fields for backend compatibility -->
                             <input type="hidden" id="CAMERA_DEVICE" name="CAMERA_DEVICE" value="{{ config.VIDEOIN_DEVICE or config.VIDEO_DEVICE }}">
@@ -1106,51 +1115,51 @@
                         
                         <!-- Resolution Selection (second - camera format) -->
                         <div class="form-section">
-                            <h4><i class="fas fa-expand-arrows-alt"></i> Résolution vidéo</h4>
-                            <small class="section-help">Sélectionnez une résolution parmi celles supportées par votre caméra</small>
+                            <h4><i class="fas fa-expand-arrows-alt"></i> <span data-i18n="video.resolution.title"></span></h4>
+                            <small class="section-help" data-i18n="video.resolution.help"></small>
                             
                             <div class="resolution-selector">
                                 <div class="form-group">
                                     <label for="resolution-select">
-                                        <i class="fas fa-list"></i> Résolution
+                                        <i class="fas fa-list"></i> <span data-i18n="video.resolution.select"></span>
                                         <span id="resolution-loading" class="loading-indicator" style="display: none;">
-                                            <i class="fas fa-spinner fa-spin"></i> Détection...
+                                            <i class="fas fa-spinner fa-spin"></i> <span data-i18n="video.resolution.detecting"></span>
                                         </span>
                                     </label>
                                     <select id="resolution-select" class="resolution-dropdown" onchange="onResolutionSelectChange(true)">
-                                        <option value="">-- Chargement des résolutions --</option>
+                                        <option value="" data-i18n="video.resolution.loadingResolutions"></option>
                                     </select>
-                                    <small>Format • Résolution • FPS max</small>
+                                    <small data-i18n="video.resolution.formatInfo"></small>
                                 </div>
                                 
                                 <div class="resolution-details" id="resolution-details" style="display: none;">
                                     <div class="detail-row">
-                                        <span class="detail-label">Format:</span>
+                                        <span class="detail-label" data-i18n="video.resolution.format"></span>:
                                         <span class="detail-value" id="detail-format">-</span>
                                     </div>
                                     <div class="detail-row">
-                                        <span class="detail-label">Résolution:</span>
+                                        <span class="detail-label" data-i18n="video.resolution.select"></span>:
                                         <span class="detail-value" id="detail-resolution">-</span>
                                     </div>
                                     <div class="detail-row">
-                                        <span class="detail-label">Mégapixels:</span>
+                                        <span class="detail-label" data-i18n="video.resolution.megapixels"></span>:
                                         <span class="detail-value" id="detail-megapixels">-</span>
                                     </div>
                                     <div class="detail-row">
-                                        <span class="detail-label">FPS disponibles:</span>
+                                        <span class="detail-label" data-i18n="video.resolution.availableFps"></span>:
                                         <span class="detail-value" id="detail-fps">-</span>
                                     </div>
                                 </div>
                                 
                                 <div class="manual-override">
                                     <label class="toggle-label">
-                                        <span><i class="fas fa-edit"></i> Mode manuel</span>
+                                        <span><i class="fas fa-edit"></i> <span data-i18n="video.resolution.manualMode"></span></span>
                                         <label class="toggle-switch">
                                             <input type="checkbox" id="manual-resolution-mode" onchange="toggleManualResolution()">
                                             <span class="toggle-slider"></span>
                                         </label>
                                     </label>
-                                    <small>Activer pour saisir une résolution personnalisée</small>
+                                    <small data-i18n="video.resolution.manualModeHelp"></small>
                                 </div>
                             </div>
                             
@@ -1158,48 +1167,48 @@
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="VIDEOIN_WIDTH">
-                                            <i class="fas fa-arrows-alt-h"></i> Largeur
+                                            <i class="fas fa-arrows-alt-h"></i> <span data-i18n="video.resolution.width"></span>
                                         </label>
                                         <input type="number" id="VIDEOIN_WIDTH" name="VIDEOIN_WIDTH" 
                                                value="{{ config.VIDEOIN_WIDTH or config.VIDEO_WIDTH }}" min="320" max="4096">
-                                        <small>Largeur en pixels</small>
+                                        <small data-i18n="video.resolution.widthHelp"></small>
                                     </div>
                                     <div class="form-group">
                                         <label for="VIDEOIN_HEIGHT">
-                                            <i class="fas fa-arrows-alt-v"></i> Hauteur
+                                            <i class="fas fa-arrows-alt-v"></i> <span data-i18n="video.resolution.height"></span>
                                         </label>
                                         <input type="number" id="VIDEOIN_HEIGHT" name="VIDEOIN_HEIGHT" 
                                                value="{{ config.VIDEOIN_HEIGHT or config.VIDEO_HEIGHT }}" min="240" max="2160">
-                                        <small>Hauteur en pixels</small>
+                                        <small data-i18n="video.resolution.heightHelp"></small>
                                     </div>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="VIDEOIN_FPS">
-                                            <i class="fas fa-tachometer-alt"></i> FPS
+                                            <i class="fas fa-tachometer-alt"></i> <span data-i18n="video.resolution.fps"></span>
                                         </label>
                                         <input type="number" id="VIDEOIN_FPS" name="VIDEOIN_FPS" 
                                                value="{{ config.VIDEOIN_FPS or config.VIDEO_FPS or '20' }}" min="1" max="60">
-                                        <small>Images par seconde (max selon caméra)</small>
+                                        <small data-i18n="video.resolution.fpsHelp"></small>
                                     </div>
                                     <div class="form-group">
                                         <label for="manual-format-select">
-                                            <i class="fas fa-image"></i> Format vidéo
+                                            <i class="fas fa-image"></i> <span data-i18n="video.resolution.formatVideo"></span>
                                         </label>
                                         <select id="manual-format-select" onchange="onManualFormatChange(this.value)">
-                                            <option value="auto">Auto (détection)</option>
+                                            <option value="auto" data-i18n="video.resolution.autoDetect"></option>
                                             <!-- Populated dynamically from camera detection -->
                                         </select>
                                         <input type="hidden" id="VIDEOIN_FORMAT" name="VIDEOIN_FORMAT" 
                                                value="{{ config.VIDEOIN_FORMAT or config.VIDEO_FORMAT or 'auto' }}">
-                                        <small id="format-help-text">Format de capture caméra. Chargement des formats disponibles...</small>
+                                        <small id="format-help-text" data-i18n="video.resolution.formatHelpLoading"></small>
                                     </div>
                                 </div>
                             </div>
                             
                             <div class="resolution-actions">
                                 <button type="button" class="btn btn-primary" onclick="applyResolution()">
-                                    <i class="fas fa-check"></i> Appliquer
+                                    <i class="fas fa-check"></i> <span data-i18n="common.apply"></span>
                                 </button>
                             </div>
                         </div>
@@ -3161,10 +3170,10 @@
                     <div class="tab-content" id="tab-advanced">
                         <!-- Language Management Section -->
                         <div class="form-section">
-                            <h4><i class="fas fa-globe"></i> <span data-i18n="i18n.language_settings">Paramètres de langue</span></h4>
+                            <h4><i class="fas fa-globe"></i> <span data-i18n="i18n.languageSettings"></span></h4>
                             
                             <div class="form-group">
-                                <label data-i18n="i18n.current_language">Langue actuelle</label>
+                                <label data-i18n="i18n.currentLanguage"></label>
                                 <div class="language-status">
                                     <span id="current-lang-display">Français</span>
                                     <select id="advanced-language-select" class="language-select" onchange="changeLanguageFromAdvanced(this.value)">
@@ -3174,69 +3183,69 @@
                             </div>
                             
                             <div class="form-group">
-                                <label data-i18n="i18n.upload_translation">Charger une traduction personnalisée</label>
+                                <label data-i18n="i18n.uploadTranslation"></label>
                                 <div class="file-upload-zone" id="translation-upload-zone">
                                     <input type="file" id="translation-file" accept=".json" style="display: none;" onchange="handleTranslationUpload(this)">
                                     <div class="upload-content" onclick="document.getElementById('translation-file').click()">
                                         <i class="fas fa-cloud-upload-alt fa-2x"></i>
-                                        <p data-i18n="i18n.drop_file">Cliquez ou déposez un fichier JSON</p>
+                                        <p data-i18n="i18n.dropFile"></p>
                                     </div>
                                 </div>
-                                <small data-i18n="i18n.upload_hint">Le fichier JSON doit respecter la structure des traductions existantes. Utilisez le bouton ci-dessous pour télécharger un modèle.</small>
+                                <small data-i18n="i18n.uploadHelp"></small>
                             </div>
                             
                             <div class="form-group">
-                                <label data-i18n="i18n.translation_template">Modèle de traduction</label>
+                                <label data-i18n="i18n.translationTemplate"></label>
                                 <div class="btn-group">
                                     <button type="button" class="btn btn-secondary" onclick="downloadTranslationTemplate()">
-                                        <i class="fas fa-download"></i> <span data-i18n="i18n.download_template">Télécharger le modèle</span>
+                                        <i class="fas fa-download"></i> <span data-i18n="i18n.downloadTemplate"></span>
                                     </button>
                                     <button type="button" class="btn btn-info" onclick="downloadCurrentTranslation()">
-                                        <i class="fas fa-file-export"></i> <span data-i18n="i18n.export_current">Exporter actuel</span>
+                                        <i class="fas fa-file-export"></i> <span data-i18n="i18n.exportCurrent"></span>
                                     </button>
                                 </div>
                             </div>
                             
                             <div class="form-group" id="custom-translations-list" style="display: none;">
-                                <label data-i18n="i18n.custom_translations">Traductions personnalisées</label>
+                                <label data-i18n="i18n.customTranslations"></label>
                                 <div id="custom-translations-container"></div>
                             </div>
                         </div>
                         
                         <div class="form-section">
-                            <h4><i class="fas fa-bug"></i> <span data-i18n="advanced.gstreamer_debug">Paramètres avancés</span></h4>
+                            <h4><i class="fas fa-bug"></i> <span data-i18n="advanced.title"></span></h4>
                             <div class="form-group">
                                 <label for="GST_DEBUG_LEVEL">
-                                    <i class="fas fa-bug"></i> <span data-i18n="advanced.gst_debug_level">Niveau de debug GStreamer</span>
+                                    <i class="fas fa-bug"></i> <span data-i18n="advanced.gstreamerDebug.title"></span>
                                 </label>
                                 <select id="GST_DEBUG_LEVEL" name="GST_DEBUG_LEVEL">
-                                    <option value="0" {{ 'selected' if config.GST_DEBUG_LEVEL == '0' }} data-i18n="advanced.gst_level_none">0 - Aucun</option>
-                                    <option value="1" {{ 'selected' if config.GST_DEBUG_LEVEL == '1' }} data-i18n="advanced.gst_level_errors">1 - Erreurs</option>
-                                    <option value="2" {{ 'selected' if config.GST_DEBUG_LEVEL == '2' }} data-i18n="advanced.gst_level_warnings">2 - Warnings</option>
-                                    <option value="3" {{ 'selected' if config.GST_DEBUG_LEVEL == '3' }} data-i18n="advanced.gst_level_info">3 - Info</option>
-                                    <option value="4" {{ 'selected' if config.GST_DEBUG_LEVEL == '4' }} data-i18n="advanced.gst_level_debug">4 - Debug</option>
-                                    <option value="5" {{ 'selected' if config.GST_DEBUG_LEVEL == '5' }} data-i18n="advanced.gst_level_log">5 - Log</option>
-                                    <option value="6" {{ 'selected' if config.GST_DEBUG_LEVEL == '6' }} data-i18n="advanced.gst_level_all">6 - Tout</option>
+                                    <option value="0" {{ 'selected' if config.GST_DEBUG_LEVEL == '0' }} data-i18n="advanced.gstreamerDebug.none"></option>
+                                    <option value="1" {{ 'selected' if config.GST_DEBUG_LEVEL == '1' }} data-i18n="advanced.gstreamerDebug.error"></option>
+                                    <option value="2" {{ 'selected' if config.GST_DEBUG_LEVEL == '2' }} data-i18n="advanced.gstreamerDebug.warning"></option>
+                                    <option value="3" {{ 'selected' if config.GST_DEBUG_LEVEL == '3' }} data-i18n="advanced.gstreamerDebug.info"></option>
+                                    <option value="4" {{ 'selected' if config.GST_DEBUG_LEVEL == '4' }} data-i18n="advanced.gstreamerDebug.debug"></option>
+                                    <option value="5" {{ 'selected' if config.GST_DEBUG_LEVEL == '5' }} data-i18n="advanced.gstreamerDebug.trace"></option>
+                                    <option value="6" {{ 'selected' if config.GST_DEBUG_LEVEL == '6' }} data-i18n="advanced.gstreamerDebug.all"></option>
                                 </select>
-                                <small data-i18n="advanced.gst_debug_hint">Niveau de verbosité des logs GStreamer</small>
+                                <small data-i18n="advanced.gstreamerDebug.hint"></small>
                             </div>
                             <div class="form-group">
                                 <label for="LOG_DIR">
-                                    <i class="fas fa-folder-open"></i> <span data-i18n="advanced.log_directory">Répertoire des logs</span>
+                                    <i class="fas fa-folder-open"></i> <span data-i18n="advanced.logDirectory"></span>
                                 </label>
                                 <input type="text" id="LOG_DIR" name="LOG_DIR" 
                                        value="{{ config.LOG_DIR }}">
-                                <small data-i18n="advanced.log_dir_hint">Chemin pour stocker les fichiers de log</small>
+                                <small data-i18n="advanced.logDirectoryHint"></small>
                             </div>
                             <div class="form-group">
                                 <label for="LOW_LATENCY">
-                                    <i class="fas fa-bolt"></i> <span data-i18n="advanced.low_latency_mode">Mode faible latence</span>
+                                    <i class="fas fa-bolt"></i> <span data-i18n="advanced.lowLatencyMode"></span>
                                 </label>
                                 <select id="LOW_LATENCY" name="LOW_LATENCY">
-                                    <option value="1" {{ 'selected' if config.LOW_LATENCY == '1' }} data-i18n="common.enabled">Activé</option>
-                                    <option value="0" {{ 'selected' if config.LOW_LATENCY == '0' }} data-i18n="common.disabled">Désactivé</option>
+                                    <option value="1" {{ 'selected' if config.LOW_LATENCY == '1' }} data-i18n="common.enabled"></option>
+                                    <option value="0" {{ 'selected' if config.LOW_LATENCY == '0' }} data-i18n="common.disabled"></option>
                                 </select>
-                                <small data-i18n="advanced.low_latency_hint">Optimise pour une latence minimale du flux RTSP</small>
+                                <small data-i18n="advanced.lowLatencyHint"></small>
                             </div>
                         </div>
                     </div>

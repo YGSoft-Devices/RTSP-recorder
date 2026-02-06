@@ -17,6 +17,7 @@
 ## Web manager / CSI
 
 
+- i18n : terminer l'extraction des textes hardcodés restants dans index.html et app.js
 - Identifier des valeurs fiables pour `AwbEnable` et `AeFlickerPeriod` (Picamera2 retourne `null` dans `/controls`)
 - Tester le mode source `STREAM_SOURCE_MODE=rtsp` (proxy H264/AAC) + compatibilitÃ© clients
 - Tester `STREAM_SOURCE_MODE=mjpeg` et `STREAM_SOURCE_MODE=screen` (encodage H264)

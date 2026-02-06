@@ -1,6 +1,6 @@
 /**
  * RTSP Recorder Web Manager - Meeting/NTP/RTC functions
- * Version: 2.36.08
+ * Version: 2.36.10
  */
 
 (function () {
@@ -224,15 +224,15 @@ async function fetchMeetingDeviceInfo() {
                 
                 servicesHtml = `
                     <div class="services-section">
-                        <label><i class="fas fa-cogs"></i> Services déclarés</label>
+                        <label><i class="fas fa-cogs"></i> ${I18n.t('meeting.services_declared', {}, 'Declared services')}</label>
                         <div class="services-badges">${serviceBadges}</div>
                     </div>
                 `;
             } else {
                 servicesHtml = `
                     <div class="services-section">
-                        <label><i class="fas fa-cogs"></i> Services déclarés</label>
-                        <div class="services-badges"><span class="service-badge service-none">Aucun service</span></div>
+                        <label><i class="fas fa-cogs"></i> ${I18n.t('meeting.services_declared', {}, 'Declared services')}</label>
+                        <div class="services-badges"><span class="service-badge service-none">${I18n.t('meeting.no_service', {}, 'No service')}</span></div>
                     </div>
                 `;
             }
@@ -242,15 +242,15 @@ async function fetchMeetingDeviceInfo() {
             if (device.ap_ssid || device.ap_password) {
                 wifiApHtml = `
                     <div class="wifi-ap-section">
-                        <label><i class="fas fa-wifi"></i> Point d'accès WiFi</label>
+                        <label><i class="fas fa-wifi"></i> ${I18n.t('meeting.wifi_ap_label', {}, 'WiFi access point')}</label>
                         <div class="wifi-ap-info">
                             <div class="wifi-ap-item">
-                                <span class="wifi-label">SSID</span>
-                                <span class="wifi-value mono">${device.ap_ssid || 'N/A'}</span>
+                                <span class="wifi-label">${I18n.t('meeting.wifi_ssid_label', {}, 'SSID')}</span>
+                                <span class="wifi-value mono">${device.ap_ssid || I18n.t('meeting.device_name_undefined', {}, 'N/A')}</span>
                             </div>
                             <div class="wifi-ap-item">
-                                <span class="wifi-label">Mot de passe</span>
-                                <span class="wifi-value mono">${device.ap_password || 'N/A'}</span>
+                                <span class="wifi-label">${I18n.t('meeting.wifi_password_label', {}, 'Password')}</span>
+                                <span class="wifi-value mono">${device.ap_password || I18n.t('meeting.device_name_undefined', {}, 'N/A')}</span>
                             </div>
                         </div>
                     </div>
@@ -262,7 +262,7 @@ async function fetchMeetingDeviceInfo() {
             if (device.note) {
                 noteHtml = `
                     <div class="note-section">
-                        <label><i class="fas fa-sticky-note"></i> Note</label>
+                        <label><i class="fas fa-sticky-note"></i> ${I18n.t('meeting.note_label', {}, 'Note')}</label>
                         <p class="note-content">${device.note}</p>
                     </div>
                 `;
@@ -271,46 +271,46 @@ async function fetchMeetingDeviceInfo() {
             infoDiv.innerHTML = `
                 <div class="device-info-grid">
                     <div class="info-item">
-                        <label><i class="fas fa-key"></i> Device Key</label>
-                        <span class="mono">${device.device_key || 'N/A'}</span>
+                        <label><i class="fas fa-key"></i> ${I18n.t('meeting.device_key_label', {}, 'Device Key')}</label>
+                        <span class="mono">${device.device_key || I18n.t('meeting.device_name_undefined', {}, 'N/A')}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-tag"></i> Nom</label>
+                        <label><i class="fas fa-tag"></i> ${I18n.t('meeting.device_name_label', {}, 'Name')}</label>
                         <span>${deviceName}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-circle ${isOnline ? 'text-success' : 'text-danger'}"></i> Statut</label>
-                        <span>${isOnline ? 'En ligne' : 'Hors ligne'}</span>
+                        <label><i class="fas fa-circle ${isOnline ? 'text-success' : 'text-danger'}"></i> ${I18n.t('meeting.availability_status', {}, 'Status')}</label>
+                        <span>${isOnline ? I18n.t('meeting.availability_online', {}, 'Online') : I18n.t('meeting.availability_offline', {}, 'Offline')}</span>
                     </div>
                     <div class="info-item">
                         <label><i class="fas fa-network-wired"></i> IP</label>
                         <span class="mono">${deviceIp}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-clock"></i> Dernière activité</label>
+                        <label><i class="fas fa-clock"></i> ${I18n.t('meeting.last_activity_label', {}, 'Last activity')}</label>
                         <span>${lastSeenStr}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-coins"></i> Tokens</label>
-                        <span>${device.token_count !== undefined ? device.token_count : 'N/A'}</span>
+                        <label><i class="fas fa-coins"></i> ${I18n.t('meeting.tokens_label', {}, 'Tokens')}</label>
+                        <span>${device.token_count !== undefined ? device.token_count : I18n.t('meeting.device_name_undefined', {}, 'N/A')}</span>
                     </div>
                     <div class="info-item">
-                        <label><i class="fas fa-check-circle ${device.authorized ? 'text-success' : 'text-danger'}"></i> Autorisé</label>
-                        <span>${device.authorized ? 'Oui' : 'Non'}</span>
+                        <label><i class="fas fa-check-circle ${device.authorized ? 'text-success' : 'text-danger'}"></i> ${I18n.t('meeting.authorized_label', {}, 'Authorized')}</label>
+                        <span>${device.authorized ? I18n.t('common.yes', {}, 'Yes') : I18n.t('common.no', {}, 'No')}</span>
                     </div>
                 </div>
                 ${noteHtml}
                 ${wifiApHtml}
                 ${servicesHtml}
             `;
-            showToast('Informations du device chargées', 'success');
+            showToast(I18n.t('meeting.device_info_loaded', {}, 'Device info loaded'), 'success');
         } else {
-            infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-circle"></i> ${data.error || data.message || 'Impossible de charger les informations'}</p>`;
-            showToast('Échec chargement device info', 'error');
+            infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-circle"></i> ${data.error || data.message || I18n.t('meeting.device_info_load_failed', {}, 'Unable to load information')}</p>`;
+            showToast(I18n.t('meeting.device_info_load_failed_toast', {}, 'Failed to load device info'), 'error');
         }
     } catch (error) {
-        infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}</p>`;
-        showToast('Erreur chargement device info', 'error');
+        infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}</p>`;
+        showToast(I18n.t('meeting.device_info_load_error_toast', {}, 'Device info load error'), 'error');
     }
 }
 
@@ -323,7 +323,7 @@ async function requestMeetingTunnel() {
     
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Demande de tunnel ${service}...`;
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.tunnel_requesting', { service }, `Requesting ${service} tunnel...`)}`;
     
     try {
         const response = await fetch('/api/meeting/tunnel', {
@@ -339,29 +339,29 @@ async function requestMeetingTunnel() {
             
             if (data.data) {
                 if (data.data.tunnel_url) {
-                    html += `<p><strong>URL du tunnel:</strong> <code>${data.data.tunnel_url}</code></p>`;
+                    html += `<p><strong>${I18n.t('meeting.tunnel_url_label', {}, 'Tunnel URL')}:</strong> <code>${data.data.tunnel_url}</code></p>`;
                 }
                 if (data.data.port) {
-                    html += `<p><strong>Port distant:</strong> <code>${data.data.port}</code></p>`;
+                    html += `<p><strong>${I18n.t('meeting.tunnel_port_label', {}, 'Remote port')}:</strong> <code>${data.data.port}</code></p>`;
                 }
                 if (data.data.expires_at) {
-                    html += `<p><strong>Expire:</strong> ${new Date(data.data.expires_at).toLocaleString()}</p>`;
+                    html += `<p><strong>${I18n.t('meeting.tunnel_expires_label', {}, 'Expires')}:</strong> ${new Date(data.data.expires_at).toLocaleString()}</p>`;
                 }
             }
             resultDiv.innerHTML = html;
-            showToast(`Tunnel ${service} créé`, 'success');
+            showToast(I18n.t('meeting.tunnel_created', { service }, `Tunnel ${service} created`), 'success');
         } else {
             resultDiv.className = 'meeting-result error';
             resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.message}`;
             if (data.details) {
                 resultDiv.innerHTML += `<pre>${JSON.stringify(data.details, null, 2)}</pre>`;
             }
-            showToast('Échec création tunnel', 'error');
+            showToast(I18n.t('meeting.tunnel_create_failed', {}, 'Failed to create tunnel'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
-        showToast('Erreur tunnel', 'error');
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
+        showToast(I18n.t('meeting.tunnel_error', {}, 'Tunnel error'), 'error');
     }
 }
 
@@ -401,14 +401,14 @@ async function loadMeetingServices() {
                     <span class="service-icon"><i class="fas ${icons[service] || 'fa-plug'}"></i></span>
                     <span class="service-name">${service}</span>
                     <span class="service-status ${isEnabled ? 'enabled' : 'disabled'}">
-                        ${isEnabled ? 'Actif' : 'Inactif'}
+                        ${isEnabled ? I18n.t('common.active', {}, 'Active') : I18n.t('common.inactive', {}, 'Inactive')}
                     </span>
                 </div>
             `;
         }).join('');
         
     } catch (error) {
-        container.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}</p>`;
+        container.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}</p>`;
     }
 }
 
@@ -433,24 +433,24 @@ async function loadSshKeysStatus() {
         if (data.success) {
             // Device key status
             if (data.device_key_exists) {
-                deviceKeyStatus.innerHTML = `<i class="fas fa-check-circle text-success"></i> Clé device: <span class="text-success">Présente</span>`;
+                deviceKeyStatus.innerHTML = `<i class="fas fa-check-circle text-success"></i> ${I18n.t('meeting.device_key_label', {}, 'Device Key')}: <span class="text-success">${I18n.t('meeting.key_present', {}, 'Present')}</span>`;
             } else {
-                deviceKeyStatus.innerHTML = `<i class="fas fa-times-circle text-danger"></i> Clé device: <span class="text-danger">Absente</span>`;
+                deviceKeyStatus.innerHTML = `<i class="fas fa-times-circle text-danger"></i> ${I18n.t('meeting.device_key_label', {}, 'Device Key')}: <span class="text-danger">${I18n.t('meeting.key_absent', {}, 'Missing')}</span>`;
             }
             
             // Meeting key status
             if (data.meeting_key_installed) {
-                meetingKeyStatus.innerHTML = `<i class="fas fa-check-circle text-success"></i> Clé Meeting: <span class="text-success">Installée</span>`;
+                meetingKeyStatus.innerHTML = `<i class="fas fa-check-circle text-success"></i> ${I18n.t('meeting.meeting_key_label', {}, 'Meeting Key')}: <span class="text-success">${I18n.t('meeting.key_installed', {}, 'Installed')}</span>`;
             } else {
-                meetingKeyStatus.innerHTML = `<i class="fas fa-times-circle text-danger"></i> Clé Meeting: <span class="text-danger">Non installée</span>`;
+                meetingKeyStatus.innerHTML = `<i class="fas fa-times-circle text-danger"></i> ${I18n.t('meeting.meeting_key_label', {}, 'Meeting Key')}: <span class="text-danger">${I18n.t('meeting.key_not_installed', {}, 'Not installed')}</span>`;
             }
         } else {
-            deviceKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> Clé device: <span class="text-warning">Erreur</span>`;
-            meetingKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> Clé Meeting: <span class="text-warning">Erreur</span>`;
+            deviceKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> ${I18n.t('meeting.device_key_label', {}, 'Device Key')}: <span class="text-warning">${I18n.t('meeting.key_error', {}, 'Error')}</span>`;
+            meetingKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-warning"></i> ${I18n.t('meeting.meeting_key_label', {}, 'Meeting Key')}: <span class="text-warning">${I18n.t('meeting.key_error', {}, 'Error')}</span>`;
         }
     } catch (error) {
-        deviceKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> Erreur vérification`;
-        meetingKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> Erreur vérification`;
+        deviceKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> ${I18n.t('meeting.key_check_error', {}, 'Verification error')}`;
+        meetingKeyStatus.innerHTML = `<i class="fas fa-exclamation-triangle text-danger"></i> ${I18n.t('meeting.key_check_error', {}, 'Verification error')}`;
     }
 }
 
@@ -463,7 +463,7 @@ async function ensureSshKeysConfigured() {
     if (resultDiv) {
         resultDiv.style.display = 'block';
         resultDiv.className = 'meeting-result loading';
-        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Auto-configuration des clés SSH...';
+        resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.ssh_auto_configuring', {}, 'Auto-configuring SSH keys...')}`;
     }
     
     try {
@@ -473,7 +473,7 @@ async function ensureSshKeysConfigured() {
         if (data.success) {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result success';
-                let html = `<i class="fas fa-check-circle"></i> ${data.message || 'Clés SSH configurées'}<br><ul>`;
+                let html = `<i class="fas fa-check-circle"></i> ${data.message || I18n.t('meeting.ssh_keys_configured', {}, 'SSH keys configured')}<br><ul>`;
                 if (data.details) {
                     for (const detail of data.details) {
                         html += `<li>✓ ${detail}</li>`;
@@ -482,23 +482,23 @@ async function ensureSshKeysConfigured() {
                 html += '</ul>';
                 resultDiv.innerHTML = html;
             }
-            showToast('Clés SSH configurées', 'success');
+            showToast(I18n.t('meeting.ssh_keys_configured', {}, 'SSH keys configured'), 'success');
             // Refresh status indicators
             loadSshKeysStatus();
             loadDeviceSshKey();
         } else {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result error';
-                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de la configuration'}`;
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || I18n.t('meeting.ssh_config_failed', {}, 'Configuration failed')}`;
             }
-            showToast('Échec configuration clés SSH', 'error');
+            showToast(I18n.t('meeting.ssh_config_failed_toast', {}, 'SSH keys configuration failed'), 'error');
         }
     } catch (error) {
         if (resultDiv) {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         }
-        showToast('Erreur configuration clés', 'error');
+        showToast(I18n.t('meeting.ssh_config_error', {}, 'SSH keys configuration error'), 'error');
     }
 }
 
@@ -509,7 +509,7 @@ async function loadDeviceSshKey() {
     const infoDiv = document.getElementById('ssh-key-info');
     if (!infoDiv) return;
     
-    infoDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Chargement...';
+    infoDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.loading', {}, 'Loading...')}`;
     
     try {
         const response = await fetch('/api/meeting/ssh/key');
@@ -521,21 +521,21 @@ async function loadDeviceSshKey() {
             const keyType = pubkeyParts[0] || 'ed25519';
             const pubkeyShort = data.pubkey.length > 80 ? data.pubkey.substring(0, 77) + '...' : data.pubkey;
             infoDiv.innerHTML = `
-                <label>Type:</label>
+                <label>${I18n.t('meeting.ssh_key_type_label', {}, 'Type')}:</label>
                 <span>${keyType}</span>
-                <label>Clé publique:</label>
+                <label>${I18n.t('meeting.ssh_public_key_label', {}, 'Public key')}:</label>
                 <span class="mono-truncate" title="${data.pubkey}">${pubkeyShort}</span>
-                <label>Statut:</label>
-                <span class="text-success"><i class="fas fa-check-circle"></i> Générée</span>
+                <label>${I18n.t('meeting.status_label', {}, 'Status')}:</label>
+                <span class="text-success"><i class="fas fa-check-circle"></i> ${I18n.t('meeting.key_generated', {}, 'Generated')}</span>
             `;
         } else {
             infoDiv.innerHTML = `
-                <label>État:</label>
-                <span class="text-warning"><i class="fas fa-exclamation-circle"></i> Clé SSH non générée</span>
+                <label>${I18n.t('meeting.status_label', {}, 'Status')}:</label>
+                <span class="text-warning"><i class="fas fa-exclamation-circle"></i> ${I18n.t('meeting.key_not_generated', {}, 'SSH key not generated')}</span>
             `;
         }
     } catch (error) {
-        infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> ${error.message}</p>`;
+        infoDiv.innerHTML = `<p class="text-error"><i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}</p>`;
     }
 }
 
@@ -543,7 +543,7 @@ async function loadDeviceSshKey() {
  * Generate a new device SSH key
  */
 async function generateDeviceSshKey() {
-    if (!confirm('Générer une nouvelle clé SSH ? L\'ancienne clé sera écrasée.')) {
+    if (!confirm(I18n.t('meeting.ssh_key_generate_confirm', {}, 'Generate a new SSH key? The old key will be overwritten.'))) {
         return;
     }
     
@@ -551,7 +551,7 @@ async function generateDeviceSshKey() {
     if (resultDiv) {
         resultDiv.style.display = 'block';
         resultDiv.className = 'meeting-result loading';
-        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération de la clé...';
+        resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.ssh_key_generating', {}, 'Generating key...')}`;
     }
     
     try {
@@ -561,23 +561,23 @@ async function generateDeviceSshKey() {
         if (data.success) {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result success';
-                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Clé générée avec succès'}`;
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || I18n.t('meeting.ssh_key_generated', {}, 'Key generated successfully')}`;
             }
-            showToast('Clé SSH générée', 'success');
+            showToast(I18n.t('meeting.ssh_key_generated_toast', {}, 'SSH key generated'), 'success');
             loadDeviceSshKey();
         } else {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result error';
-                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de génération'}`;
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || I18n.t('meeting.ssh_key_generate_failed', {}, 'Generation failed')}`;
             }
-            showToast('Échec génération clé SSH', 'error');
+            showToast(I18n.t('meeting.ssh_key_generate_failed_toast', {}, 'SSH key generation failed'), 'error');
         }
     } catch (error) {
         if (resultDiv) {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         }
-        showToast('Erreur génération clé', 'error');
+        showToast(I18n.t('meeting.ssh_key_generate_error', {}, 'Key generation error'), 'error');
     }
 }
 
@@ -589,7 +589,7 @@ async function publishDeviceSshKey() {
     if (resultDiv) {
         resultDiv.style.display = 'block';
         resultDiv.className = 'meeting-result loading';
-        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publication de la clé...';
+        resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.ssh_key_publishing', {}, 'Publishing key...')}`;
     }
     
     try {
@@ -599,23 +599,23 @@ async function publishDeviceSshKey() {
         if (data.success) {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result success';
-                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Clé publiée'}`;
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || I18n.t('meeting.ssh_key_published', {}, 'Key published')}`;
             }
-            showToast('Clé SSH publiée sur Meeting', 'success');
+            showToast(I18n.t('meeting.ssh_key_published_toast', {}, 'SSH key published to Meeting'), 'success');
             loadDeviceSshKey();
         } else {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result error';
-                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de publication'}`;
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || I18n.t('meeting.ssh_key_publish_failed', {}, 'Publish failed')}`;
             }
-            showToast('Échec publication clé SSH', 'error');
+            showToast(I18n.t('meeting.ssh_key_publish_failed_toast', {}, 'SSH key publish failed'), 'error');
         }
     } catch (error) {
         if (resultDiv) {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         }
-        showToast('Erreur publication clé', 'error');
+        showToast(I18n.t('meeting.ssh_key_publish_error', {}, 'Key publish error'), 'error');
     }
 }
 
@@ -627,7 +627,7 @@ async function syncSshHostkey() {
     if (resultDiv) {
         resultDiv.style.display = 'block';
         resultDiv.className = 'meeting-result loading';
-        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Synchronisation de la hostkey...';
+        resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.ssh_hostkey_syncing', {}, 'Syncing hostkey...')}`;
     }
     
     try {
@@ -637,22 +637,22 @@ async function syncSshHostkey() {
         if (data.success) {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result success';
-                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Hostkey synchronisée'}`;
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || I18n.t('meeting.ssh_hostkey_synced', {}, 'Hostkey synced')}`;
             }
-            showToast('Hostkey synchronisée', 'success');
+            showToast(I18n.t('meeting.ssh_hostkey_synced_toast', {}, 'Hostkey synced'), 'success');
         } else {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result error';
-                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de synchronisation'}`;
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || I18n.t('meeting.ssh_hostkey_sync_failed', {}, 'Sync failed')}`;
             }
-            showToast('Échec sync hostkey', 'error');
+            showToast(I18n.t('meeting.ssh_hostkey_sync_failed_toast', {}, 'Hostkey sync failed'), 'error');
         }
     } catch (error) {
         if (resultDiv) {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         }
-        showToast('Erreur sync hostkey', 'error');
+        showToast(I18n.t('meeting.ssh_hostkey_sync_error', {}, 'Hostkey sync error'), 'error');
     }
 }
 
@@ -660,7 +660,7 @@ async function syncSshHostkey() {
  * Full SSH setup (generate + publish + sync)
  */
 async function fullSshSetup() {
-    if (!confirm('Lancer la configuration SSH complète ?\n\n• Génération de clé\n• Publication sur Meeting\n• Synchronisation hostkey')) {
+    if (!confirm(I18n.t('meeting.ssh_full_setup_confirm', {}, 'Start full SSH setup?\n\n• Key generation\n• Publish to Meeting\n• Hostkey sync'))) {
         return;
     }
     
@@ -668,7 +668,7 @@ async function fullSshSetup() {
     if (resultDiv) {
         resultDiv.style.display = 'block';
         resultDiv.className = 'meeting-result loading';
-        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Configuration SSH en cours...';
+        resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.ssh_full_setup_in_progress', {}, 'SSH setup in progress...')}`;
     }
     
     try {
@@ -678,31 +678,31 @@ async function fullSshSetup() {
         if (data.success) {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result success';
-                let html = `<i class="fas fa-check-circle"></i> Configuration SSH complète !<br><ul>`;
+                let html = `<i class="fas fa-check-circle"></i> ${I18n.t('meeting.ssh_full_setup_done', {}, 'SSH setup complete!')}<br><ul>`;
                 if (data.results) {
                     for (const [step, result] of Object.entries(data.results)) {
                         const icon = result.success ? '✓' : '✗';
-                        html += `<li>${icon} ${step}: ${result.message || (result.success ? 'OK' : 'Échec')}</li>`;
+                        html += `<li>${icon} ${step}: ${result.message || (result.success ? I18n.t('meeting.ok', {}, 'OK') : I18n.t('meeting.failure', {}, 'Failed'))}</li>`;
                     }
                 }
                 html += '</ul>';
                 resultDiv.innerHTML = html;
             }
-            showToast('Configuration SSH complète', 'success');
+            showToast(I18n.t('meeting.ssh_full_setup_done_toast', {}, 'SSH setup complete'), 'success');
             loadDeviceSshKey();
         } else {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result error';
-                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec de la configuration'}`;
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || I18n.t('meeting.ssh_config_failed', {}, 'Configuration failed')}`;
             }
-            showToast('Échec configuration SSH', 'error');
+            showToast(I18n.t('meeting.ssh_config_failed_toast', {}, 'SSH configuration failed'), 'error');
         }
     } catch (error) {
         if (resultDiv) {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         }
-        showToast('Erreur configuration SSH', 'error');
+        showToast(I18n.t('meeting.ssh_config_error', {}, 'SSH configuration error'), 'error');
     }
 }
 
@@ -728,24 +728,24 @@ async function loadTunnelAgentStatus() {
             
             if (active) {
                 statusDiv.className = 'status-indicator connected';
-                statusDiv.innerHTML = '<i class="fas fa-circle"></i> <span>Actif</span>';
+                statusDiv.innerHTML = `<i class="fas fa-circle"></i> <span>${I18n.t('common.active', {}, 'Active')}</span>`;
             } else {
                 statusDiv.className = 'status-indicator disconnected';
-                statusDiv.innerHTML = '<i class="fas fa-circle"></i> <span>Arrêté</span>';
+                statusDiv.innerHTML = `<i class="fas fa-circle"></i> <span>${I18n.t('meeting.stopped', {}, 'Stopped')}</span>`;
             }
             
             if (autostartDiv) {
                 autostartDiv.innerHTML = enabled 
-                    ? '<i class="fas fa-check text-success"></i> Auto-démarrage activé'
-                    : '<i class="fas fa-times text-muted"></i> Auto-démarrage désactivé';
+                    ? `<i class="fas fa-check text-success"></i> ${I18n.t('meeting.autostart_enabled', {}, 'Autostart enabled')}`
+                    : `<i class="fas fa-times text-muted"></i> ${I18n.t('meeting.autostart_disabled', {}, 'Autostart disabled')}`;
             }
         } else {
             statusDiv.className = 'status-indicator disconnected';
-            statusDiv.innerHTML = '<i class="fas fa-circle"></i> <span>Non installé</span>';
+            statusDiv.innerHTML = `<i class="fas fa-circle"></i> <span>${I18n.t('meeting.not_installed', {}, 'Not installed')}</span>`;
         }
     } catch (error) {
         statusDiv.className = 'status-indicator disconnected';
-        statusDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> <span>Erreur</span>';
+        statusDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span>${I18n.t('meeting.error', {}, 'Error')}</span>`;
     }
 }
 
@@ -757,7 +757,7 @@ async function startTunnelAgent() {
     if (resultDiv) {
         resultDiv.style.display = 'block';
         resultDiv.className = 'meeting-result loading';
-        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Démarrage de l\'agent tunnel...';
+        resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.tunnel_agent_starting', {}, 'Starting tunnel agent...')}`;
     }
     
     try {
@@ -767,23 +767,23 @@ async function startTunnelAgent() {
         if (data.success) {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result success';
-                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Agent tunnel démarré'}`;
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || I18n.t('meeting.tunnel_agent_started', {}, 'Tunnel agent started')}`;
             }
-            showToast('Agent tunnel démarré', 'success');
+            showToast(I18n.t('meeting.tunnel_agent_started', {}, 'Tunnel agent started'), 'success');
             setTimeout(loadTunnelAgentStatus, 1000);
         } else {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result error';
-                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec'}`;
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || I18n.t('meeting.failure', {}, 'Failed')}`;
             }
-            showToast('Échec démarrage agent', 'error');
+            showToast(I18n.t('meeting.tunnel_agent_start_failed', {}, 'Failed to start agent'), 'error');
         }
     } catch (error) {
         if (resultDiv) {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         }
-        showToast('Erreur démarrage agent', 'error');
+        showToast(I18n.t('meeting.tunnel_agent_start_error', {}, 'Agent start error'), 'error');
     }
 }
 
@@ -795,7 +795,7 @@ async function stopTunnelAgent() {
     if (resultDiv) {
         resultDiv.style.display = 'block';
         resultDiv.className = 'meeting-result loading';
-        resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Arrêt de l\'agent tunnel...';
+        resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.tunnel_agent_stopping', {}, 'Stopping tunnel agent...')}`;
     }
     
     try {
@@ -805,23 +805,23 @@ async function stopTunnelAgent() {
         if (data.success) {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result success';
-                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || 'Agent tunnel arrêté'}`;
+                resultDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${data.message || I18n.t('meeting.tunnel_agent_stopped', {}, 'Tunnel agent stopped')}`;
             }
-            showToast('Agent tunnel arrêté', 'success');
+            showToast(I18n.t('meeting.tunnel_agent_stopped', {}, 'Tunnel agent stopped'), 'success');
             setTimeout(loadTunnelAgentStatus, 1000);
         } else {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result error';
-                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec'}`;
+                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || I18n.t('meeting.failure', {}, 'Failed')}`;
             }
-            showToast('Échec arrêt agent', 'error');
+            showToast(I18n.t('meeting.tunnel_agent_stop_failed', {}, 'Failed to stop agent'), 'error');
         }
     } catch (error) {
         if (resultDiv) {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         }
-        showToast('Erreur arrêt agent', 'error');
+        showToast(I18n.t('meeting.tunnel_agent_stop_error', {}, 'Agent stop error'), 'error');
     }
 }
 
@@ -844,7 +844,7 @@ async function toggleTunnelAgentAutostart() {
         if (resultDiv) {
             resultDiv.style.display = 'block';
             resultDiv.className = 'meeting-result loading';
-            resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Modification auto-démarrage...';
+            resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.autostart_updating', {}, 'Updating autostart...')}`;
         }
         
         const response = await fetch(endpoint, { method: 'POST' });
@@ -860,16 +860,16 @@ async function toggleTunnelAgentAutostart() {
         } else {
             if (resultDiv) {
                 resultDiv.className = 'meeting-result error';
-                resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || 'Échec'}`;
+                    resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> ${data.error || I18n.t('meeting.failure', {}, 'Failed')}`;
             }
-            showToast('Échec modification auto-démarrage', 'error');
+                showToast(I18n.t('meeting.autostart_update_failed', {}, 'Autostart update failed'), 'error');
         }
     } catch (error) {
         if (resultDiv) {
             resultDiv.className = 'meeting-result error';
-            resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+                resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         }
-        showToast('Erreur', 'error');
+            showToast(I18n.t('meeting.error', {}, 'Error'), 'error');
     }
 }
 
@@ -883,15 +883,15 @@ function updateMeetingStatus(connected) {
     if (statusEl) {
         if (connected) {
             statusEl.className = 'status-indicator connected';
-            statusEl.innerHTML = '<i class="fas fa-circle"></i> Connecté';
+            statusEl.innerHTML = `<i class="fas fa-circle"></i> ${I18n.t('common.connected', {}, 'Connected')}`;
         } else {
             statusEl.className = 'status-indicator disconnected';
-            statusEl.innerHTML = '<i class="fas fa-circle"></i> Déconnecté';
+            statusEl.innerHTML = `<i class="fas fa-circle"></i> ${I18n.t('common.disconnected', {}, 'Disconnected')}`;
         }
     }
     
     if (detailsEl && connected) {
-        detailsEl.innerHTML = `<small>Dernière connexion: ${new Date().toLocaleTimeString()}</small>`;
+        detailsEl.innerHTML = `<small>${I18n.t('meeting.last_connection_label', {}, 'Last connection')}: ${new Date().toLocaleTimeString()}</small>`;
     }
 }
 
@@ -902,10 +902,10 @@ function updateMeetingConfigStatus() {
     const autoStatus = document.getElementById('meeting-auto-connect-status');
 
     if (enabledStatus && enabledToggle) {
-        enabledStatus.textContent = enabledToggle.checked ? 'Activé' : 'Désactivé';
+        enabledStatus.textContent = enabledToggle.checked ? I18n.t('common.enabled', {}, 'Enabled') : I18n.t('common.disabled', {}, 'Disabled');
     }
     if (autoStatus && autoToggle) {
-        autoStatus.textContent = autoToggle.checked ? 'Activé' : 'Désactivé';
+        autoStatus.textContent = autoToggle.checked ? I18n.t('common.enabled', {}, 'Enabled') : I18n.t('common.disabled', {}, 'Disabled');
     }
 }
 
@@ -934,14 +934,16 @@ async function loadMeetingConfig() {
         if (heartbeatInput) heartbeatInput.value = config.heartbeat_interval || 30;
         if (tokenInput) {
             tokenInput.value = '';
-            tokenInput.placeholder = config.has_token ? '•••••••• (enregistré)' : 'Aucun token';
+            tokenInput.placeholder = config.has_token
+                ? I18n.t('meeting.token_saved_placeholder', {}, '•••••••• (saved)')
+                : I18n.t('meeting.no_token', {}, 'No token');
         }
         if (provisionedBadge) {
             if (config.provisioned) {
-                provisionedBadge.textContent = 'Oui';
+                provisionedBadge.textContent = I18n.t('common.yes', {}, 'Yes');
                 provisionedBadge.className = 'badge badge-success';
             } else {
-                provisionedBadge.textContent = 'Non';
+                provisionedBadge.textContent = I18n.t('common.no', {}, 'No');
                 provisionedBadge.className = 'badge badge-warning';
             }
         }
@@ -974,7 +976,7 @@ async function saveMeetingConfig() {
             config.token_code = tokenValue;
         }
 
-        showToast('Enregistrement Meeting...', 'info');
+        showToast(I18n.t('meeting.save_in_progress', {}, 'Saving Meeting...'), 'info');
 
         const response = await fetch('/api/meeting/config', {
             method: 'POST',
@@ -985,14 +987,14 @@ async function saveMeetingConfig() {
         const data = await response.json();
 
         if (data.success) {
-            showToast('Configuration Meeting enregistrée', 'success');
+            showToast(I18n.t('meeting.config_saved', {}, 'Meeting configuration saved'), 'success');
             loadMeetingStatus();
             loadMeetingConfig();
         } else {
-            showToast(`Erreur: ${data.message || data.error}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message || data.error }, `Error: ${data.message || data.error}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1038,24 +1040,24 @@ async function loadMeetingStatus() {
                 // Not configured
                 if (statusEl) {
                     statusEl.className = 'status-indicator disconnected';
-                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Non provisionné';
+                    statusEl.innerHTML = `<i class="fas fa-circle"></i> ${I18n.t('meeting.status_not_provisioned', {}, 'Not provisioned')}`;
                 }
                 if (detailsEl) {
-                    detailsEl.innerHTML = '<small>Entrez vos credentials pour provisionner ce device</small>';
+                    detailsEl.innerHTML = `<small>${I18n.t('meeting.status_enter_credentials', {}, 'Enter your credentials to provision this device')}</small>`;
                 }
             } else if (status.connected) {
                 // Connected and heartbeat working
                 if (statusEl) {
                     statusEl.className = 'status-indicator connected';
-                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Connecté';
+                    statusEl.innerHTML = `<i class="fas fa-circle"></i> ${I18n.t('common.connected', {}, 'Connected')}`;
                 }
                 if (detailsEl) {
-                    let details = `<small>Device: ${status.device_key}`;
+                    let details = `<small>${I18n.t('meeting.status_device', { device: status.device_key }, `Device: ${status.device_key}`)}`;
                     if (status.last_heartbeat_ago !== null) {
-                        details += ` • Dernier heartbeat: il y a ${status.last_heartbeat_ago}s`;
+                        details += ` • ${I18n.t('meeting.status_last_heartbeat_ago', { seconds: status.last_heartbeat_ago }, `Last heartbeat: ${status.last_heartbeat_ago}s ago`)}`;
                     }
                     if (status.heartbeat_thread_running) {
-                        details += ` • Intervalle: ${status.heartbeat_interval}s`;
+                        details += ` • ${I18n.t('meeting.status_interval', { seconds: status.heartbeat_interval }, `Interval: ${status.heartbeat_interval}s`)}`;
                     }
                     details += '</small>';
                     detailsEl.innerHTML = details;
@@ -1065,27 +1067,27 @@ async function loadMeetingStatus() {
                 if (statusEl) {
                     if (status.last_error) {
                         statusEl.className = 'status-indicator disconnected';
-                        statusEl.innerHTML = '<i class="fas fa-circle"></i> Erreur de connexion';
+                        statusEl.innerHTML = `<i class="fas fa-circle"></i> ${I18n.t('meeting.status_connection_error', {}, 'Connection error')}`;
                     } else {
                         statusEl.className = 'status-indicator pending';
-                        statusEl.innerHTML = '<i class="fas fa-circle"></i> En attente de connexion';
+                        statusEl.innerHTML = `<i class="fas fa-circle"></i> ${I18n.t('meeting.status_pending_connection', {}, 'Waiting for connection')}`;
                     }
                 }
                 if (detailsEl) {
                     if (status.last_error) {
-                        detailsEl.innerHTML = `<small>Device: ${status.device_key} • ${status.last_error}</small>`;
+                        detailsEl.innerHTML = `<small>${I18n.t('meeting.status_device_with_error', { device: status.device_key, error: status.last_error }, `Device: ${status.device_key} • ${status.last_error}`)}</small>`;
                     } else {
-                        detailsEl.innerHTML = `<small>Device: ${status.device_key} • En attente du premier heartbeat</small>`;
+                        detailsEl.innerHTML = `<small>${I18n.t('meeting.status_waiting_first_heartbeat', { device: status.device_key }, `Device: ${status.device_key} • Waiting for first heartbeat`)}</small>`;
                     }
                 }
             } else {
                 // Configured but disabled
                 if (statusEl) {
                     statusEl.className = 'status-indicator disconnected';
-                    statusEl.innerHTML = '<i class="fas fa-circle"></i> Désactivé';
+                    statusEl.innerHTML = `<i class="fas fa-circle"></i> ${I18n.t('common.disabled', {}, 'Disabled')}`;
                 }
                 if (detailsEl) {
-                    detailsEl.innerHTML = `<small>Device: ${status.device_key} • Meeting désactivé</small>`;
+                    detailsEl.innerHTML = `<small>${I18n.t('meeting.status_meeting_disabled', { device: status.device_key }, `Device: ${status.device_key} • Meeting disabled`)}</small>`;
                 }
             }
 
@@ -1120,14 +1122,14 @@ async function validateMeetingCredentials() {
     if (!apiUrl || !deviceKey || !tokenCode) {
         resultDiv.style.display = 'block';
         resultDiv.className = 'meeting-result validation-error';
-        resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Veuillez remplir tous les champs';
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.fill_all_fields', {}, 'Please fill in all fields')}`;
         if (provisionBtn) provisionBtn.disabled = true;
         return;
     }
     
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validation des credentials en cours...';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.validating_credentials', {}, 'Validating credentials...')}`;
     if (provisionBtn) provisionBtn.disabled = true;
     
     try {
@@ -1151,57 +1153,57 @@ async function validateMeetingCredentials() {
             let tokenWarning = '';
             if (device.token_count === 0) {
                 tokenClass = 'danger';
-                tokenWarning = '<br><strong style="color: var(--danger-color);">⚠️ Aucun token disponible ! Provisioning impossible.</strong>';
+                tokenWarning = `<br><strong style="color: var(--danger-color);">⚠️ ${I18n.t('meeting.no_token_available', {}, 'No token available! Provisioning impossible.')}</strong>`;
                 if (provisionBtn) provisionBtn.disabled = true;
             } else if (device.token_count === 1) {
                 tokenClass = 'warning';
-                tokenWarning = '<br><small style="color: var(--warning-color);">⚠️ Dernier token disponible</small>';
+                tokenWarning = `<br><small style="color: var(--warning-color);">⚠️ ${I18n.t('meeting.last_token_available', {}, 'Last token available')}</small>`;
                 if (provisionBtn) provisionBtn.disabled = false;
             } else {
                 if (provisionBtn) provisionBtn.disabled = false;
             }
             
             resultDiv.innerHTML = `
-                <i class="fas fa-check-circle"></i> <strong>Credentials valides !</strong>
+                <i class="fas fa-check-circle"></i> <strong>${I18n.t('meeting.credentials_valid', {}, 'Credentials valid!')}</strong>
                 <div class="provision-info">
                     <div class="provision-info-item">
-                        <span class="label">Device</span>
-                        <span class="value">${device.name || 'Sans nom'}</span>
+                        <span class="label">${I18n.t('meeting.device_label', {}, 'Device')}</span>
+                        <span class="value">${device.name || I18n.t('meeting.device_name_unknown', {}, 'Unnamed')}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">Autorisé</span>
-                        <span class="value ${device.authorized ? 'success' : 'danger'}">${device.authorized ? 'Oui ✓' : 'Non ✗'}</span>
+                        <span class="label">${I18n.t('meeting.authorized_label', {}, 'Authorized')}</span>
+                        <span class="value ${device.authorized ? 'success' : 'danger'}">${device.authorized ? I18n.t('meeting.online_yes', {}, 'Yes ✓') : I18n.t('meeting.online_no', {}, 'No ✗')}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">Tokens disponibles</span>
+                        <span class="label">${I18n.t('meeting.tokens_available_label', {}, 'Tokens available')}</span>
                         <span class="value ${tokenClass}">${device.token_count}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">En ligne</span>
-                        <span class="value">${device.online ? 'Oui' : 'Non'}</span>
+                        <span class="label">${I18n.t('meeting.online_label', {}, 'Online')}</span>
+                        <span class="value">${device.online ? I18n.t('common.yes', {}, 'Yes') : I18n.t('common.no', {}, 'No')}</span>
                     </div>
                 </div>
                 ${tokenWarning}
-                ${device.token_count > 0 && device.authorized ? '<p style="margin-top: 10px;"><i class="fas fa-info-circle"></i> Cliquez sur "Provisionner le device" pour continuer. Cette opération consommera 1 token.</p>' : ''}
+                ${device.token_count > 0 && device.authorized ? `<p style="margin-top: 10px;"><i class="fas fa-info-circle"></i> ${I18n.t('meeting.provision_click_to_continue', {}, 'Click "Provision device" to continue. This will consume 1 token.')}</p>` : ''}
             `;
             
             if (!device.authorized) {
-                resultDiv.innerHTML += '<p style="color: var(--danger-color); margin-top: 10px;"><i class="fas fa-ban"></i> Ce device n\'est pas autorisé dans Meeting.</p>';
+                resultDiv.innerHTML += `<p style="color: var(--danger-color); margin-top: 10px;"><i class="fas fa-ban"></i> ${I18n.t('meeting.device_not_authorized', {}, 'This device is not authorized in Meeting.')}</p>`;
                 if (provisionBtn) provisionBtn.disabled = true;
             }
             
-            showToast('Credentials validés', 'success');
+            showToast(I18n.t('meeting.credentials_valid_toast', {}, 'Credentials validated'), 'success');
         } else {
             resultDiv.className = 'meeting-result validation-error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>Validation échouée</strong><br>${data.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>${I18n.t('meeting.validation_failed', {}, 'Validation failed')}</strong><br>${data.message}`;
             if (provisionBtn) provisionBtn.disabled = true;
-            showToast('Credentials invalides', 'error');
+            showToast(I18n.t('meeting.credentials_invalid_toast', {}, 'Invalid credentials'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result validation-error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         if (provisionBtn) provisionBtn.disabled = true;
-        showToast('Erreur de validation', 'error');
+        showToast(I18n.t('meeting.validation_error_toast', {}, 'Validation error'), 'error');
     }
 }
 
@@ -1216,13 +1218,13 @@ async function provisionDevice() {
     const resultDiv = document.getElementById('provision-validation-result');
     const provisionBtn = document.getElementById('btn-provision');
     
-    if (!confirm('Êtes-vous sûr de vouloir provisionner ce device ?\n\nCette action va :\n- Consommer 1 token de provisioning\n- Changer le hostname du device\n- Verrouiller la configuration Meeting')) {
+    if (!confirm(I18n.t('meeting.provision_confirm', {}, 'Are you sure you want to provision this device?\n\nThis will:\n- Consume 1 provisioning token\n- Change the device hostname\n- Lock Meeting configuration'))) {
         return;
     }
     
     resultDiv.style.display = 'block';
     resultDiv.className = 'meeting-result loading';
-    resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Provisioning en cours... Veuillez patienter.';
+    resultDiv.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.provision_in_progress', {}, 'Provisioning in progress... Please wait.')}`;
     if (provisionBtn) provisionBtn.disabled = true;
     
     try {
@@ -1241,24 +1243,24 @@ async function provisionDevice() {
         if (data.success) {
             resultDiv.className = 'meeting-result validation-success';
             resultDiv.innerHTML = `
-                <i class="fas fa-check-circle"></i> <strong>Provisioning réussi !</strong>
+                <i class="fas fa-check-circle"></i> <strong>${I18n.t('meeting.provision_success', {}, 'Provisioning successful!')}</strong>
                 <div class="provision-info">
                     <div class="provision-info-item">
-                        <span class="label">Nouveau hostname</span>
+                        <span class="label">${I18n.t('meeting.new_hostname_label', {}, 'New hostname')}</span>
                         <span class="value">${data.hostname}</span>
                     </div>
                     <div class="provision-info-item">
-                        <span class="label">Token consommé</span>
-                        <span class="value success">Oui</span>
+                        <span class="label">${I18n.t('meeting.token_consumed_label', {}, 'Token consumed')}</span>
+                        <span class="value success">${I18n.t('common.yes', {}, 'Yes')}</span>
                     </div>
                 </div>
                 <p style="margin-top: 15px; color: var(--warning-color);">
-                    <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> Le hostname a changé. 
-                    Après quelques secondes, vous pourrez accéder à l'interface via:
+                    <i class="fas fa-exclamation-triangle"></i> <strong>${I18n.t('meeting.important_label', {}, 'Important')}:</strong> ${I18n.t('meeting.hostname_changed', {}, 'Hostname has changed.')}
+                    ${I18n.t('meeting.hostname_access_hint', {}, 'After a few seconds, you can access the UI at:')}
                     <br><code>http://${data.hostname}.local</code>
                 </p>
             `;
-            showToast('Device provisionné avec succès!', 'success');
+            showToast(I18n.t('meeting.provision_success_toast', {}, 'Device provisioned successfully!'), 'success');
             
             // Reload status after a short delay
             setTimeout(() => {
@@ -1266,15 +1268,15 @@ async function provisionDevice() {
             }, 2000);
         } else {
             resultDiv.className = 'meeting-result validation-error';
-            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>Échec du provisioning</strong><br>${data.message}`;
+            resultDiv.innerHTML = `<i class="fas fa-times-circle"></i> <strong>${I18n.t('meeting.provision_failed', {}, 'Provisioning failed')}</strong><br>${data.message}`;
             if (provisionBtn) provisionBtn.disabled = false;
-            showToast('Échec du provisioning', 'error');
+            showToast(I18n.t('meeting.provision_failed_toast', {}, 'Provisioning failed'), 'error');
         }
     } catch (error) {
         resultDiv.className = 'meeting-result validation-error';
-        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Erreur: ${error.message}`;
+        resultDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`)}`;
         if (provisionBtn) provisionBtn.disabled = false;
-        showToast('Erreur de provisioning', 'error');
+        showToast(I18n.t('meeting.provision_error_toast', {}, 'Provisioning error'), 'error');
     }
 }
 
@@ -1307,12 +1309,12 @@ async function executeMasterReset() {
     const code = document.getElementById('master_reset_code')?.value?.trim();
     
     if (!code) {
-        showToast('Veuillez entrer le code master', 'warning');
+        showToast(I18n.t('meeting.master_code_required', {}, 'Please enter the master code'), 'warning');
         return;
     }
     
     try {
-        showToast('Réinitialisation en cours...', 'info');
+        showToast(I18n.t('meeting.reset_in_progress', {}, 'Reset in progress...'), 'info');
         
         const response = await fetch('/api/meeting/master-reset', {
             method: 'POST',
@@ -1324,17 +1326,17 @@ async function executeMasterReset() {
         
         if (data.success) {
             closeMasterResetModal();
-            showToast('Configuration Meeting réinitialisée', 'success');
+            showToast(I18n.t('meeting.reset_done', {}, 'Meeting configuration reset'), 'success');
             loadMeetingStatus();
             // Reload page to refresh all config
             setTimeout(() => {
                 window.location.reload();
             }, 1500);
         } else {
-            showToast(data.message || 'Échec de la réinitialisation', 'error');
+            showToast(data.message || I18n.t('meeting.reset_failed', {}, 'Reset failed'), 'error');
         }
     } catch (error) {
-        showToast('Erreur: ' + error.message, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1438,7 +1440,7 @@ async function loadNtpConfig() {
                 server: null,
                 current_time: null,
                 timezone: null,
-                error: data.message || 'Erreur NTP'
+                error: data.message || I18n.t('meeting.ntp_error', {}, 'NTP error')
             });
         }
     } catch (error) {
@@ -1448,7 +1450,7 @@ async function loadNtpConfig() {
             server: null,
             current_time: null,
             timezone: null,
-            error: error.message || 'Erreur NTP'
+            error: error.message || I18n.t('meeting.ntp_error', {}, 'NTP error')
         });
     }
 }
@@ -1462,16 +1464,16 @@ function updateNtpStatus(data) {
     
     let html = `<div class="status-indicator ${data.synchronized ? 'synced' : 'not-synced'}">`;
     html += `<i class="fas fa-${data.synchronized ? 'check-circle' : 'exclamation-triangle'}"></i>`;
-    html += `<span>${data.synchronized ? 'Synchronisé' : 'Non synchronisé'}</span>`;
+    html += `<span>${data.synchronized ? I18n.t('meeting.ntp_synced', {}, 'Synchronized') : I18n.t('meeting.ntp_not_synced', {}, 'Not synchronized')}</span>`;
     html += `</div>`;
     
     if (data.error) {
-        html += `<div class="ntp-details"><span><strong>Erreur:</strong> ${data.error}</span></div>`;
+        html += `<div class="ntp-details"><span><strong>${I18n.t('meeting.error_label', {}, 'Error')}:</strong> ${data.error}</span></div>`;
     } else if (data.server || data.current_time) {
         html += `<div class="ntp-details">`;
-        if (data.server) html += `<span><strong>Serveur:</strong> ${data.server}</span>`;
-        if (data.current_time) html += `<span><strong>Heure système:</strong> ${data.current_time}</span>`;
-        if (data.timezone) html += `<span><strong>Fuseau:</strong> ${data.timezone}</span>`;
+        if (data.server) html += `<span><strong>${I18n.t('meeting.ntp_server_label', {}, 'Server')}:</strong> ${data.server}</span>`;
+        if (data.current_time) html += `<span><strong>${I18n.t('meeting.ntp_system_time_label', {}, 'System time')}:</strong> ${data.current_time}</span>`;
+        if (data.timezone) html += `<span><strong>${I18n.t('meeting.ntp_timezone_label', {}, 'Timezone')}:</strong> ${data.timezone}</span>`;
         html += `</div>`;
     }
     
@@ -1485,12 +1487,12 @@ async function saveNtpConfig() {
     const server = document.getElementById('ntp_server')?.value?.trim();
     
     if (!server) {
-        showToast('Veuillez entrer un serveur NTP', 'warning');
+        showToast(I18n.t('meeting.ntp_server_required', {}, 'Please enter an NTP server'), 'warning');
         return;
     }
     
     try {
-        showToast('Configuration NTP...', 'info');
+        showToast(I18n.t('meeting.ntp_configuring', {}, 'Configuring NTP...'), 'info');
         
         const response = await fetch('/api/system/ntp', {
             method: 'POST',
@@ -1501,13 +1503,13 @@ async function saveNtpConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Serveur NTP configuré', 'success');
+            showToast(I18n.t('meeting.ntp_server_configured', {}, 'NTP server configured'), 'success');
             loadNtpConfig();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1516,7 +1518,7 @@ async function saveNtpConfig() {
  */
 async function syncNtpNow() {
     try {
-        showToast('Synchronisation en cours...', 'info');
+        showToast(I18n.t('meeting.ntp_sync_in_progress', {}, 'Synchronization in progress...'), 'info');
         
         const response = await fetch('/api/system/ntp/sync', {
             method: 'POST'
@@ -1525,13 +1527,13 @@ async function syncNtpNow() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Heure synchronisée', 'success');
+            showToast(I18n.t('meeting.ntp_time_synced', {}, 'Time synchronized'), 'success');
             loadNtpConfig();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1557,14 +1559,14 @@ async function loadRtcConfig() {
         } else {
             updateRtcStatus({
                 success: false,
-                error: data.message || 'Erreur RTC'
+                error: data.message || I18n.t('meeting.rtc_error', {}, 'RTC error')
             });
         }
     } catch (error) {
         console.error('Error loading RTC config:', error);
         updateRtcStatus({
             success: false,
-            error: error.message || 'Erreur RTC'
+            error: error.message || I18n.t('meeting.rtc_error', {}, 'RTC error')
         });
     }
 }
@@ -1580,9 +1582,9 @@ function updateRtcStatus(data) {
         statusDiv.innerHTML = `
             <div class="status-indicator not-synced">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>Erreur RTC</span>
+                <span>${I18n.t('meeting.rtc_error', {}, 'RTC error')}</span>
             </div>
-            <div class="rtc-details"><span><strong>Erreur:</strong> ${data.error}</span></div>
+            <div class="rtc-details"><span><strong>${I18n.t('meeting.error_label', {}, 'Error')}:</strong> ${data.error}</span></div>
         `;
         return;
     }
@@ -1590,24 +1592,24 @@ function updateRtcStatus(data) {
     const enabled = !!data.effective_enabled;
     const detected = !!data.detected;
     const indicatorClass = enabled ? 'synced' : 'not-synced';
-    const indicatorLabel = enabled ? 'Actif' : 'Inactif';
-    const modeLabel = data.mode || 'auto';
+    const indicatorLabel = enabled ? I18n.t('common.active', {}, 'Active') : I18n.t('common.inactive', {}, 'Inactive');
+    const modeLabel = data.mode || I18n.t('common.auto', {}, 'auto');
     const viaLabel = data.detected_via ? ` (${data.detected_via})` : '';
 
     let html = `<div class="status-indicator ${indicatorClass}">`;
     html += `<i class="fas fa-${enabled ? 'check-circle' : 'exclamation-triangle'}"></i>`;
-    html += `<span>RTC ${indicatorLabel}</span>`;
+    html += `<span>${I18n.t('meeting.rtc_status', { status: indicatorLabel }, `RTC ${indicatorLabel}`)}</span>`;
     html += `</div>`;
     html += `<div class="rtc-details">`;
-    html += `<span><strong>Mode:</strong> ${modeLabel}</span>`;
-    html += `<span><strong>Détecté:</strong> ${detected ? 'Oui' : 'Non'}${detected ? viaLabel : ''}</span>`;
-    html += `<span><strong>Overlay:</strong> ${data.overlay_configured ? 'Configuré' : 'Non configuré'}</span>`;
-    html += `<span><strong>I2C:</strong> ${data.i2c_enabled ? 'Activé' : 'Désactivé'}</span>`;
+    html += `<span><strong>${I18n.t('meeting.rtc_mode_label', {}, 'Mode')}:</strong> ${modeLabel}</span>`;
+    html += `<span><strong>${I18n.t('meeting.rtc_detected_label', {}, 'Detected')}:</strong> ${detected ? I18n.t('common.yes', {}, 'Yes') : I18n.t('common.no', {}, 'No')}${detected ? viaLabel : ''}</span>`;
+    html += `<span><strong>${I18n.t('meeting.rtc_overlay_label', {}, 'Overlay')}:</strong> ${data.overlay_configured ? I18n.t('meeting.rtc_configured', {}, 'Configured') : I18n.t('meeting.rtc_not_configured', {}, 'Not configured')}</span>`;
+    html += `<span><strong>${I18n.t('meeting.rtc_i2c_label', {}, 'I2C')}:</strong> ${data.i2c_enabled ? I18n.t('common.enabled', {}, 'Enabled') : I18n.t('common.disabled', {}, 'Disabled')}</span>`;
     if (data.auto_pending) {
         if (!data.i2c_enabled) {
-            html += `<span><strong>Auto:</strong> I2C désactivé, appliquez pour activer</span>`;
+            html += `<span><strong>${I18n.t('common.auto', {}, 'Auto')}:</strong> ${I18n.t('meeting.rtc_auto_i2c_disabled', {}, 'I2C disabled, apply to enable')}</span>`;
         } else {
-            html += `<span><strong>Auto:</strong> Module détecté, appliquez pour activer</span>`;
+            html += `<span><strong>${I18n.t('common.auto', {}, 'Auto')}:</strong> ${I18n.t('meeting.rtc_auto_module_detected', {}, 'Module detected, apply to enable')}</span>`;
         }
     }
     html += `</div>`;
@@ -1622,7 +1624,7 @@ async function saveRtcConfig() {
     const rtcMode = document.getElementById('rtc_mode')?.value || 'auto';
 
     try {
-        showToast('Application RTC...', 'info');
+        showToast(I18n.t('meeting.rtc_applying', {}, 'Applying RTC...'), 'info');
 
         const response = await fetch('/api/system/rtc', {
             method: 'POST',
@@ -1633,7 +1635,7 @@ async function saveRtcConfig() {
         const data = await response.json();
 
         if (data.success) {
-            showToast(data.message || 'RTC configuré', 'success');
+            showToast(data.message || I18n.t('meeting.rtc_configured', {}, 'RTC configured'), 'success');
             loadRtcConfig();
             if (data.reboot_required) {
                 setTimeout(() => {
@@ -1641,10 +1643,10 @@ async function saveRtcConfig() {
                 }, 800);
             }
         } else {
-            showToast(`Erreur RTC: ${data.message || "Impossible d'appliquer"}`, 'error');
+            showToast(I18n.t('meeting.rtc_error_with_message', { error: data.message || I18n.t('meeting.rtc_apply_failed', {}, 'Unable to apply') }, `RTC error: ${data.message || "Unable to apply"}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur RTC: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.rtc_error_with_message', { error: error.message }, `RTC error: ${error.message}`), 'error');
     }
 }
 
@@ -1740,7 +1742,7 @@ async function saveRebootSchedule() {
     }
 
     try {
-        showToast('Enregistrement du schedule...', 'info');
+        showToast(I18n.t('meeting.reboot_schedule_saving', {}, 'Saving schedule...'), 'info');
         const response = await fetch('/api/system/reboot/schedule', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1748,13 +1750,13 @@ async function saveRebootSchedule() {
         });
         const data = await response.json();
         if (data.success) {
-            showToast('Schedule reboot enregistré', 'success');
+            showToast(I18n.t('meeting.reboot_schedule_saved', {}, 'Reboot schedule saved'), 'success');
             loadRebootSchedule();
         } else {
-            showToast(`Erreur: ${data.message || 'Impossible de sauvegarder'}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message || I18n.t('meeting.reboot_schedule_save_failed', {}, 'Unable to save') }, `Error: ${data.message || 'Unable to save'}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1784,7 +1786,7 @@ async function saveSnmpConfig() {
     const port = parseInt(document.getElementById('snmp_port')?.value || '162', 10);
 
     try {
-        showToast('Configuration SNMP...', 'info');
+        showToast(I18n.t('meeting.snmp_configuring', {}, 'Configuring SNMP...'), 'info');
         const response = await fetch('/api/system/snmp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1792,13 +1794,13 @@ async function saveSnmpConfig() {
         });
         const data = await response.json();
         if (data.success) {
-            showToast('Configuration SNMP appliquée', 'success');
+            showToast(I18n.t('meeting.snmp_configured', {}, 'SNMP configuration applied'), 'success');
             loadSnmpConfig();
         } else {
-            showToast(`Erreur: ${data.message || 'Impossible de sauvegarder'}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message || I18n.t('meeting.snmp_save_failed', {}, 'Unable to save') }, `Error: ${data.message || 'Unable to save'}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1808,7 +1810,7 @@ async function testSnmpConfig() {
     const port = parseInt(document.getElementById('snmp_port')?.value || '162', 10);
 
     try {
-        showToast('Test SNMP...', 'info');
+        showToast(I18n.t('meeting.snmp_test_in_progress', {}, 'SNMP test...'), 'info');
         const response = await fetch('/api/system/snmp/test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1816,12 +1818,12 @@ async function testSnmpConfig() {
         });
         const data = await response.json();
         if (data.success) {
-            showToast(data.message || 'SNMP OK', 'success');
+            showToast(data.message || I18n.t('meeting.snmp_ok', {}, 'SNMP OK'), 'success');
         } else {
-            showToast(`Erreur: ${data.message || 'Test SNMP échoué'}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message || I18n.t('meeting.snmp_test_failed', {}, 'SNMP test failed') }, `Error: ${data.message || 'SNMP test failed'}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -1861,13 +1863,13 @@ function handleBackupFileSelected(event) {
     } else if (backupFileAction === 'restore') {
         restoreBackupFile(file);
     } else {
-        updateBackupStatus('Action de backup invalide', 'error');
+        updateBackupStatus(I18n.t('meeting.backup_invalid_action', {}, 'Invalid backup action'), 'error');
     }
 }
 
 async function backupConfiguration() {
-    const includeLogs = confirm('Inclure les logs dans le backup ?');
-    updateBackupStatus('Preparation du backup...', 'checking');
+    const includeLogs = confirm(I18n.t('meeting.backup_include_logs_confirm', {}, 'Include logs in the backup?'));
+    updateBackupStatus(I18n.t('meeting.backup_preparing', {}, 'Preparing backup...'), 'checking');
 
     try {
         const response = await fetch('/api/system/backup', {
@@ -1879,7 +1881,7 @@ async function backupConfiguration() {
         const contentType = response.headers.get('content-type') || '';
         if (!response.ok || contentType.includes('application/json')) {
             const data = await response.json();
-            const message = data.message || 'Erreur backup';
+            const message = data.message || I18n.t('meeting.backup_error', {}, 'Backup error');
             updateBackupStatus(message, 'error');
             showToast(message, 'error');
             return;
@@ -1899,16 +1901,16 @@ async function backupConfiguration() {
         link.remove();
         window.URL.revokeObjectURL(url);
 
-        updateBackupStatus('Backup telecharge', 'success');
-        showToast('Backup genere', 'success');
+        updateBackupStatus(I18n.t('meeting.backup_downloaded', {}, 'Backup downloaded'), 'success');
+        showToast(I18n.t('meeting.backup_generated', {}, 'Backup generated'), 'success');
     } catch (error) {
-        updateBackupStatus(`Erreur: ${error.message}`, 'error');
-        showToast(`Erreur backup: ${error.message}`, 'error');
+        updateBackupStatus(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
+        showToast(I18n.t('meeting.backup_error_with_message', { error: error.message }, `Backup error: ${error.message}`), 'error');
     }
 }
 
 async function checkBackupFile(file) {
-    updateBackupStatus('Verification du backup...', 'checking');
+    updateBackupStatus(I18n.t('meeting.backup_checking', {}, 'Checking backup...'), 'checking');
 
     try {
         const formData = new FormData();
@@ -1921,32 +1923,32 @@ async function checkBackupFile(file) {
 
         const data = await response.json();
         if (!data.success) {
-            const message = data.message || 'Backup invalide';
+            const message = data.message || I18n.t('meeting.backup_invalid', {}, 'Invalid backup');
             updateBackupStatus(message, 'error');
             showToast(message, 'error');
             return;
         }
 
-        const info = `Backup valide (v${data.version || 'N/A'}, ${data.files_count || 0} fichiers)`;
+        const info = I18n.t('meeting.backup_valid_info', { version: data.version || 'N/A', files: data.files_count || 0 }, `Valid backup (v${data.version || 'N/A'}, ${data.files_count || 0} files)`);
         updateBackupStatus(info, 'success');
         showToast(info, 'success');
 
-        if (confirm(`${info}\n\nVoulez-vous restaurer ce backup ?`)) {
+        if (confirm(I18n.t('meeting.backup_restore_confirm', { info }, `${info}\n\nDo you want to restore this backup?`))) {
             restoreBackupFile(file, true);
         }
     } catch (error) {
-        updateBackupStatus(`Erreur: ${error.message}`, 'error');
-        showToast(`Erreur check: ${error.message}`, 'error');
+        updateBackupStatus(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
+        showToast(I18n.t('meeting.backup_check_error_with_message', { error: error.message }, `Check error: ${error.message}`), 'error');
     }
 }
 
 async function restoreBackupFile(file, skipConfirm = false) {
     if (!skipConfirm) {
-        const proceed = confirm('Restaurer la configuration depuis ce backup ?\n\nLe Raspberry Pi va redemarrer.');
+        const proceed = confirm(I18n.t('meeting.backup_restore_confirm_reboot', {}, 'Restore configuration from this backup?\n\nThe Raspberry Pi will reboot.'));
         if (!proceed) return;
     }
 
-    updateBackupStatus('Restauration en cours...', 'updating');
+    updateBackupStatus(I18n.t('meeting.backup_restore_in_progress', {}, 'Restore in progress...'), 'updating');
 
     try {
         const formData = new FormData();
@@ -1959,20 +1961,20 @@ async function restoreBackupFile(file, skipConfirm = false) {
 
         const data = await response.json();
         if (!data.success) {
-            const message = data.message || 'Restauration echouee';
+            const message = data.message || I18n.t('meeting.backup_restore_failed', {}, 'Restore failed');
             updateBackupStatus(message, 'error');
             showToast(message, 'error');
             return;
         }
 
-        updateBackupStatus('Restauration reussie, reboot en cours...', 'success');
-        showToast('Restauration reussie, redemarrage...', 'success');
+        updateBackupStatus(I18n.t('meeting.backup_restore_success_reboot', {}, 'Restore successful, reboot in progress...'), 'success');
+        showToast(I18n.t('meeting.backup_restore_success_reboot_toast', {}, 'Restore successful, rebooting...'), 'success');
 
         showRebootOverlay();
         startRebootMonitoring();
     } catch (error) {
-        updateBackupStatus(`Erreur: ${error.message}`, 'error');
-        showToast(`Erreur restore: ${error.message}`, 'error');
+        updateBackupStatus(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
+        showToast(I18n.t('meeting.backup_restore_error_with_message', { error: error.message }, `Restore error: ${error.message}`), 'error');
     }
 }
 
@@ -2009,11 +2011,13 @@ async function loadOnvifStatus() {
                 const nameHint = document.getElementById('onvif_name_hint');
                 
                 if (portInput) portInput.value = data.config.port || 8080;
-                if (nameInput) nameInput.value = data.config.name || 'UNPROVISIONNED';
+                if (nameInput) nameInput.value = data.config.name || I18n.t('meeting.onvif_name_unprovisioned', {}, 'UNPROVISIONED');
                 if (usernameInput) usernameInput.value = data.config.username || '';
                 if (passwordInput) {
                     passwordInput.value = '';
-                    passwordInput.placeholder = data.config.has_password ? '•••••••• (enregistré)' : 'Aucun mot de passe';
+                    passwordInput.placeholder = data.config.has_password
+                        ? I18n.t('meeting.onvif_password_saved_placeholder', {}, '•••••••• (saved)')
+                        : I18n.t('meeting.onvif_no_password', {}, 'No password');
                 }
                 if (rtspPortInput) rtspPortInput.value = data.config.rtsp_port || 8554;
                 if (rtspPathInput) rtspPathInput.value = data.config.rtsp_path || '/stream';
@@ -2022,10 +2026,10 @@ async function loadOnvifStatus() {
                 if (nameSourceBadge) {
                     if (data.config.name_from_meeting) {
                         nameSourceBadge.style.display = 'inline';
-                        if (nameHint) nameHint.textContent = 'Nom récupéré automatiquement depuis Meeting API (product_serial)';
+                        if (nameHint) nameHint.textContent = I18n.t('meeting.onvif_name_from_meeting', {}, 'Name retrieved automatically from Meeting API (product_serial)');
                     } else {
                         nameSourceBadge.style.display = 'none';
-                        if (nameHint) nameHint.textContent = 'Meeting API non configurée - nom par défaut utilisé';
+                        if (nameHint) nameHint.textContent = I18n.t('meeting.onvif_name_default_hint', {}, 'Meeting API not configured - default name used');
                     }
                 }
                 
@@ -2052,7 +2056,7 @@ function updateOnvifVideoInfo(settings) {
     if (resEl) resEl.textContent = `${settings.width}x${settings.height}`;
     if (fpsEl) fpsEl.textContent = `${settings.fps} fps`;
     if (bitrateEl) {
-        const bitrate = settings.bitrate ? `${settings.bitrate} kbps` : 'Auto';
+        const bitrate = settings.bitrate ? `${settings.bitrate} kbps` : I18n.t('common.auto', {}, 'Auto');
         bitrateEl.textContent = bitrate;
     }
 }
@@ -2073,26 +2077,26 @@ function updateOnvifStatusDisplay(data) {
         html = `
             <div class="status-indicator synced">
                 <i class="fas fa-check-circle"></i>
-                <span>Service ONVIF actif</span>
+                <span>${I18n.t('meeting.onvif_service_active', {}, 'ONVIF service active')}</span>
             </div>
             <div class="onvif-details">
-                <span><strong>Port:</strong> ${data.config?.port || 8080}</span>
-                <span><strong>Nom:</strong> ${data.config?.name || 'RPI-CAM'}</span>
-                <span><strong>URL:</strong> http://${onvifHost}:${data.config?.port || 8080}/onvif/device_service</span>
+                <span><strong>${I18n.t('meeting.onvif_port_label', {}, 'Port')}:</strong> ${data.config?.port || 8080}</span>
+                <span><strong>${I18n.t('meeting.onvif_name_label', {}, 'Name')}:</strong> ${data.config?.name || 'RPI-CAM'}</span>
+                <span><strong>${I18n.t('meeting.onvif_url_label', {}, 'URL')}:</strong> http://${onvifHost}:${data.config?.port || 8080}/onvif/device_service</span>
             </div>
         `;
     } else if (data.enabled) {
         html = `
             <div class="status-indicator not-synced">
                 <i class="fas fa-exclamation-triangle"></i>
-                <span>Service ONVIF arrêté</span>
+                <span>${I18n.t('meeting.onvif_service_stopped', {}, 'ONVIF service stopped')}</span>
             </div>
         `;
     } else {
         html = `
             <div class="status-indicator">
                 <i class="fas fa-power-off"></i>
-                <span>Service ONVIF désactivé</span>
+                <span>${I18n.t('meeting.onvif_service_disabled', {}, 'ONVIF service disabled')}</span>
             </div>
         `;
     }
@@ -2129,7 +2133,7 @@ async function saveOnvifConfig() {
             config.password = passwordValue;
         }
         
-        showToast('Enregistrement ONVIF...', 'info');
+        showToast(I18n.t('meeting.onvif_saving', {}, 'Saving ONVIF...'), 'info');
         
         const response = await fetch('/api/onvif/config', {
             method: 'POST',
@@ -2140,13 +2144,13 @@ async function saveOnvifConfig() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Configuration ONVIF enregistrée', 'success');
+            showToast(I18n.t('meeting.onvif_saved', {}, 'ONVIF configuration saved'), 'success');
             loadOnvifStatus();
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -2155,7 +2159,7 @@ async function saveOnvifConfig() {
  */
 async function restartOnvifService() {
     try {
-        showToast('Redémarrage du service ONVIF...', 'info');
+        showToast(I18n.t('meeting.onvif_restarting', {}, 'Restarting ONVIF service...'), 'info');
         
         const response = await fetch('/api/onvif/restart', {
             method: 'POST'
@@ -2164,13 +2168,13 @@ async function restartOnvifService() {
         const data = await response.json();
         
         if (data.success) {
-            showToast('Service ONVIF redémarré', 'success');
+            showToast(I18n.t('meeting.onvif_restarted', {}, 'ONVIF service restarted'), 'success');
             setTimeout(loadOnvifStatus, 2000);
         } else {
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     }
 }
 
@@ -2192,8 +2196,8 @@ async function checkFirmwareUpdate() {
     const updateBtn = document.getElementById('btn-update-firmware');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
-    statusText.textContent = 'Vérification en cours...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.firmware_checking', {}, 'Checking...')}`;
+    statusText.textContent = I18n.t('meeting.firmware_check_in_progress', {}, 'Check in progress...');
     statusText.className = 'status-value checking';
     
     try {
@@ -2214,38 +2218,38 @@ async function checkFirmwareUpdate() {
         if (data.success) {
             // Check if firmware update is disabled (initramfs system)
             if (data.can_update === false || data.use_apt === true) {
-                statusText.textContent = 'Utiliser apt upgrade';
+                statusText.textContent = I18n.t('meeting.firmware_use_apt', {}, 'Use apt upgrade');
                 statusText.className = 'status-value use-apt';
-                details.innerHTML = `<small>Kernel: ${data.current_version}<br>⚠️ initramfs détecté - rpi-update non supporté</small>`;
+                details.innerHTML = `<small>${I18n.t('meeting.firmware_kernel_label', {}, 'Kernel')}: ${data.current_version}<br>⚠️ ${I18n.t('meeting.firmware_initramfs_detected', {}, 'initramfs detected - rpi-update not supported')}</small>`;
                 updateBtn.disabled = true;
-                updateBtn.title = 'initramfs détecté - utilisez apt upgrade ci-dessous';
+                updateBtn.title = I18n.t('meeting.firmware_initramfs_tooltip', {}, 'initramfs detected - use apt upgrade below');
             } else if (data.update_available) {
-                statusText.textContent = 'Mise à jour disponible';
+                statusText.textContent = I18n.t('meeting.firmware_update_available', {}, 'Update available');
                 statusText.className = 'status-value update-available';
-                details.innerHTML = `<small>Version actuelle: ${data.current_version}</small>`;
+                details.innerHTML = `<small>${I18n.t('meeting.firmware_current_version', {}, 'Current version')}: ${data.current_version}</small>`;
                 updateBtn.disabled = false;
             } else {
-                statusText.textContent = 'À jour';
+                statusText.textContent = I18n.t('meeting.firmware_up_to_date', {}, 'Up to date');
                 statusText.className = 'status-value up-to-date';
-                details.innerHTML = `<small>Version: ${data.current_version}</small>`;
+                details.innerHTML = `<small>${I18n.t('meeting.firmware_version', {}, 'Version')}: ${data.current_version}</small>`;
                 updateBtn.disabled = true;
             }
             // Update last check date
-            document.getElementById('firmware-last-date').textContent = 'à l\'instant';
+            document.getElementById('firmware-last-date').textContent = I18n.t('meeting.last_action_now', {}, 'just now');
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = I18n.t('common.error', {}, 'Error');
             statusText.className = 'status-value error';
             details.innerHTML = `<small>${data.message}</small>`;
             updateBtn.disabled = true;
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = I18n.t('common.error', {}, 'Error');
         statusText.className = 'status-value error';
         details.innerHTML = `<small>${error.message}</small>`;
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-search"></i> Vérifier';
+        btn.innerHTML = `<i class="fas fa-search"></i> ${I18n.t('meeting.firmware_check_button', {}, 'Check')}`;
     }
 }
 
@@ -2257,12 +2261,9 @@ async function runFirmwareUpdate() {
     const method = updateBtn.dataset.method || 'unknown';
     
     // Different warning for rpi-update (experimental firmware)
-    let confirmMessage = 'Voulez-vous mettre à jour le firmware?\n\nUn redémarrage sera nécessaire après la mise à jour.';
+    let confirmMessage = I18n.t('meeting.firmware_update_confirm', {}, 'Do you want to update the firmware?\n\nA reboot will be required after the update.');
     if (method === 'rpi-update') {
-        confirmMessage = '⚠️ ATTENTION: rpi-update installe un firmware EXPÉRIMENTAL!\n\n' +
-            'Cela peut causer des instabilités système.\n' +
-            'Utilisez uniquement si vous savez ce que vous faites.\n\n' +
-            'Voulez-vous continuer?';
+        confirmMessage = I18n.t('meeting.firmware_update_warning_rpi', {}, '⚠️ WARNING: rpi-update installs EXPERIMENTAL firmware!\n\nThis may cause system instability.\nUse only if you know what you are doing.\n\nDo you want to continue?');
     }
     
     if (!confirm(confirmMessage)) {
@@ -2274,10 +2275,10 @@ async function runFirmwareUpdate() {
     const output = document.getElementById('firmware-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise à jour...';
-    statusText.textContent = 'Mise à jour en cours...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.firmware_updating', {}, 'Updating...')}`;
+    statusText.textContent = I18n.t('meeting.firmware_update_in_progress', {}, 'Update in progress...');
     statusText.className = 'status-value updating';
-    output.textContent = 'Téléchargement et installation du firmware...\nCela peut prendre plusieurs minutes, veuillez patienter...';
+    output.textContent = I18n.t('meeting.firmware_download_install', {}, 'Downloading and installing firmware...\nThis may take several minutes, please wait...');
     
     try {
         const response = await fetch('/api/debug/firmware/update', { method: 'POST' });
@@ -2291,9 +2292,9 @@ async function runFirmwareUpdate() {
         }
         
         if (data.success) {
-            statusText.textContent = 'Redémarrage requis';
+            statusText.textContent = I18n.t('meeting.firmware_reboot_required', {}, 'Reboot required');
             statusText.className = 'status-value reboot-required';
-            showToast('Firmware mis à jour! Redémarrez pour finaliser.', 'success');
+            showToast(I18n.t('meeting.firmware_updated_toast', {}, 'Firmware updated! Reboot to finalize.'), 'success');
             
             if (data.reboot_required) {
                 setTimeout(() => {
@@ -2301,17 +2302,17 @@ async function runFirmwareUpdate() {
                 }, 1000);
             }
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = I18n.t('common.error', {}, 'Error');
             statusText.className = 'status-value error';
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = I18n.t('common.error', {}, 'Error');
         statusText.className = 'status-value error';
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-download"></i> Mettre à jour';
+        btn.innerHTML = `<i class="fas fa-download"></i> ${I18n.t('meeting.firmware_update_button', {}, 'Update')}`;
     }
 }
 
@@ -2326,11 +2327,11 @@ async function runAptUpdate() {
     const output = document.getElementById('apt-update-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exécution...';
-    statusText.textContent = 'En cours...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.apt_running', {}, 'Running...')}`;
+    statusText.textContent = I18n.t('meeting.apt_running', {}, 'Running...');
     statusText.className = 'status-value running';
     outputContainer.style.display = 'block';
-    output.textContent = 'Rafraîchissement des listes de paquets...\nCela peut prendre quelques minutes...';
+    output.textContent = I18n.t('meeting.apt_refreshing', {}, 'Refreshing package lists...\nThis may take a few minutes...');
     
     try {
         const response = await fetch('/api/debug/apt/update', { method: 'POST' });
@@ -2339,25 +2340,25 @@ async function runAptUpdate() {
         output.textContent = data.output || data.message;
         
         if (data.success) {
-            statusText.textContent = 'Terminé';
+            statusText.textContent = I18n.t('meeting.apt_done', {}, 'Done');
             statusText.className = 'status-value success';
-            details.innerHTML = `<small>${data.hit_count} sources, ${data.get_count} mises à jour</small>`;
-            document.getElementById('apt-update-last-date').textContent = 'à l\'instant';
+            details.innerHTML = `<small>${I18n.t('meeting.apt_update_details', { sources: data.hit_count, updates: data.get_count }, `${data.hit_count} sources, ${data.get_count} updates`)}</small>`;
+            document.getElementById('apt-update-last-date').textContent = I18n.t('meeting.last_action_now', {}, 'just now');
             showToast(data.message, 'success');
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = I18n.t('common.error', {}, 'Error');
             statusText.className = 'status-value error';
             details.innerHTML = `<small>${data.message}</small>`;
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = I18n.t('common.error', {}, 'Error');
         statusText.className = 'status-value error';
         output.textContent = error.message;
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sync"></i> Exécuter apt update';
+        btn.innerHTML = `<i class="fas fa-sync"></i> ${I18n.t('meeting.apt_update_button', {}, 'Run apt update')}`;
     }
 }
 
@@ -2372,8 +2373,8 @@ async function checkAptUpgradable() {
     const output = document.getElementById('apt-upgrade-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Vérification...';
-    statusText.textContent = 'Vérification...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.apt_checking', {}, 'Checking...')}`;
+    statusText.textContent = I18n.t('meeting.apt_checking', {}, 'Checking...');
     statusText.className = 'status-value checking';
     
     try {
@@ -2384,35 +2385,35 @@ async function checkAptUpgradable() {
         
         if (data.success) {
             if (data.count > 0) {
-                statusText.textContent = `${data.count} mises à jour`;
+                statusText.textContent = I18n.t('meeting.apt_updates_count', { count: data.count }, `${data.count} updates`);
                 statusText.className = 'status-value update-available';
-                details.innerHTML = `<small>${data.count} paquets peuvent être mis à jour</small>`;
+                details.innerHTML = `<small>${I18n.t('meeting.apt_packages_upgradable', { count: data.count }, `${data.count} packages can be upgraded`)}</small>`;
                 
                 // Format output nicely
-                let formattedOutput = `=== ${data.count} paquets peuvent être mis à jour ===\n\n`;
+                let formattedOutput = I18n.t('meeting.apt_packages_header', { count: data.count }, `=== ${data.count} packages can be upgraded ===\n\n`);
                 data.packages.forEach(pkg => {
                     formattedOutput += `• ${pkg.name} → ${pkg.version}\n`;
                 });
                 output.textContent = formattedOutput;
             } else {
-                statusText.textContent = 'À jour';
+                statusText.textContent = I18n.t('meeting.apt_up_to_date', {}, 'Up to date');
                 statusText.className = 'status-value up-to-date';
-                details.innerHTML = '<small>Tous les paquets sont à jour</small>';
-                output.textContent = 'Aucune mise à jour disponible.';
+                details.innerHTML = `<small>${I18n.t('meeting.apt_all_up_to_date', {}, 'All packages are up to date')}</small>`;
+                output.textContent = I18n.t('meeting.apt_no_updates', {}, 'No updates available.');
             }
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = I18n.t('common.error', {}, 'Error');
             statusText.className = 'status-value error';
             output.textContent = data.message;
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = I18n.t('common.error', {}, 'Error');
         statusText.className = 'status-value error';
         output.textContent = error.message;
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-list"></i> Voir paquets';
+        btn.innerHTML = `<i class="fas fa-list"></i> ${I18n.t('meeting.apt_view_packages_button', {}, 'View packages')}`;
     }
 }
 
@@ -2420,7 +2421,7 @@ async function checkAptUpgradable() {
  * Run apt upgrade
  */
 async function runAptUpgrade() {
-    if (!confirm('Voulez-vous mettre à jour tous les paquets?\n\nCette opération peut prendre plusieurs minutes.')) {
+    if (!confirm(I18n.t('meeting.apt_upgrade_confirm', {}, 'Do you want to update all packages?\n\nThis may take several minutes.'))) {
         return;
     }
     
@@ -2431,11 +2432,11 @@ async function runAptUpgrade() {
     const output = document.getElementById('apt-upgrade-output');
     
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise à jour...';
-    statusText.textContent = 'En cours...';
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.apt_upgrading', {}, 'Updating...')}`;
+    statusText.textContent = I18n.t('meeting.apt_running', {}, 'Running...');
     statusText.className = 'status-value running';
     outputContainer.style.display = 'block';
-    output.textContent = 'Installation des mises à jour en cours...\nCela peut prendre plusieurs minutes, veuillez patienter...';
+    output.textContent = I18n.t('meeting.apt_installing', {}, 'Installing updates...\nThis may take several minutes, please wait...');
     
     try {
         const response = await fetch('/api/debug/apt/upgrade', { method: 'POST' });
@@ -2444,25 +2445,25 @@ async function runAptUpgrade() {
         output.textContent = data.output || data.message;
         
         if (data.success) {
-            statusText.textContent = 'Terminé';
+            statusText.textContent = I18n.t('meeting.apt_done', {}, 'Done');
             statusText.className = 'status-value success';
-            details.innerHTML = `<small>${data.upgraded} paquets mis à jour, ${data.newly_installed} nouveaux</small>`;
-            document.getElementById('apt-upgrade-last-date').textContent = 'à l\'instant';
+            details.innerHTML = `<small>${I18n.t('meeting.apt_upgrade_details', { upgraded: data.upgraded, newly_installed: data.newly_installed }, `${data.upgraded} upgraded, ${data.newly_installed} new`)}</small>`;
+            document.getElementById('apt-upgrade-last-date').textContent = I18n.t('meeting.last_action_now', {}, 'just now');
             showToast(data.message, 'success');
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = I18n.t('common.error', {}, 'Error');
             statusText.className = 'status-value error';
             details.innerHTML = `<small>${data.message}</small>`;
-            showToast(`Erreur: ${data.message}`, 'error');
+            showToast(I18n.t('meeting.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
         }
     } catch (error) {
-        statusText.textContent = 'Erreur';
+        statusText.textContent = I18n.t('common.error', {}, 'Error');
         statusText.className = 'status-value error';
         output.textContent = error.message;
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-arrow-up"></i> Mettre à jour';
+        btn.innerHTML = `<i class="fas fa-arrow-up"></i> ${I18n.t('meeting.apt_upgrade_button', {}, 'Update')}`;
     }
 }
 
@@ -2531,20 +2532,20 @@ async function loadRtcDebug() {
 
         if (data.success && data.status) {
             const enabled = data.status.effective_enabled;
-            statusText.textContent = enabled ? 'Actif' : 'Inactif';
+            statusText.textContent = enabled ? I18n.t('common.active', {}, 'Active') : I18n.t('common.inactive', {}, 'Inactive');
             statusText.className = `status-value ${enabled ? 'synced' : 'not-synced'}`;
 
-            const detected = data.status.detected ? 'détecté' : 'non détecté';
-            const mode = data.status.mode || 'auto';
-            details.innerHTML = `<small>Mode: ${mode} • RTC ${detected} • Overlay: ${data.status.overlay_configured ? 'ok' : 'absent'}</small>`;
+            const detected = data.status.detected ? I18n.t('meeting.rtc_debug_detected', {}, 'detected') : I18n.t('meeting.rtc_debug_not_detected', {}, 'not detected');
+            const mode = data.status.mode || I18n.t('common.auto', {}, 'auto');
+            details.innerHTML = `<small>${I18n.t('meeting.rtc_debug_details', { mode, detected, overlay: data.status.overlay_configured ? I18n.t('meeting.rtc_debug_overlay_ok', {}, 'ok') : I18n.t('meeting.rtc_debug_overlay_missing', {}, 'missing') }, `Mode: ${mode} • RTC ${detected} • Overlay: ${data.status.overlay_configured ? 'ok' : 'missing'}`)}</small>`;
         } else {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = I18n.t('common.error', {}, 'Error');
             statusText.className = 'status-value warning';
-            details.innerHTML = `<small>${data.message || 'Erreur RTC'}</small>`;
+            details.innerHTML = `<small>${data.message || I18n.t('meeting.rtc_error', {}, 'RTC error')}</small>`;
         }
     } catch (error) {
         if (statusText) {
-            statusText.textContent = 'Erreur';
+            statusText.textContent = I18n.t('common.error', {}, 'Error');
             statusText.className = 'status-value warning';
         }
         if (details) {
@@ -2588,7 +2589,7 @@ async function loadDebugLastActions() {
  * Format a date string for display
  */
 function formatLastActionDate(dateStr) {
-    if (!dateStr) return 'jamais';
+    if (!dateStr) return I18n.t('meeting.last_action_never', {}, 'never');
     
     try {
         const date = new Date(dateStr.replace(' ', 'T'));
@@ -2598,13 +2599,14 @@ function formatLastActionDate(dateStr) {
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
         
-        if (diffMins < 1) return 'à l\'instant';
-        if (diffMins < 60) return `il y a ${diffMins} min`;
-        if (diffHours < 24) return `il y a ${diffHours}h`;
-        if (diffDays < 7) return `il y a ${diffDays} jour${diffDays > 1 ? 's' : ''}`;
+        if (diffMins < 1) return I18n.t('meeting.last_action_now', {}, 'just now');
+        if (diffMins < 60) return I18n.t('meeting.last_action_minutes', { count: diffMins }, `${diffMins} min ago`);
+        if (diffHours < 24) return I18n.t('meeting.last_action_hours', { count: diffHours }, `${diffHours}h ago`);
+        if (diffDays < 7) return I18n.t('meeting.last_action_days', { count: diffDays, plural: diffDays > 1 ? 's' : '' }, `${diffDays} day${diffDays > 1 ? 's' : ''} ago`);
         
         // Format as date
-        return date.toLocaleDateString('fr-FR', { 
+        const locale = I18n.currentLanguage === 'fr' ? 'fr-FR' : 'en-US';
+        return date.toLocaleDateString(locale, { 
             day: '2-digit', 
             month: '2-digit', 
             year: 'numeric',
@@ -2633,7 +2635,7 @@ async function loadAptScheduler() {
             
             // Update status text
             const statusText = document.getElementById('scheduler-status-text');
-            statusText.textContent = scheduler.enabled ? 'Activé' : 'Désactivé';
+            statusText.textContent = scheduler.enabled ? I18n.t('common.enabled', {}, 'Enabled') : I18n.t('common.disabled', {}, 'Disabled');
             
             // Show/hide config
             document.getElementById('scheduler-config').style.display = scheduler.enabled ? 'block' : 'none';
@@ -2662,7 +2664,7 @@ function toggleAptScheduler() {
     const statusText = document.getElementById('scheduler-status-text');
     
     configDiv.style.display = enabled ? 'block' : 'none';
-    statusText.textContent = enabled ? 'Configuration...' : 'Désactivé';
+    statusText.textContent = enabled ? I18n.t('meeting.scheduler_configuring', {}, 'Configuring...') : I18n.t('common.disabled', {}, 'Disabled');
     
     // If disabling, save immediately
     if (!enabled) {
@@ -2695,7 +2697,7 @@ async function saveAptScheduler() {
     
     if (btn) {
         btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${I18n.t('meeting.scheduler_saving', {}, 'Saving...')}`;
     }
     
     try {
@@ -2707,17 +2709,17 @@ async function saveAptScheduler() {
         const data = await response.json();
         
         if (data.success) {
-            statusText.textContent = config.enabled ? 'Activé' : 'Désactivé';
-            showToast(data.message || 'Planification enregistrée', 'success');
+            statusText.textContent = config.enabled ? I18n.t('common.enabled', {}, 'Enabled') : I18n.t('common.disabled', {}, 'Disabled');
+            showToast(data.message || I18n.t('meeting.scheduler_saved', {}, 'Schedule saved'), 'success');
         } else {
-            showToast(data.message || 'Erreur', 'error');
+            showToast(data.message || I18n.t('common.error', {}, 'Error'), 'error');
         }
     } catch (error) {
-        showToast(`Erreur: ${error.message}`, 'error');
+        showToast(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
     } finally {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save"></i> Enregistrer';
+            btn.innerHTML = `<i class="fas fa-save"></i> ${I18n.t('common.save', {}, 'Save')}`;
         }
     }
 }
@@ -2795,8 +2797,8 @@ async function executeTerminalCommand() {
         const data = await response.json();
         
         if (response.status === 403) {
-            appendTerminalLine(`Commande non autorisée: ${command.split(' ')[0]}`, 'terminal-error');
-            appendTerminalLine('Tapez "help" pour voir les commandes autorisées.', 'terminal-info');
+            appendTerminalLine(I18n.t('meeting.terminal_command_not_allowed', { command: command.split(' ')[0] }, `Command not allowed: ${command.split(' ')[0]}`), 'terminal-error');
+            appendTerminalLine(I18n.t('meeting.terminal_help_hint', {}, 'Type "help" to see allowed commands.'), 'terminal-info');
         } else if (data.success) {
             if (data.stdout) {
                 appendTerminalLine(data.stdout, 'terminal-stdout');
@@ -2805,13 +2807,13 @@ async function executeTerminalCommand() {
                 appendTerminalLine(data.stderr, 'terminal-stderr');
             }
             if (data.returncode !== 0 && !data.stdout && !data.stderr) {
-                appendTerminalLine(`Commande terminée avec code ${data.returncode}`, 'terminal-info');
+                appendTerminalLine(I18n.t('meeting.terminal_return_code', { code: data.returncode }, `Command finished with code ${data.returncode}`), 'terminal-info');
             }
         } else {
-            appendTerminalLine(`Erreur: ${data.error}`, 'terminal-error');
+            appendTerminalLine(I18n.t('meeting.error_with_message', { error: data.error }, `Error: ${data.error}`), 'terminal-error');
         }
     } catch (error) {
-        appendTerminalLine(`Erreur réseau: ${error.message}`, 'terminal-error');
+        appendTerminalLine(I18n.t('meeting.terminal_network_error', { error: error.message }, `Network error: ${error.message}`), 'terminal-error');
     }
     
     // Scroll to bottom
@@ -2836,32 +2838,32 @@ function appendTerminalLine(text, className = '') {
 function clearTerminal() {
     const output = document.getElementById('terminal-output');
     output.innerHTML = '';
-    appendTerminalLine('Terminal effacé.', 'terminal-info');
+    appendTerminalLine(I18n.t('meeting.terminal_cleared', {}, 'Terminal cleared.'), 'terminal-info');
 }
 
 /**
  * Show allowed commands
  */
 async function showAllowedCommands() {
-    appendTerminalLine('Chargement des commandes autorisées...', 'terminal-info');
+    appendTerminalLine(I18n.t('meeting.terminal_allowed_loading', {}, 'Loading allowed commands...'), 'terminal-info');
     
     try {
         const response = await fetch('/api/debug/terminal/allowed');
         const data = await response.json();
         
         if (data.success) {
-            appendTerminalLine('=== Commandes autorisées ===', 'terminal-success');
+            appendTerminalLine(I18n.t('meeting.terminal_allowed_header', {}, '=== Allowed commands ==='), 'terminal-success');
             
             // Group commands by category
             const categories = {
-                'Système': ['ls', 'cat', 'head', 'tail', 'grep', 'find', 'df', 'du', 'free', 'top', 'ps', 'uptime', 'date', 'hostname', 'uname', 'whoami', 'id', 'pwd'],
-                'Journaux': ['journalctl', 'dmesg'],
-                'Services': ['systemctl', 'service'],
-                'Réseau': ['ip', 'ifconfig', 'iwconfig', 'nmcli', 'netstat', 'ss', 'ping', 'traceroute', 'curl', 'wget'],
-                'Matériel': ['vcgencmd', 'pinctrl', 'lsusb', 'lspci', 'lsblk', 'lscpu', 'lshw', 'lsmod', 'v4l2-ctl'],
-                'Média': ['ffprobe', 'ffmpeg', 'gst-launch-1.0', 'gst-inspect-1.0', 'test-launch'],
-                'Paquets': ['apt', 'apt-get', 'apt-cache', 'dpkg'],
-                'Utilitaires': ['echo', 'which', 'whereis', 'file', 'stat', 'wc', 'sort', 'uniq', 'awk', 'sed', 'cut', 'tr', 'tee']
+                [I18n.t('meeting.terminal_category_system', {}, 'System')]: ['ls', 'cat', 'head', 'tail', 'grep', 'find', 'df', 'du', 'free', 'top', 'ps', 'uptime', 'date', 'hostname', 'uname', 'whoami', 'id', 'pwd'],
+                [I18n.t('meeting.terminal_category_logs', {}, 'Logs')]: ['journalctl', 'dmesg'],
+                [I18n.t('meeting.terminal_category_services', {}, 'Services')]: ['systemctl', 'service'],
+                [I18n.t('meeting.terminal_category_network', {}, 'Network')]: ['ip', 'ifconfig', 'iwconfig', 'nmcli', 'netstat', 'ss', 'ping', 'traceroute', 'curl', 'wget'],
+                [I18n.t('meeting.terminal_category_hardware', {}, 'Hardware')]: ['vcgencmd', 'pinctrl', 'lsusb', 'lspci', 'lsblk', 'lscpu', 'lshw', 'lsmod', 'v4l2-ctl'],
+                [I18n.t('meeting.terminal_category_media', {}, 'Media')]: ['ffprobe', 'ffmpeg', 'gst-launch-1.0', 'gst-inspect-1.0', 'test-launch'],
+                [I18n.t('meeting.terminal_category_packages', {}, 'Packages')]: ['apt', 'apt-get', 'apt-cache', 'dpkg'],
+                [I18n.t('meeting.terminal_category_utils', {}, 'Utilities')]: ['echo', 'which', 'whereis', 'file', 'stat', 'wc', 'sort', 'uniq', 'awk', 'sed', 'cut', 'tr', 'tee']
             };
             
             for (const [category, cmds] of Object.entries(categories)) {
@@ -2871,12 +2873,12 @@ async function showAllowedCommands() {
                 }
             }
             
-            appendTerminalLine('\nNote: Utilisez "sudo" devant une commande pour les droits root.', 'terminal-info');
+            appendTerminalLine(I18n.t('meeting.terminal_sudo_note', {}, 'Note: Use "sudo" before a command for root privileges.'), 'terminal-info');
         } else {
-            appendTerminalLine('Erreur lors du chargement des commandes.', 'terminal-error');
+            appendTerminalLine(I18n.t('meeting.terminal_allowed_error', {}, 'Error loading commands.'), 'terminal-error');
         }
     } catch (error) {
-        appendTerminalLine(`Erreur: ${error.message}`, 'terminal-error');
+        appendTerminalLine(I18n.t('meeting.error_with_message', { error: error.message }, `Error: ${error.message}`), 'terminal-error');
     }
 }
 

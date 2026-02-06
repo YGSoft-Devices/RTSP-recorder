@@ -188,13 +188,25 @@
         
         if (user && pass) {
             statusDiv.className = 'alert alert-success';
-            messageSpan.innerHTML = `<strong>Authentification activée</strong> - L'utilisateur "${user}" sera requis pour accéder au flux RTSP.<br><small>URL: rtsp://${user}:****@IP:PORT/PATH</small>`;
+            messageSpan.innerHTML = I18n.t(
+                'navigation.rtsp_auth_enabled_html',
+                { user },
+                `<strong>Authentication enabled</strong> - User "${user}" is required to access the RTSP stream.<br><small>URL: rtsp://${user}:****@IP:PORT/PATH</small>`
+            );
         } else if (user || pass) {
             statusDiv.className = 'alert alert-warning';
-            messageSpan.innerHTML = '<strong>Authentification incomplète</strong> - Vous devez renseigner à la fois l\'utilisateur ET le mot de passe pour activer l\'authentification.';
+            messageSpan.innerHTML = I18n.t(
+                'navigation.rtsp_auth_incomplete_html',
+                {},
+                '<strong>Authentication incomplete</strong> - You must provide both username AND password to enable authentication.'
+            );
         } else {
             statusDiv.className = 'alert alert-info';
-            messageSpan.innerHTML = '<strong>Authentification désactivée</strong> - Le flux RTSP sera accessible sans mot de passe. Définissez un utilisateur et un mot de passe pour sécuriser l\'accès.';
+            messageSpan.innerHTML = I18n.t(
+                'navigation.rtsp_auth_disabled_html',
+                {},
+                '<strong>Authentication disabled</strong> - The RTSP stream will be accessible without a password. Set a username and password to secure access.'
+            );
         }
     }
     

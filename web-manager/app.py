@@ -48,7 +48,7 @@ from services.watchdog_service import (
 from services.camera_service import load_camera_profiles, profiles_scheduler_loop
 from services.network_service import manage_wifi_based_on_ethernet
 from services import media_cache_service
-from services.i18n_service import get_user_language
+from services.i18n_service import get_user_language, get_available_languages
 
 # ============================================================================
 # LOGGING CONFIGURATION
@@ -254,6 +254,7 @@ def register_error_handlers(app):
         is_provisioned = config.get('MEETING_PROVISIONED', 'no') == 'yes'
         
         current_lang = get_user_language(request)
+        languages = get_available_languages()
 
         return render_template('index.html', 
                              config=config,
@@ -268,9 +269,10 @@ def register_error_handlers(app):
                              led_status=led_status,
                              gpu_mem=gpu_mem,
                              platform=PLATFORM,
-                             app_version=APP_VERSION,
-                     ap_mode=ap_mode,
-                     current_lang=current_lang), 404
+                                 app_version=APP_VERSION,
+                             ap_mode=ap_mode,
+                             current_lang=current_lang,
+                             languages=languages), 404
     
     @app.errorhandler(500)
     def internal_error(error):
@@ -334,6 +336,7 @@ def register_main_routes(app):
         is_provisioned = config.get('MEETING_PROVISIONED', 'no') == 'yes'
         
         current_lang = get_user_language(request)
+        languages = get_available_languages()
 
         return render_template('index.html', 
                              config=config, 
@@ -348,9 +351,10 @@ def register_main_routes(app):
                              led_status=led_status,
                              gpu_mem=gpu_mem,
                              platform=PLATFORM,
-                             app_version=APP_VERSION,
-                     ap_mode=ap_mode,
-                     current_lang=current_lang)
+                                 app_version=APP_VERSION,
+                             ap_mode=ap_mode,
+                             current_lang=current_lang,
+                             languages=languages)
     
     @app.route('/health')
     def health():

@@ -648,13 +648,13 @@ RTSP-Full/
 
 | Fichier | Version Actuelle |
 |---------|------------------|
-| VERSION | 2.36.09 (source unique) |
+| VERSION | 2.36.16 (source unique) |
 | rpi_av_rtsp_recorder.sh | 2.15.2 |
 | rtsp_recorder.sh | 1.8.0 |
 | rtsp_watchdog.sh | 1.2.0 |
 | onvif-server/onvif_server.py | 1.9.0 |
 | rpi_csi_rtsp_server.py | 1.4.14 |
-| web-manager/app.py | 2.36.08 |
+| web-manager/app.py | 2.36.14 |
 | web-manager/config.py | 1.2.3 |
 | web-manager/tunnel_agent.py | 1.4.2 |
 | esp32/firmware (PlatformIO) | 0.1.2 |
@@ -686,14 +686,14 @@ RTSP-Full/
 | web-manager/blueprints/debug_bp.py | 2.30.9 |
 | web-manager/blueprints/legacy_bp.py | 2.30.2 |
 | web-manager/blueprints/*.py (autres) | 2.30.5 |
-| web-manager/templates/index.html | 2.36.08 |
+| web-manager/templates/index.html | 2.36.16 |
 | web-manager/static/js/app.js | 2.36.08 |
 | web-manager/static/js/modules/config_video.js | 2.36.03 |
 | web-manager/static/js/modules/meeting.js | 2.36.08 |
-| web-manager/static/js/modules/i18n.js | 2.36.08 |
+| web-manager/static/js/modules/i18n.js | 2.36.15 |
 | web-manager/static/css/style.css | 2.35.03 |
-| web-manager/static/locales/fr.json | 2.36.08 |
-| web-manager/static/locales/en.json | 2.36.08 |
+| web-manager/static/locales/fr.json | 2.36.16 |
+| web-manager/static/locales/en.json | 2.36.16 |
 | setup/install.sh | 1.3.0 |
 | setup/install_gstreamer_rtsp.sh | 2.2.5 |
 | setup/test-launch.c | 2.2.0 |
@@ -711,7 +711,7 @@ RTSP-Full/
 | debug_tools/deploy_scp.ps1 | 1.4.7 |
 | debug_tools/Get-DeviceIP.ps1 | 1.0.0 |
 | debug_tools/stop_services.sh | 1.0.0 |
-| docs/DOCUMENTATION_COMPLETE.md | 2.36.09 |
+| docs/DOCUMENTATION_COMPLETE.md | 2.36.15 |
 | debug_tools/package_update.ps1 | 1.0.1 |
 
 

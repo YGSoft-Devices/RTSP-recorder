@@ -22,10 +22,10 @@
                     </div>
                 `).join('');
             } else {
-                listContainer.innerHTML = '<p class="text-muted" style="padding: 15px;">Aucun enregistrement trouvé</p>';
+                listContainer.innerHTML = `<p class="text-muted" style="padding: 15px;">${I18n.t('recordings.no_recordings_found', {}, 'No recordings found')}</p>`;
             }
         } catch (error) {
-            window.showToast(`Erreur: ${error.message}`, 'error');
+            window.showToast(I18n.t('recordings.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
         }
     }
     
@@ -37,11 +37,11 @@
         const files = Array.from(checkboxes).map(cb => cb.value);
         
         if (files.length === 0) {
-            window.showToast('Veuillez sélectionner des fichiers à supprimer', 'warning');
+            window.showToast(I18n.t('recordings.select_files_to_delete', {}, 'Please select files to delete'), 'warning');
             return;
         }
         
-        if (!confirm(`Êtes-vous sûr de vouloir supprimer ${files.length} fichier(s) ?`)) {
+        if (!confirm(I18n.t('recordings.confirm_delete_files', { count: files.length }, `Are you sure you want to delete ${files.length} file(s)?`))) {
             return;
         }
         
@@ -57,13 +57,13 @@
             const data = await response.json();
             
             if (data.success) {
-                window.showToast(`${data.deleted} fichier(s) supprimé(s)`, 'success');
+                window.showToast(I18n.t('recordings.files_deleted', { count: data.deleted }, `${data.deleted} file(s) deleted`), 'success');
                 loadRecordings();
             } else {
-                window.showToast(`Erreur: ${data.message}`, 'error');
+                window.showToast(I18n.t('recordings.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
             }
         } catch (error) {
-            window.showToast(`Erreur: ${error.message}`, 'error');
+            window.showToast(I18n.t('recordings.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
         }
     }
     
@@ -85,7 +85,7 @@
      */
     async function loadFilesList(page = 1) {
         const listContainer = document.getElementById('files-list');
-        listContainer.innerHTML = '<div class="files-loading"><i class="fas fa-spinner fa-spin"></i> Chargement des fichiers...</div>';
+        listContainer.innerHTML = `<div class="files-loading"><i class="fas fa-spinner fa-spin"></i> ${I18n.t('recordings.files_loading', {}, 'Loading files...')}</div>`;
         
         // Get filter/sort/search parameters
         const filter = document.getElementById('files-filter')?.value || 'all';
@@ -140,7 +140,7 @@
                         availableEl.textContent = '0 o';
                         availableEl.classList.add('disk-full');
                         if (marginEl) {
-                            marginEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> DISQUE PLEIN (marge ${data.storage_info.min_free_display} non atteinte)`;
+                            marginEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('recordings.disk_full_margin', { margin: data.storage_info.min_free_display }, `DISK FULL (margin ${data.storage_info.min_free_display} not reached)`)}`;
                             marginEl.classList.add('disk-full-warning');
                             marginEl.style.display = 'flex';
                         }
@@ -150,7 +150,7 @@
                         availableEl.classList.remove('disk-full');
                         if (marginEl) {
                             if (data.storage_info.min_free_bytes > 0) {
-                                marginEl.innerHTML = `<i class="fas fa-shield-alt"></i> Marge: ${data.storage_info.min_free_display} réservés`;
+                                marginEl.innerHTML = `<i class="fas fa-shield-alt"></i> ${I18n.t('recordings.margin_reserved', { margin: data.storage_info.min_free_display }, `Margin: ${data.storage_info.min_free_display} reserved`)}`;
                                 marginEl.classList.remove('disk-full-warning');
                                 marginEl.style.display = 'flex';
                             } else {
@@ -189,7 +189,7 @@
                             quotaClass = 'quota-warning';
                             quotaIcon = 'fa-exclamation-circle';
                         }
-                        maxQuotaEl.innerHTML = `<i class="fas ${quotaIcon}"></i> Quota: ${data.storage_info.recordings_size_display} / ${data.storage_info.max_disk_display}`;
+                        maxQuotaEl.innerHTML = `<i class="fas ${quotaIcon}"></i> ${I18n.t('recordings.quota_label', { current: data.storage_info.recordings_size_display, max: data.storage_info.max_disk_display }, `Quota: ${data.storage_info.recordings_size_display} / ${data.storage_info.max_disk_display}`)}`;
                         maxQuotaEl.className = `storage-stat ${quotaClass}`;
                         maxQuotaEl.style.display = 'flex';
                     } else {
@@ -206,10 +206,10 @@
                 renderPagination();
                 updateFilesSelectionInfo();
             } else {
-                listContainer.innerHTML = `<div class="files-error"><i class="fas fa-exclamation-triangle"></i> Erreur: ${data.message}</div>`;
+                listContainer.innerHTML = `<div class="files-error"><i class="fas fa-exclamation-triangle"></i> ${I18n.t('recordings.error_with_message', { error: data.message }, `Error: ${data.message}`)}</div>`;
             }
         } catch (error) {
-            listContainer.innerHTML = `<div class="files-error"><i class="fas fa-exclamation-triangle"></i> Erreur de connexion: ${error.message}</div>`;
+            listContainer.innerHTML = `<div class="files-error"><i class="fas fa-exclamation-triangle"></i> ${I18n.t('recordings.connection_error_with_message', { error: error.message }, `Connection error: ${error.message}`)}</div>`;
         }
     }
     
@@ -220,7 +220,7 @@
         const listContainer = document.getElementById('files-list');
         
         if (filesData.length === 0) {
-            listContainer.innerHTML = '<div class="files-empty"><i class="fas fa-folder-open"></i> Aucun fichier trouvé</div>';
+            listContainer.innerHTML = `<div class="files-empty"><i class="fas fa-folder-open"></i> ${I18n.t('recordings.no_files_found', {}, 'No files found')}</div>`;
             return;
         }
         
@@ -231,7 +231,9 @@
             
             // Extract date/time from filename (rec_YYYYMMDD_HHMMSS.ts)
             const match = file.name.match(/rec_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
-            const dateLabel = match ? `${match[3]}/${match[2]} ${match[4]}:${match[5]}` : file.modified_display;
+            const dateLabel = match
+                ? I18n.t('recordings.datetime_short', { date: `${match[3]}/${match[2]}`, time: `${match[4]}:${match[5]}` }, `${match[3]}/${match[2]} ${match[4]}:${match[5]}`)
+                : file.modified_display;
             
             return `
                 <div class="file-card ${isSelected ? 'selected' : ''} ${file.locked ? 'is-locked' : ''}" data-filename="${file.name}">
@@ -239,7 +241,7 @@
                         <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleFileSelection('${file.name}')">
                     </div>
                     ${file.locked ? '<div class="file-card-lock"><i class="fas fa-lock"></i></div>' : ''}
-                    <div class="file-card-thumb" onclick="playFile('${file.name}')" title="Cliquer pour lire">
+                    <div class="file-card-thumb" onclick="playFile('${file.name}')" title="${I18n.t('recordings.click_to_play', {}, 'Click to play')}">
                         <img src="${thumbUrl}" alt="" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="thumb-placeholder" style="display:none;"><i class="fas fa-film"></i></div>
                         <div class="thumb-play-overlay"><i class="fas fa-play-circle"></i></div>
@@ -249,13 +251,13 @@
                         <span class="file-card-size">${file.size_display}</span>
                     </div>
                     <div class="file-card-actions">
-                        <button class="btn-icon btn-download" onclick="downloadFile('${file.name}')" title="Télécharger">
+                        <button class="btn-icon btn-download" onclick="downloadFile('${file.name}')" title="${I18n.t('recordings.download_title', {}, 'Download')}">
                             <i class="fas fa-download"></i>
                         </button>
-                        <button class="btn-icon btn-lock" onclick="toggleFileLock('${file.name}', ${!file.locked})" title="${file.locked ? 'Déverrouiller' : 'Verrouiller'}">
+                        <button class="btn-icon btn-lock" onclick="toggleFileLock('${file.name}', ${!file.locked})" title="${file.locked ? I18n.t('recordings.unlock_title', {}, 'Unlock') : I18n.t('recordings.lock_title', {}, 'Lock')}">
                             <i class="fas ${file.locked ? 'fa-lock-open' : 'fa-lock'}"></i>
                         </button>
-                        <button class="btn-icon btn-delete" onclick="deleteSingleFile('${file.name}')" title="Supprimer">
+                        <button class="btn-icon btn-delete" onclick="deleteSingleFile('${file.name}')" title="${I18n.t('recordings.delete_title', {}, 'Delete')}">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -480,7 +482,13 @@
         
         // Extract nice date from filename
         const match = filename.match(/rec_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/);
-        const dateLabel = match ? `${match[3]}/${match[2]}/${match[1]} à ${match[4]}:${match[5]}:${match[6]}` : filename;
+        const dateLabel = match
+            ? I18n.t(
+                'recordings.datetime_with_seconds',
+                { date: `${match[3]}/${match[2]}/${match[1]}`, time: `${match[4]}:${match[5]}:${match[6]}` },
+                `${match[3]}/${match[2]}/${match[1]} ${match[4]}:${match[5]}:${match[6]}`
+            )
+            : filename;
         titleEl.textContent = dateLabel;
         
         // Reset error state
@@ -495,8 +503,13 @@
         player.onerror = function() {
             console.error('Video playback error:', player.error);
             if (errorEl) {
-                errorEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Impossible de lire ce fichier.<br>
-                    <small>Format .ts - <a href="${streamUrl}" download="${filename}">Télécharger pour lire localement</a></small>`;
+                const downloadHtml = I18n.t(
+                    'recordings.format_ts_download',
+                    { url: streamUrl, filename: filename },
+                    `Format .ts - <a href="${streamUrl}" download="${filename}">Download to play locally</a>`
+                );
+                errorEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${I18n.t('recordings.playback_error', {}, 'Unable to play this file.')}<br>
+                    <small>${downloadHtml}</small>`;
                 errorEl.style.display = 'flex';
             }
             player.style.display = 'none';
@@ -561,7 +574,7 @@
         link.click();
         document.body.removeChild(link);
         
-        window.showToast(`Téléchargement de ${filename} démarré`, 'success');
+        window.showToast(I18n.t('recordings.download_started', { filename }, `Download of ${filename} started`), 'success');
     }
     
     /**
@@ -578,16 +591,17 @@
             const data = await response.json();
             
             if (data.success) {
-                window.showToast(`Fichier ${lock ? 'verrouillé' : 'déverrouillé'}`, 'success');
+                const statusKey = lock ? 'recordings.file_locked' : 'recordings.file_unlocked';
+                window.showToast(I18n.t(statusKey, {}, lock ? 'File locked' : 'File unlocked'), 'success');
                 // Update local data
                 const file = filesData.find(f => f.name === filename);
                 if (file) file.locked = lock;
                 renderFilesList();
             } else {
-                window.showToast(`Erreur: ${data.message}`, 'error');
+                window.showToast(I18n.t('recordings.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
             }
         } catch (error) {
-            window.showToast(`Erreur: ${error.message}`, 'error');
+            window.showToast(I18n.t('recordings.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
         }
     }
     
@@ -596,7 +610,7 @@
      */
     async function lockSelectedFiles() {
         if (selectedFiles.size === 0) {
-            window.showToast('Aucun fichier sélectionné', 'warning');
+            window.showToast(I18n.t('recordings.no_file_selected', {}, 'No file selected'), 'warning');
             return;
         }
         
@@ -610,13 +624,13 @@
             const data = await response.json();
             
             if (data.success) {
-                window.showToast(`${data.modified} fichier(s) verrouillé(s)`, 'success');
+                window.showToast(I18n.t('recordings.files_locked', { count: data.modified }, `${data.modified} file(s) locked`), 'success');
                 loadFilesList();
             } else {
-                window.showToast(`Erreur: ${data.message}`, 'error');
+                window.showToast(I18n.t('recordings.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
             }
         } catch (error) {
-            window.showToast(`Erreur: ${error.message}`, 'error');
+            window.showToast(I18n.t('recordings.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
         }
     }
     
@@ -625,7 +639,7 @@
      */
     async function unlockSelectedFiles() {
         if (selectedFiles.size === 0) {
-            window.showToast('Aucun fichier sélectionné', 'warning');
+            window.showToast(I18n.t('recordings.no_file_selected', {}, 'No file selected'), 'warning');
             return;
         }
         
@@ -639,13 +653,13 @@
             const data = await response.json();
             
             if (data.success) {
-                window.showToast(`${data.modified} fichier(s) déverrouillé(s)`, 'success');
+                window.showToast(I18n.t('recordings.files_unlocked', { count: data.modified }, `${data.modified} file(s) unlocked`), 'success');
                 loadFilesList();
             } else {
-                window.showToast(`Erreur: ${data.message}`, 'error');
+                window.showToast(I18n.t('recordings.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
             }
         } catch (error) {
-            window.showToast(`Erreur: ${error.message}`, 'error');
+            window.showToast(I18n.t('recordings.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
         }
     }
     
@@ -656,11 +670,11 @@
         // Check if file is locked
         const file = filesData.find(f => f.name === filename);
         if (file && file.locked) {
-            if (!confirm(`Le fichier "${filename}" est verrouillé.\n\nVoulez-vous quand même le supprimer ?`)) {
+            if (!confirm(I18n.t('recordings.confirm_delete_locked', { filename }, `File "${filename}" is locked.\n\nDelete anyway?`))) {
                 return;
             }
         } else {
-            if (!confirm(`Êtes-vous sûr de vouloir supprimer "${filename}" ?`)) {
+            if (!confirm(I18n.t('recordings.confirm_delete_file', { filename }, `Are you sure you want to delete "${filename}"?`))) {
                 return;
             }
         }
@@ -675,15 +689,15 @@
             const data = await response.json();
             
             if (data.success && data.deleted > 0) {
-                window.showToast('Fichier supprimé', 'success');
+                window.showToast(I18n.t('recordings.file_deleted', {}, 'File deleted'), 'success');
                 loadFilesList();
             } else if (data.skipped_locked?.length > 0) {
-                window.showToast('Fichier verrouillé - impossible de supprimer', 'warning');
+                window.showToast(I18n.t('recordings.file_locked_cannot_delete', {}, 'File locked - cannot delete'), 'warning');
             } else {
-                window.showToast(`Erreur: ${data.message || 'Impossible de supprimer'}`, 'error');
+                window.showToast(I18n.t('recordings.error_with_message', { error: data.message || I18n.t('recordings.delete_failed', {}, 'Unable to delete') }, `Error: ${data.message || 'Unable to delete'}`), 'error');
             }
         } catch (error) {
-            window.showToast(`Erreur: ${error.message}`, 'error');
+            window.showToast(I18n.t('recordings.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
         }
     }
     
@@ -692,7 +706,7 @@
      */
     async function deleteSelectedFiles() {
         if (selectedFiles.size === 0) {
-            window.showToast('Aucun fichier sélectionné', 'warning');
+            window.showToast(I18n.t('recordings.no_file_selected', {}, 'No file selected'), 'warning');
             return;
         }
         
@@ -702,9 +716,9 @@
             return file && file.locked;
         }).length;
         
-        let confirmMsg = `Êtes-vous sûr de vouloir supprimer ${selectedFiles.size} fichier(s) ?`;
+        let confirmMsg = I18n.t('recordings.confirm_delete_files', { count: selectedFiles.size }, `Are you sure you want to delete ${selectedFiles.size} file(s)?`);
         if (lockedCount > 0) {
-            confirmMsg += `\n\n⚠️ ${lockedCount} fichier(s) verrouillé(s) seront ignorés.`;
+            confirmMsg += `\n\n⚠️ ${I18n.t('recordings.locked_files_ignored', { count: lockedCount }, `${lockedCount} locked file(s) will be ignored.`)}`;
         }
         
         if (!confirm(confirmMsg)) {
@@ -721,17 +735,17 @@
             const data = await response.json();
             
             if (data.success) {
-                let message = `${data.deleted} fichier(s) supprimé(s)`;
+                let message = I18n.t('recordings.files_deleted', { count: data.deleted }, `${data.deleted} file(s) deleted`);
                 if (data.skipped_locked?.length > 0) {
-                    message += ` (${data.skipped_locked.length} verrouillé(s) ignoré(s))`;
+                    message += ` (${I18n.t('recordings.locked_files_skipped', { count: data.skipped_locked.length }, `${data.skipped_locked.length} locked skipped`)})`;
                 }
                 window.showToast(message, 'success');
                 loadFilesList();
             } else {
-                window.showToast(`Erreur: ${data.message}`, 'error');
+                window.showToast(I18n.t('recordings.error_with_message', { error: data.message }, `Error: ${data.message}`), 'error');
             }
         } catch (error) {
-            window.showToast(`Erreur: ${error.message}`, 'error');
+            window.showToast(I18n.t('recordings.error_with_message', { error: error.message }, `Error: ${error.message}`), 'error');
         }
     }
     
